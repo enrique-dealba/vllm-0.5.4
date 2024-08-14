@@ -1,0 +1,21 @@
+target-version = "py310"
+
+line-length = 88
+
+[lint]
+extend-select = [
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+  "E501", # line-too-long
+]
+
+ignore = [
+    "D100",
+    "UP006",
+    "UP007",
+    "UP035",
+    "UP038",
+]
+
+[lint.pydocstyle]
+convention = "google"

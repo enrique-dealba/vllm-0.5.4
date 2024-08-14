@@ -24,6 +24,19 @@ SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
+# Set working directory
 WORKDIR /app
 
-CMD ["conda", "run", "--no-capture-output", "-n", "vllm", "python"]
+# Copy project files
+COPY requirements.txt .
+COPY app/ ./app/
+COPY scripts/ ./scripts/
+
+# Install project dependencies
+RUN pip install -r requirements.txt
+
+# Make start script executable
+RUN chmod +x /app/scripts/start.sh
+
+# Set the entrypoint to our start script
+ENTRYPOINT ["/app/scripts/start.sh"]
