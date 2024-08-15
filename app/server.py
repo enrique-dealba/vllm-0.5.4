@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from vllm import LLM, SamplingParams
@@ -18,6 +20,8 @@ image = load_image()
 async def generate_response(request: Request):
     try:
         request_data = await request.json()
+
+        start_time = time.time()
         query = request_data.get("text")
         prompt = f"USER: <image>\n{query}\nASSISTANT:"
         outputs = llm.generate(
@@ -31,8 +35,15 @@ async def generate_response(request: Request):
                 temperature=settings.TEMPERATURE, max_tokens=settings.MAX_TOKENS
             ),
         )
+
         generated_text = outputs[0].outputs[0].text
-        return JSONResponse({"response": generated_text})
+        end_time = time.time()
+        execution_time = end_time - start_time
+
+        return JSONResponse({
+            "response": generated_text,
+            "execution_time_seconds": round(execution_time, 4)
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
