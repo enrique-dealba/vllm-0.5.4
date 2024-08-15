@@ -10,7 +10,7 @@ docker build -t vllm:cuda11.8 .
 To run Docker container:
 
 ```sh
-docker run -v ~/.cache/huggingface:/root/.cache/huggingface --gpus all --name vlm -p 8888:8888 vllm:0.5.4-cuda11.8
+docker run -v ~/.cache/huggingface:/root/.cache/huggingface --gpus all --name vlm -p 8888:8888 vllm:cuda11.8
 ```
 
 To query the FastAPI server:
