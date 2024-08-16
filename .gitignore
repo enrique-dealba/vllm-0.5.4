@@ -50,7 +50,7 @@ Thumbs.db
 # Logs
 *.log
 
-# Data files (often large and project-specific)
+# Data files
 *.csv
 *.json
 *.xlsx
@@ -58,3 +58,6 @@ Thumbs.db
 # Environment variables
 .env
 .env.*
+
+# Ruff
+.ruff_cache/
