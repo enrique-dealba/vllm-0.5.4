@@ -1,4 +1,5 @@
 import time
+import vllm
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -15,6 +16,7 @@ llm = LLM(model=settings.MODEL_NAME)
 # Load and cache the image
 image = load_image()
 
+print(f"Running vLLM version: {vllm.__version__}")
 
 @app.post("/generate")
 async def generate_response(request: Request):
