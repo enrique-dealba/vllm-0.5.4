@@ -20,7 +20,7 @@ ENV PATH="/root/miniconda3/bin:${PATH}"
 RUN conda create -n vllm python=3.10 -y
 SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 
-# Install vLLM 0.5.4 with CUDA 11.8
+# Install vLLM with CUDA 11.8
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
