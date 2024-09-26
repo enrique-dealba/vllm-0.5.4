@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     FIXED_IMAGE_URL: str = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
     IMAGE_FETCH_TIMEOUT: int = 5
 
+    # Hugging Face Settings
+    HUGGING_FACE_HUB_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

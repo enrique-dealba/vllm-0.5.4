@@ -2,10 +2,25 @@ import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from huggingface_hub import login
 
 from app.config import settings
 
 app = FastAPI()
+
+# Authenticate with Hugging Face Hub
+if settings.HUGGING_FACE_HUB_TOKEN:
+    try:
+        login(token=settings.HUGGING_FACE_HUB_TOKEN)
+        print("Successfully logged in to HuggingFace Hub.")
+    except Exception as e:
+        print(f"Failed to authenticate with HuggingFace Hub: {e}")
+        llm = None
+        lvm = None
+else:
+    print("HUGGING_FACE_HUB_TOKEN not provided.")
+    llm = None
+    lvm = None
 
 # Initialize the appropriate model based on MODEL_TYPE
 if settings.MODEL_TYPE.upper() == "LLM":
