@@ -35,6 +35,9 @@ COPY scripts/ ./scripts/
 # Install project dependencies
 RUN pip install -r requirements.txt
 
+# Install LangChain and LangChain Community
+RUN pip install langchain langchain_community -q
+
 # Make start script executable
 RUN chmod +x /app/scripts/start.sh
 
