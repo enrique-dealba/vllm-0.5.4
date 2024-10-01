@@ -38,9 +38,9 @@ if st.button("Generate"):
                 if llm is None:
                     st.error("LLM is not available.")
                 else:
-                    generated_text = llm.invoke(
-                        user_input, callbacks=[callback_manager]
-                    )
+                    # Use existing callbacks if available
+                    callbacks = llm.callbacks or [callback_manager]
+                    generated_text = llm.invoke(user_input, callbacks=callbacks)
             elif settings.MODEL_TYPE.upper() == "VLM":
                 if vlm is None:
                     st.error("VLM is not available.")
