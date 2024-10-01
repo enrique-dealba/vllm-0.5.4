@@ -5,6 +5,7 @@ import time
 
 import streamlit as st
 from langchain.callbacks import StdOutCallbackHandler
+from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.tracers import LangChainTracer
 from langchain.smith import RunEvalConfig
 from vllm import SamplingParams
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Initialize LangSmith tracing
 handler = StdOutCallbackHandler()
 tracer = LangChainTracer(project_name=settings.LANGCHAIN_PROJECT)
+callback_manager = CallbackManager([handler, tracer])
 
 st.title("LangChain LLM/VLM Interface")
 
@@ -36,10 +38,9 @@ if st.button("Generate"):
                 if llm is None:
                     st.error("LLM is not available.")
                 else:
-                    with tracer.capture_trace():
-                        generated_text = llm.invoke(
-                            user_input, callbacks=[handler, tracer]
-                        )
+                    generated_text = llm.invoke(
+                        user_input, callbacks=[callback_manager]
+                    )
             elif settings.MODEL_TYPE.upper() == "VLM":
                 if vlm is None:
                     st.error("VLM is not available.")
@@ -48,17 +49,16 @@ if st.button("Generate"):
                     sampling_params = SamplingParams(
                         temperature=settings.TEMPERATURE, max_tokens=settings.MAX_TOKENS
                     )
-                    with tracer.capture_trace():
-                        outputs = vlm.generate(
-                            [
-                                {
-                                    "prompt": prompt,
-                                    "multi_modal_data": {"image": image},
-                                }
-                            ],
-                            sampling_params,
-                        )
-                        generated_text = outputs[0].outputs[0].text
+                    outputs = vlm.generate(
+                        [
+                            {
+                                "prompt": prompt,
+                                "multi_modal_data": {"image": image},
+                            }
+                        ],
+                        sampling_params,
+                    )
+                    generated_text = outputs[0].outputs[0].text
             else:
                 st.error("Invalid MODEL_TYPE configuration.")
                 generated_text = ""
@@ -76,20 +76,18 @@ if st.button("Generate"):
                     evaluators=["criteria", "embedding_distance"],
                     custom_evaluators=[],
                 )
-                with tracer.capture_trace():
-                    tracer.log_run(
-                        run_id=None,
-                        outputs={"response": generated_text},
-                        inputs={"query": user_input},
-                        run_type="chain",
-                        tags=["streamlit_ui"],
-                        parent_run_id=None,
-                        extra={
-                            "execution_time": execution_time,
-                            "model_type": settings.MODEL_TYPE,
-                        },
-                        evaluation_config=run_eval_config,
-                    )
+                tracer.on_chain_end(
+                    {"response": generated_text},
+                    run_id=None,
+                    parent_run_id=None,
+                    inputs={"query": user_input},
+                    outputs={"response": generated_text},
+                    tags=["streamlit_ui"],
+                    metadata={
+                        "execution_time": execution_time,
+                        "model_type": settings.MODEL_TYPE,
+                    },
+                )
 
         except Exception as e:
             logger.exception(f"Error during generation: {e}")
