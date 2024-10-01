@@ -4,5 +4,16 @@ set -e
 # Activate conda environment
 source /root/miniconda3/bin/activate vllm
 
-# Start the FastAPI server using uvicorn
-exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
+# Determine run mode
+RUN_MODE=${RUN_MODE:-server}
+
+if [ "$RUN_MODE" = "server" ]; then
+    echo "Starting FastAPI server..."
+    exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
+elif [ "$RUN_MODE" = "ui" ]; then
+    echo "Starting Streamlit UI..."
+    exec streamlit run app/streamlit_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
+else
+    echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server' or 'ui'."
+    exit 1
+fi

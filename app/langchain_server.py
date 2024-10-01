@@ -1,17 +1,13 @@
-# File: /app/langchain_server.py
-
 import logging
 import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from huggingface_hub import login
-from langchain_community.llms import VLLM as LangChainVLLM
-from vllm import LLM as VLM
 from vllm import SamplingParams
 
 from app.config import settings
-from app.utils import load_image
+from app.model import image, llm, vlm
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,51 +22,10 @@ if settings.HUGGING_FACE_HUB_TOKEN:
         logger.info("Successfully logged in to HuggingFace Hub.")
     except Exception as e:
         logger.error(f"Failed to authenticate with HuggingFace Hub: {e}")
-        llm = None
-        vlm = None
+        # llm and vlm are already set to None in model.py
 else:
     logger.warning("HUGGING_FACE_HUB_TOKEN not provided.")
-    llm = None
-    vlm = None
-
-# Initialize the appropriate model based on MODEL_TYPE
-if settings.MODEL_TYPE.upper() == "LLM":
-    try:
-        llm = LangChainVLLM(
-            model=settings.LLM_MODEL_NAME,
-            trust_remote_code=True,  # Mandatory for Hugging Face models
-            max_new_tokens=settings.MAX_TOKENS,
-            # top_k=10,  # Example parameter, adjust as needed
-            # top_p=0.95,  # Example parameter, adjust as needed
-            temperature=settings.TEMPERATURE,
-            # tensor_parallel_size=settings.TENSOR_PARALLEL_SIZE,  # Uncomment if using multi-GPU
-        )
-        logger.info(
-            f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully."
-        )
-    except Exception as e:
-        logger.error(f"Error initializing LangChain LLM: {e}")
-        llm = None
-elif settings.MODEL_TYPE.upper() == "VLM":
-    try:
-        vlm = VLM(
-            model=settings.VLM_MODEL_NAME,
-            # Add additional VLM-specific parameters if needed
-        )
-        image = load_image(url=settings.FIXED_IMAGE_URL)
-        logger.info(
-            f"VLM model '{settings.VLM_MODEL_NAME}' initialized successfully with image '{settings.FIXED_IMAGE_URL}'."
-        )
-    except Exception as e:
-        logger.error(f"Error initializing VLM: {e}")
-        vlm = None
-else:
-    logger.critical(
-        f"Invalid MODEL_TYPE: {settings.MODEL_TYPE}. Must be 'LLM' or 'VLM'."
-    )
-    raise ValueError(
-        f"Invalid MODEL_TYPE: {settings.MODEL_TYPE}. Must be 'LLM' or 'VLM'."
-    )
+    # llm and vlm are already set to None in model.py
 
 
 @app.post("/generate")
