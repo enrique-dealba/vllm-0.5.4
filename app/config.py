@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     PORT: int = 8888
     HOST: str = "0.0.0.0"
     TEMPERATURE: float = 0.2
-    MAX_TOKENS: int = 256
+    MAX_TOKENS: int = 8192  # prev: 256,
     MODEL_TYPE: str = "LLM"  # Default to LLM; options: 'LLM', 'VLM'
 
     # LLM Settings
@@ -19,6 +19,12 @@ class Settings(BaseSettings):
 
     # Hugging Face Settings
     HUGGING_FACE_HUB_TOKEN: str = ""
+
+    # LangSmith settings
+    LANGCHAIN_TRACING_V2: bool = True  # prev: False
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "agent-testing-20241001"
 
     class Config:
         env_file = ".env"
