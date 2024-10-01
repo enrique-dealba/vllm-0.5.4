@@ -1,8 +1,12 @@
 import logging
 import time
+import sys
+import os
 
 import streamlit as st
 from vllm import SamplingParams
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
 from app.model import image, llm, vlm
