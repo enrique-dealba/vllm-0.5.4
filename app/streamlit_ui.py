@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import streamlit as st
 from langchain.callbacks.tracers import LangChainTracer
-from langchain.smith import RunEvalConfig
 from vllm import SamplingParams
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,7 +29,7 @@ if st.button("Generate"):
         st.warning("Please enter a query.")
     else:
         start_time = time.time()
-        unique_id = uuid4().hex[0:8]
+        unique_id = str(uuid4())  # Generate a unique run ID as a string
         try:
             if settings.MODEL_TYPE.upper() == "LLM":
                 if llm is None:
@@ -68,10 +67,6 @@ if st.button("Generate"):
                 st.write(f"Execution Time: {execution_time:.4f} seconds.")
 
                 # Log the run to LangSmith
-                run_eval_config = RunEvalConfig(
-                    evaluators=["criteria", "embedding_distance"],
-                    custom_evaluators=[],
-                )
                 tracer.on_chain_start(
                     {"name": "Streamlit UI Chain"},
                     {"query": user_input},
@@ -82,9 +77,8 @@ if st.button("Generate"):
                     },
                 )
                 tracer.on_chain_end(
-                    {"response": generated_text},
-                    run_id=unique_id,
                     outputs={"response": generated_text},
+                    run_id=unique_id,
                 )
 
         except Exception as e:
