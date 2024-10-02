@@ -30,6 +30,7 @@ def initialize_models():
                 trust_remote_code=True,  # Mandatory for Hugging Face models
                 max_new_tokens=settings.MAX_TOKENS,
                 temperature=settings.TEMPERATURE,
+                tokenizer_mode="mistral" if settings.IS_MISTRAL else "auto",
             )
             logger.info(
                 f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully."

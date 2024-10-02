@@ -7,4 +7,3 @@ pydantic_settings
 pydantic-core
 streamlit
 instructor
-vllm-flash-attn
