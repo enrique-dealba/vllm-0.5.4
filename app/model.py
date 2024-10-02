@@ -25,12 +25,17 @@ def initialize_models():
 
     if settings.MODEL_TYPE.upper() == "LLM":
         try:
+            tokenizer_mode="mistral" if settings.IS_MISTRAL else "auto"
             llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
                 trust_remote_code=True,  # Mandatory for Hugging Face models
                 max_new_tokens=settings.MAX_TOKENS,
                 temperature=settings.TEMPERATURE,
-                tokenizer_mode="mistral" if settings.IS_MISTRAL else "auto",
+                tokenizer_mode=tokenizer_mode,
+                vllm_kwargs={
+                    "tokenizer_mode": tokenizer_mode,
+                    # "gpu_memory_utilization": gpu_utilization,
+                }
             )
             logger.info(
                 f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully."
