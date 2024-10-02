@@ -20,11 +20,16 @@ class Settings(BaseSettings):
     # Hugging Face Settings
     HUGGING_FACE_HUB_TOKEN: str = ""
 
-    # LangSmith settings
+    # LangSmith Settings
     LANGCHAIN_TRACING_V2: bool = True  # prev: False
     LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGCHAIN_API_KEY: str = ""
     LANGCHAIN_PROJECT: str = "agent-testing-20241001"
+
+    # OpenAI Wrapper Settings
+    USE_INSTRUCTOR: bool = True
+    OPENAI_API_BASE: str = f"http://localhost:{PORT}/v1"
+    OPENAI_API_KEY: str = "dummy_key"  # Dummy key for local setup
 
     class Config:
         env_file = ".env"
