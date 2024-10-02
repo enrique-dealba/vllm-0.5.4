@@ -5,7 +5,8 @@ from fastapi.responses import JSONResponse
 from huggingface_hub import login
 
 from app.config import settings
-from app.llm_logic import generate_response
+# from app.llm_logic import generate_response
+from app.instructor_logic import generate_response
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
