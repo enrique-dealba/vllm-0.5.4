@@ -1,7 +1,8 @@
 import time
 from typing import List, Optional
 
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 
 from app.model import llm
@@ -21,13 +22,17 @@ def generate_response(user_input: str) -> tuple[LLMResponse, float]:
     start_time = time.time()
 
     try:
-        structured_llm = llm.with_structured_output(LLMResponse, method="json_schema")
+        parser = PydanticOutputParser(pydantic_object=LLMResponse)
 
-        chain = RunnablePassthrough.assign(structured_output=structured_llm) | (
-            lambda x: x["structured_output"]
+        prompt = PromptTemplate(
+            template="Answer the user query.\n{format_instructions}\n{query}\n",
+            input_variables=["query"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
-        response = chain.invoke(user_input)
+        chain = prompt | llm | parser
+
+        response = chain.invoke({"query": user_input})
 
         end_time = time.time()
         execution_time = end_time - start_time
