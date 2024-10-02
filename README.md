@@ -54,10 +54,17 @@ docker run \
 
 ```
 
+<!-- TODO: remove '| jq' from these curl commands -->
 To query the FastAPI server:
 
 ```sh
 curl -X POST "http://localhost:8888/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is the content of this image?\"}" | jq
+```
+
+To check FastAPI server health:
+
+```sh
+curl http://localhost:8888/health | jq
 ```
 
 To query the Streamlit UI:
