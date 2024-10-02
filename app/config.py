@@ -26,10 +26,8 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: str = ""
     LANGCHAIN_PROJECT: str = "agent-testing-20241001"
 
-    # OpenAI Wrapper Settings
-    USE_INSTRUCTOR: bool = True
-    OPENAI_API_BASE: str = f"http://localhost:{PORT}/v1"
-    OPENAI_API_KEY: str = "dummy_key"  # Dummy key for local setup
+    # LLM Structured Output Settings
+    USE_STRUCTURED_OUTPUT: bool = True
 
     class Config:
         env_file = ".env"

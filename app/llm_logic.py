@@ -6,6 +6,9 @@ from langchain.callbacks.tracers import LangChainTracer
 from vllm import SamplingParams
 
 from app.config import settings
+from app.langchain_structured_outputs import (
+    generate_response as structured_generate_response,
+)
 from app.model import image, llm, vlm
 
 # Configure logging
@@ -17,6 +20,9 @@ tracer = LangChainTracer(project_name=settings.LANGCHAIN_PROJECT)
 
 
 def generate_response(user_input):
+    if settings.USE_STRUCTURED_OUTPUT:
+        return structured_generate_response(user_input)
+
     start_time = time.time()
     unique_id = str(uuid4())
     generated_text = ""
