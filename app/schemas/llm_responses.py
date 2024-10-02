@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,32 +16,53 @@ class DetailedLLMResponse(BaseModel):
         ..., ge=0, le=1, description="Confidence score of the response"
     )
 
-class Measurement(BaseModel):
-    value: float = Field(..., description="The numerical value of the measurement")
-    unit: str = Field(..., description="The unit of measurement")
 
-class Fact(BaseModel):
-    content: str = Field(..., description="The content of the fact")
-    category: Optional[str] = Field(None, description="Category of the fact")
+class IntentStatusSummary(BaseModel):
+    target_name: str = Field(..., description="Name of the target satellite")
+    target_catalog_id: str = Field(
+        ..., description="Catalog ID of the target satellite"
+    )
 
-class Statistic(BaseModel):
-    name: str = Field(..., description="Name of the statistic")
-    value: Union[int, float, str] = Field(..., description="Value of the statistic")
-    unit: Optional[str] = Field(None, description="Unit of the statistic, if applicable")
+    failed_count: int = Field(
+        ..., ge=0, description="Number of intents with FAILED status"
+    )
+    scheduled_count: int = Field(
+        ..., ge=0, description="Number of intents with SCHEDULED status"
+    )
+    completed_count: int = Field(
+        ..., ge=0, description="Number of intents with COMPLETED status"
+    )
 
-class Component(BaseModel):
-    name: str = Field(..., description="Name of the component")
-    description: str = Field(..., description="Description of the component")
-    specifications: Optional[Dict[str, Union[str, int, float]]] = Field(None, description="Specifications of the component")
+    failure_reason: Optional[str] = Field(
+        None, description="Common reason for failed intents"
+    )
 
-class InformationalContent(BaseModel):
-    title: str = Field(..., description="Title of the informational content")
-    summary: str = Field(..., description="Brief summary or overview")
-    key_facts: List[Fact] = Field(..., description="List of key facts")
-    statistics: List[Statistic] = Field(..., description="List of important statistics")
-    components: Optional[List[Component]] = Field(None, description="List of major components or systems")
-    measurements: Optional[Dict[str, Measurement]] = Field(None, description="Key measurements")
-    historical_events: Optional[List[str]] = Field(None, description="List of significant historical events")
-    comparisons: Optional[List[str]] = Field(None, description="Interesting comparisons or analogies")
-    images: Optional[List[str]] = Field(None, description="Descriptions of related images")
-    additional_info: Optional[List[str]] = Field(None, description="Any additional interesting information")
+    priority: int = Field(..., ge=0, description="Priority level of the intents")
+
+    frame_type: str = Field(..., description="Type of frame used in the observation")
+    num_frames: int = Field(
+        ..., ge=0, description="Number of frames in the observation"
+    )
+    integration_time_s: float = Field(
+        ..., ge=0, description="Integration time in seconds"
+    )
+    track_type: str = Field(
+        ..., description="Type of tracking used for the observation"
+    )
+
+    scheduling_process: str = Field(
+        ..., description="Description of the typical scheduling process"
+    )
+    completion_note: Optional[str] = Field(
+        None, description="Note on the completed intent, if any"
+    )
+
+
+class IntentAnalysisSummary(BaseModel):
+    summary: IntentStatusSummary = Field(
+        ..., description="Detailed summary of intent statuses"
+    )
+    total_intents: int = Field(
+        ..., ge=0, description="Total number of intents analyzed"
+    )
+    analysis_date: str = Field(..., description="Date of the intent analysis")
