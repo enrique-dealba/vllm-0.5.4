@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # LLM Structured Output Settings
     USE_STRUCTURED_OUTPUT: bool = True
+    LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
 
     class Config:
         env_file = ".env"

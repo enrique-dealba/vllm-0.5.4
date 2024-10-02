@@ -32,21 +32,19 @@ async def generate_response_api(request: Request):
         query = request_data.get("text")
 
         if not query:
-            logger.warning("No text provided for generation.")
             raise HTTPException(
                 status_code=400, detail="No text provided for generation."
             )
 
-        generated_text, execution_time = generate_response(query)
+        llm_response, execution_time = generate_response(query)
 
-        logger.info(f"Generated response in {execution_time:.4f} seconds.")
+        if settings.USE_STRUCTURED_OUTPUT:
+            response_dict = llm_response.model_dump()
+        else:
+            response_dict = {"response": llm_response}
 
-        return JSONResponse(
-            {
-                "response": generated_text,
-                "execution_time_seconds": round(execution_time, 4),
-            }
-        )
+        response_dict["execution_time_seconds"] = round(execution_time, 4)
+        return JSONResponse(response_dict)
 
     except HTTPException as he:
         raise he

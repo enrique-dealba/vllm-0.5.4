@@ -4,6 +4,7 @@ import sys
 import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import settings
 from llm_logic import generate_response
 
 st.title("LLM")
@@ -16,11 +17,21 @@ if st.button("Generate"):
         st.warning("Please enter a query.")
     else:
         try:
-            generated_text, execution_time = generate_response(user_input)
+            llm_response, execution_time = generate_response(user_input)
 
-            if generated_text:
-                st.subheader("Response:")
-                st.write(generated_text)
-                st.write(f"Execution Time: {execution_time:.4f} seconds.")
+            st.subheader("Response:")
+            if settings.USE_STRUCTURED_OUTPUT:
+                st.write(llm_response.response)
+
+                if hasattr(llm_response, "sources") and llm_response.sources:
+                    st.subheader("Sources:")
+                    for source in llm_response.sources:
+                        st.write(f"- {source}")
+
+                if hasattr(llm_response, "confidence"):
+                    st.subheader("Confidence:")
+                    st.write(f"{llm_response.confidence:.2f}")
+            else:
+                st.write(llm_response)
         except Exception as e:
             st.error(f"An error occurred: {e}")

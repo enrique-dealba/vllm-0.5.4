@@ -1,28 +1,18 @@
 import time
-from typing import List, Optional
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field
 
 from app.model import llm
+from app.utils import load_schema
 
 
-class LLMResponse(BaseModel):
-    response: str = Field(..., description="The main response from the LLM")
-    sources: Optional[List[str]] = Field(
-        None, description="Sources or references for the response"
-    )
-    confidence: float = Field(
-        ..., ge=0, le=1, description="Confidence score of the response"
-    )
-
-
-def generate_response(user_input: str) -> tuple[LLMResponse, float]:
+def generate_response(user_input: str):
     start_time = time.time()
 
     try:
-        parser = PydanticOutputParser(pydantic_object=LLMResponse)
+        LLMResponseSchema = load_schema()
+        parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
 
         prompt = PromptTemplate(
             template="Answer the user query.\n{format_instructions}\n{query}\n",
