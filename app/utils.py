@@ -65,9 +65,14 @@ def time_function(func):
     return wrapper
 
 
-def parse_intents(file_path):
-    with open(file_path) as file:
-        data = json.load(file)
+def parse_intents(input_data):
+    if isinstance(input_data, str):  # If it's a file path
+        with open(input_data) as file:
+            data = json.load(file)
+    elif isinstance(input_data, (list, dict)):  # If it's already loaded data
+        data = input_data
+    else:
+        raise TypeError("Expected file path (str) or loaded JSON data (list/dict)")
 
     summary = defaultdict(
         lambda: {
@@ -160,9 +165,14 @@ def format_summary_intents(summary):
     return formatted_summary
 
 
-def parse_collect_requests(file_path):
-    with open(file_path) as file:
-        data = json.load(file)
+def parse_collect_requests(input_data):
+    if isinstance(input_data, str):  # If it's a file path
+        with open(input_data) as file:
+            data = json.load(file)
+    elif isinstance(input_data, (list, dict)):  # If it's already loaded data
+        data = input_data
+    else:
+        raise TypeError("Expected file path (str) or loaded JSON data (list/dict)")
 
     summary = defaultdict(
         lambda: {

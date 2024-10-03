@@ -47,7 +47,6 @@ if intents_file and collect_requests_file:
         combined_summary = f"""
         Intents Summary:
         {json.dumps(formatted_summary_intents, indent=2)}
-
         Collect Requests Summary:
         {json.dumps(formatted_summary_collect_requests, indent=2)}
         """
