@@ -69,7 +69,7 @@ if st.button("Generate"):
             Keep your response to 100 words. Please proceed:"""
 
             # Generate streamed response
-            response_gen, execution_time = generate_stream_response(query)
+            response_gen = generate_stream_response(query)
 
             st.subheader("Response:")
             if settings.USE_STRUCTURED_OUTPUT:
