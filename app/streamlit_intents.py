@@ -67,7 +67,7 @@ if st.button("Generate"):
             context = st.session_state.get("combined_summary", "")
             query = f"""Given this info: {str(context)}, analyze the info and address the user's request: {user_input}.
             Keep your response to 100 words. Please proceed:"""
-            llm_response, execution_time = generate_response(query, context)
+            llm_response, execution_time = generate_response(query)
             st.subheader("Response:")
             if settings.USE_STRUCTURED_OUTPUT:
                 st.write(llm_response.response)
