@@ -17,6 +17,15 @@ image = None
 def initialize_models():
     global llm, vlm, image
 
+    # Set Hugging Face Hub Token
+    if settings.HUGGING_FACE_HUB_TOKEN:
+        os.environ["HUGGINGFACEHUB_API_TOKEN"] = settings.HUGGING_FACE_HUB_TOKEN
+        logger.info("Hugging Face Hub token set successfully.")
+    else:
+        logger.warning(
+            "Hugging Face Hub token is not set. Proceeding without authentication."
+        )
+
     # LangSmith setup
     os.environ["LANGCHAIN_TRACING_V2"] = str(settings.LANGCHAIN_TRACING_V2)
     os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
@@ -25,7 +34,7 @@ def initialize_models():
 
     if settings.MODEL_TYPE.upper() == "LLM":
         try:
-            tokenizer_mode="mistral" if settings.IS_MISTRAL else "auto"
+            tokenizer_mode = "mistral" if settings.IS_MISTRAL else "auto"
             llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
                 trust_remote_code=True,  # Mandatory for Hugging Face models
@@ -35,7 +44,7 @@ def initialize_models():
                 vllm_kwargs={
                     "tokenizer_mode": tokenizer_mode,
                     # "gpu_memory_utilization": gpu_utilization,
-                }
+                },
             )
             logger.info(
                 f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully."
