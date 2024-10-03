@@ -66,7 +66,7 @@ if st.button("Generate"):
             # If we have a combined summary, pass it to the generate_response function
             context = st.session_state.get("combined_summary", "")
             query = f"""Given this info: {str(context)}, analyze the info and address the user's request: {user_input}.
-            Keep your response to 100 words. Please proceed:"""
+            Make sure your in-depth response is over 5000 words. Please proceed:"""
 
             # Generate streamed response
             response_gen = generate_stream_response(query)
@@ -98,7 +98,10 @@ if st.button("Generate"):
                             )
                         await asyncio.sleep(0.1)  # Small delay for streaming effect
 
-                asyncio.run(stream_structured_response())
+                # asyncio.run(stream_structured_response())
+                with st.spinner("Generating response..."):
+                    asyncio.run(stream_structured_response())
+
             else:
                 # For unstructured output
                 response_placeholder = st.empty()
@@ -110,7 +113,9 @@ if st.button("Generate"):
                         response_placeholder.write(accumulated_text)
                         await asyncio.sleep(0.1)  # Small delay for streaming effect
 
-                asyncio.run(stream_unstructured_response())
+                # asyncio.run(stream_unstructured_response())
+                with st.spinner("Generating response..."):
+                    asyncio.run(stream_unstructured_response())
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
