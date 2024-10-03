@@ -15,7 +15,7 @@ from utils import (
     parse_intents,
 )
 
-st.title("Dummy Belief State Summarizer")
+st.title("Dummy Belief State Summarizer: Streaming")
 
 # File uploaders
 intents_file = st.file_uploader("Upload Intents JSON", type=["json"])
