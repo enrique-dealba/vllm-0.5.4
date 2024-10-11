@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     LANGCHAIN_TRACING_V2: bool = True  # prev: False
     LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGCHAIN_API_KEY: str = ""
-    LANGCHAIN_PROJECT: str = "agent-testing-20241001"
+    LANGCHAIN_PROJECT: str = "demo-20241003"
 
     # LLM Structured Output Settings
     USE_STRUCTURED_OUTPUT: bool = True

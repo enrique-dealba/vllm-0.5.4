@@ -17,6 +17,18 @@ class DetailedLLMResponse(BaseModel):
     )
 
 
+# TODO: Test "How confident you are about your response"
+class EvidenceLLMResponse(BaseModel):
+    response: str = Field(..., description="The main response from the LLM")
+    sources: List[str] = Field(
+        ...,
+        description="Verbatim sources, references, or text evidence for the response",
+    )
+    confidence: float = Field(
+        ..., ge=0, le=1, description="Confidence score of the response"
+    )
+
+
 class IntentStatusSummary(BaseModel):
     target_name: str = Field(..., description="Name of the target satellite")
     target_catalog_id: str = Field(
