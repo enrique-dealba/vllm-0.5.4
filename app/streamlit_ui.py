@@ -28,9 +28,15 @@ if st.button("Generate"):
                     for source in llm_response.sources:
                         st.write(f"- {source}")
 
+                if hasattr(llm_response, "evidence") and llm_response.evidence:
+                    st.subheader("Supporting Evidence:")
+                    for evidence in llm_response.evidence:
+                        st.write(f"- {evidence}")
+
                 if hasattr(llm_response, "confidence"):
                     st.subheader("Confidence:")
-                    st.write(f"{llm_response.confidence:.2f}")
+                    confidence_percent = round(llm_response.confidence * 100, 1)
+                    st.write(f"{confidence_percent}%")
             else:
                 st.write(llm_response)
         except Exception as e:

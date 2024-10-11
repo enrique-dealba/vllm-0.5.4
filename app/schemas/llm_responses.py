@@ -20,7 +20,7 @@ class DetailedLLMResponse(BaseModel):
 # TODO: Test "How confident you are about your response"
 class EvidenceLLMResponse(BaseModel):
     response: str = Field(..., description="The main response from the LLM")
-    sources: List[str] = Field(
+    evidence: List[str] = Field(
         ...,
         description="Verbatim JSON key-value pairs supporting the response. Format: 'key: value'. Use dot notation for nested structures, e.g., 'status_counts.FAILED: 3'.",
     )
