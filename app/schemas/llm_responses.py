@@ -22,7 +22,7 @@ class EvidenceLLMResponse(BaseModel):
     response: str = Field(..., description="The main response from the LLM")
     sources: List[str] = Field(
         ...,
-        description="Verbatim sources, references, or text evidence for the response",
+        description="Verbatim JSON key-value pairs supporting the response. Format: 'key: value'. Use dot notation for nested structures, e.g., 'status_counts.FAILED: 3'.",
     )
     confidence: float = Field(
         ..., ge=0, le=1, description="Confidence score of the response"
