@@ -86,7 +86,7 @@ def parse_intents(input_data):
             "num_frames": defaultdict(int),
             "integration_time_s": defaultdict(int),
             "track_type": defaultdict(int),
-            "average_completion_time": [],
+            # "average_completion_time": [],
         }
     )
 
@@ -120,7 +120,7 @@ def parse_intents(input_data):
                 status_progression[-1][1].replace("Z", "+00:00")
             )
             completion_time = (end_time - start_time).total_seconds()
-            summary[key]["average_completion_time"].append(completion_time)
+            # summary[key]["average_completion_time"].append(completion_time)
 
         summary[key]["priority"][intent["priority"]] += 1
         params = intent["intentObservationParameters"]
@@ -130,13 +130,13 @@ def parse_intents(input_data):
         summary[key]["track_type"][params["trackType"]] += 1
 
     # Calculate average completion time
-    for key in summary:
-        if summary[key]["average_completion_time"]:
-            summary[key]["average_completion_time"] = sum(
-                summary[key]["average_completion_time"]
-            ) / len(summary[key]["average_completion_time"])
-        else:
-            summary[key]["average_completion_time"] = None
+    # for key in summary:
+    #     if summary[key]["average_completion_time"]:
+    #         summary[key]["average_completion_time"] = sum(
+    #             summary[key]["average_completion_time"]
+    #         ) / len(summary[key]["average_completion_time"])
+    #     else:
+    #         summary[key]["average_completion_time"] = None
 
     return summary
 
@@ -158,9 +158,9 @@ def format_summary_intents(summary):
             "num_frames": dict(data["num_frames"]),
             "integration_time_s": dict(data["integration_time_s"]),
             "track_type": dict(data["track_type"]),
-            "average_completion_time": f"{data['average_completion_time']:.2f} seconds"
-            if data["average_completion_time"]
-            else "N/A",
+            # "average_completion_time": f"{data['average_completion_time']:.2f} seconds"
+            # if data["average_completion_time"]
+            # else "N/A",
         }
     return formatted_summary
 
