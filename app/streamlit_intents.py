@@ -74,6 +74,10 @@ if st.button("Generate"):
                     st.subheader("Sources:")
                     for source in llm_response.sources:
                         st.write(f"- {source}")
+                if hasattr(llm_response, "evidence") and llm_response.evidence:
+                    st.subheader("Sources:")
+                    for evidence in llm_response.evidence:
+                        st.write(f"- {evidence}")
                 if hasattr(llm_response, "confidence"):
                     st.subheader("Confidence:")
                     st.write(f"{llm_response.confidence:.2f}")
