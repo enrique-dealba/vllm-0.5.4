@@ -25,7 +25,7 @@ logger.info(f"Number of available GPUs: {n_gpus}")
 
 # Initialize the router with service names and GPU IDs
 # Both services will use GPU 0 since that's all we have
-router = LLMRouter({"llm1": 0, "llm2": 0})  # Both using GPU 0
+router = LLMRouter({"llm1": 0, "llm2": 1})  # Both using GPU 0
 
 
 @app.post("/{service_name}/generate")
