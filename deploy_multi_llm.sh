@@ -81,6 +81,16 @@ deploy_llm() {
     local project="$4"
 
     echo "Deploying $name on GPU $gpu, port $port..."
+
+    # Verify GPU is available
+    if ! nvidia-smi -i $gpu >/dev/null 2>&1; then
+        echo "Error: GPU $gpu is not available"
+        return 1
+    fi
+
+    # Clear GPU memory
+    nvidia-smi -i $gpu -r >/dev/null 2>&1 || true
+
     docker run -d \
         --name "$name" \
         --network "$NETWORK_NAME" \
@@ -90,6 +100,7 @@ deploy_llm() {
         -p "$port:$port" \
         -e CUDA_VISIBLE_DEVICES="$gpu" \
         -e CUDA_DEVICE="$gpu" \
+        -e NVIDIA_VISIBLE_DEVICES="$gpu" \
         -e PORT="$port" \
         -e RUN_MODE=server \
         -e MODEL_TYPE=LLM \
@@ -107,7 +118,7 @@ deploy_llm() {
 check_container_health() {
     local name="$1"
     local port="$2"
-    local max_attempts=30
+    local max_attempts=15
     local attempt=1
 
     echo "Checking health of $name..."

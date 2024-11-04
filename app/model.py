@@ -55,6 +55,11 @@ class ModelManager:
             from app.config import settings
 
             cuda_device = int(os.environ.get("CUDA_DEVICE", "0"))
+            logger.info(f"Initializing LLM for device {cuda_device}")
+            logger.info(
+                f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}"
+            )
+            logger.info(f"Current CUDA device count: {torch.cuda.device_count()}")
 
             if not self.verify_gpu_setup():
                 raise RuntimeError("GPU setup verification failed")
