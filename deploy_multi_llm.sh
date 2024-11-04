@@ -38,6 +38,12 @@ check_docker() {
     fi
 }
 
+# Function to build Docker image
+build_docker_image() {
+    echo "Building Docker image..."
+    docker build -t "$IMAGE_NAME" .
+}
+
 # Function to check if NVIDIA Docker runtime is available
 check_nvidia_docker() {
     if ! docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi > /dev/null 2>&1; then
@@ -66,6 +72,9 @@ main() {
     # Initial checks
     check_docker
     check_nvidia_docker
+
+    # Build the Docker image
+    build_docker_image
 
     # Cleanup previous instances
     cleanup

@@ -26,6 +26,5 @@ class LLMRouter:
         if not query:
             raise ValueError("No 'text' field in request data")
 
-        # Assuming generate is an async method
         response = await llm.agenerate([query])
         return {"response": response.generations[0][0].text}
