@@ -70,7 +70,6 @@ cleanup() {
 # Function to create Docker network
 create_network() {
     echo "Setting up Docker network..."
-    docker network rm "$NETWORK_NAME" 2>/dev/null || true
     docker network create "$NETWORK_NAME"
 }
 
@@ -86,10 +85,11 @@ deploy_llm() {
         --name "$name" \
         --network "$NETWORK_NAME" \
         -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
-        --gpus "device=$gpu" \
-        --shm-size=1g \
+        --gpus "\"device=$gpu\"" \
+        --shm-size=8g \
         -p "$port:$port" \
         -e CUDA_VISIBLE_DEVICES="$gpu" \
+        -e CUDA_DEVICE="$gpu" \
         -e PORT="$port" \
         -e RUN_MODE=server \
         -e MODEL_TYPE=LLM \
@@ -103,40 +103,35 @@ deploy_llm() {
         "$IMAGE_NAME"
 }
 
-# Function to deploy Streamlit UI
-deploy_streamlit() {
-    local port="$1"
-    
-    echo "Deploying Streamlit UI on port $port..."
-    docker run -d \
-        --name llm-ui \
-        --network "$NETWORK_NAME" \
-        -p "$port:$port" \
-        -e RUN_MODE=ui \
-        -e PORT="$port" \
-        -e LLM1_URL="http://llm1:8888" \
-        -e LLM2_URL="http://llm2:8889" \
-        "$IMAGE_NAME"
-}
-
-# Function to check container health
+# Function to check container health using the health endpoint
 check_container_health() {
     local name="$1"
+    local port="$2"
     local max_attempts=30
     local attempt=1
 
     echo "Checking health of $name..."
     while [ $attempt -le $max_attempts ]; do
-        if docker logs "$name" 2>&1 | grep -q "Application startup complete"; then
-            echo "$name is healthy!"
+        # First wait for the application to start
+        if ! docker logs "$name" 2>&1 | grep -q "Application startup complete"; then
+            echo "Waiting for $name to start... (attempt $attempt/$max_attempts)"
+            sleep 4
+            ((attempt++))
+            continue
+        fi
+
+        # Then check the health endpoint
+        if curl -s "http://localhost:$port/health" | grep -q "\"status\":\"healthy\""; then
+            echo "$name is healthy and ready!"
             return 0
         fi
-        echo "Waiting for $name to be healthy... (attempt $attempt/$max_attempts)"
+        
+        echo "Waiting for $name health check... (attempt $attempt/$max_attempts)"
         sleep 4
         ((attempt++))
     done
     
-    echo "Error: $name failed to become healthy"
+    echo "Error: $name failed health checks"
     return 1
 }
 
@@ -144,7 +139,24 @@ check_container_health() {
 show_logs() {
     local name="$1"
     echo "Last few logs from $name:"
-    docker logs "$name" --tail 20
+    docker logs "$name"
+}
+
+# Function to verify GPU assignment
+verify_gpu_assignment() {
+    local name="$1"
+    local expected_gpu="$2"
+    
+    echo "Verifying GPU assignment for $name..."
+    local gpu_usage=$(nvidia-smi --query-compute-apps=pid,gpu_uuid --format=csv,noheader,nounits)
+    
+    if ! echo "$gpu_usage" | grep -q "$expected_gpu"; then
+        echo "Error: $name is not using GPU $expected_gpu as expected"
+        return 1
+    fi
+    
+    echo "GPU assignment verified for $name"
+    return 0
 }
 
 # Main deployment process
@@ -163,14 +175,20 @@ main() {
     deploy_llm "llm1" "8888" "0" "demo-llm1"
     deploy_llm "llm2" "8889" "1" "demo-llm2"
     
-    # Deploy Streamlit UI (optional)
-    # deploy_streamlit "8890"
-    
-    # Check health
+    # Check health and GPU assignment
     for container in llm1 llm2; do
-        if ! check_container_health "$container"; then
-            echo "Deployment failed. Showing logs..."
+        port=$([[ $container == "llm1" ]] && echo "8888" || echo "8889")
+        gpu=$([[ $container == "llm1" ]] && echo "0" || echo "1")
+        
+        if ! check_container_health "$container" "$port"; then
+            echo "Deployment failed for $container. Showing logs..."
             show_logs "$container"
+            cleanup
+            exit 1
+        fi
+        
+        if ! verify_gpu_assignment "$container" "$gpu"; then
+            echo "GPU assignment failed for $container"
             cleanup
             exit 1
         fi
@@ -179,24 +197,30 @@ main() {
     echo "Deployment successful!"
     echo "LLM1 available at: http://localhost:8888"
     echo "LLM2 available at: http://localhost:8889"
-    # echo "Streamlit UI available at: http://localhost:8890"
+    
+    # Show GPU status
+    echo -e "\nCurrent GPU Status:"
+    nvidia-smi
 }
 
 # Run the deployment
 main
 
-# Setup SSH tunneling (if running on remote machine)
+# Setup SSH tunneling info
 setup_ssh_tunneling() {
-    echo "To access the services locally, run these commands in separate terminal windows:"
+    echo -e "\nTo access the services locally, run these commands in separate terminal windows:"
     echo "ssh -L 8888:localhost:8888 <username>@<remote-host>"
     echo "ssh -L 8889:localhost:8889 <username>@<remote-host>"
-    # echo "ssh -L 8890:localhost:8890 <username>@<remote-host>  # For Streamlit UI"
 }
 
 setup_ssh_tunneling
 
-# Example usage:
-echo ""
-echo "Example API calls:"
+# Example usage
+echo -e "\nExample API calls:"
 echo 'curl -X POST "http://localhost:8888/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
 echo 'curl -X POST "http://localhost:8889/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
+
+# Health check examples
+echo -e "\nHealth check endpoints:"
+echo 'curl http://localhost:8888/health'
+echo 'curl http://localhost:8889/health'

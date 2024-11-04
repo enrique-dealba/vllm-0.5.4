@@ -42,4 +42,5 @@ RUN pip install langchain langchain_community -q
 RUN chmod +x /app/scripts/start.sh
 
 # Set the entrypoint to our start script
-ENTRYPOINT ["/app/scripts/start.sh"]
+# Prev: ENTRYPOINT ["/app/scripts/start.sh"]
+ENTRYPOINT ["/app/scripts/start_service.py"]

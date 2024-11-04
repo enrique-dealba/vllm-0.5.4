@@ -6,6 +6,7 @@ from huggingface_hub import login
 
 from app.config import settings
 from app.llm_logic import generate_response
+from app.model import model_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,14 @@ if settings.HUGGING_FACE_HUB_TOKEN:
         logger.error(f"Failed to authenticate with HuggingFace Hub: {e}")
 else:
     logger.warning("HUGGING_FACE_HUB_TOKEN not provided.")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize models on startup."""
+    if not model_manager.initialize_llm():
+        raise RuntimeError("Failed to initialize LLM")
+    logger.info("Model initialization completed.")
 
 
 @app.post("/generate")
@@ -59,11 +68,22 @@ async def generate_response_api(request: Request):
 @app.get("/health")
 async def health_check():
     """Check the health status of the model service."""
-    from app.model import check_gpu_status, llm, vlm
-
     try:
-        # Check GPU status
-        check_gpu_status()
+        # Verify GPU setup
+        if not model_manager.verify_gpu_setup():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unhealthy",
+                    "message": "GPU setup verification failed",
+                    "service_name": settings.SERVICE_NAME,
+                    "cuda_device": settings.CUDA_DEVICE,
+                    "model_type": settings.MODEL_TYPE,
+                },
+            )
+
+        # Get LLM instance
+        llm = model_manager.get_llm()
 
         if settings.MODEL_TYPE.upper() == "LLM":
             if llm is None:
@@ -83,7 +103,9 @@ async def health_check():
 
             # Try a simple inference to verify LLM is working
             try:
-                _ = llm.invoke("test")
+                test_output = llm.invoke("test")
+                if not isinstance(test_output, str):
+                    raise ValueError("Invalid LLM output type")
                 logger.info(
                     f"LLM health check passed for service {settings.SERVICE_NAME}"
                 )
@@ -101,6 +123,7 @@ async def health_check():
                 )
 
         elif settings.MODEL_TYPE.upper() == "VLM":
+            vlm = model_manager.get_vlm()
             if vlm is None:
                 logger.warning("VLM is not initialized")
                 return JSONResponse(
@@ -135,6 +158,7 @@ async def health_check():
                 "service_name": settings.SERVICE_NAME,
                 "model_type": settings.MODEL_TYPE,
                 "cuda_device": settings.CUDA_DEVICE,
+                "gpu_verified": True,
             }
         )
 
