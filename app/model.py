@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional
+from typing import Dict
 
 import torch
 from langchain_community.llms import VLLM as LangChainVLLM
@@ -9,19 +9,36 @@ logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-    _instance: Optional["ModelManager"] = None
-    llm = None
+    _instances: Dict[int, "ModelManager"] = {}
 
     @classmethod
-    def get_instance(cls) -> "ModelManager":
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
+    def get_instance(cls, gpu_id: int) -> "ModelManager":
+        if gpu_id not in cls._instances:
+            cls._instances[gpu_id] = cls(gpu_id)
+        return cls._instances[gpu_id]
+
+    def __init__(self, gpu_id: int):
+        self.gpu_id = gpu_id
+        self.llm = None
+        self._setup_gpu_environment(gpu_id)
+        self.initialize_llm()
+
+    def _setup_gpu_environment(self, cuda_device: int) -> None:
+        """Strict GPU isolation setup."""
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(cuda_device)
+        torch.cuda.set_device(cuda_device)
+
+        # Force initialization on specific GPU
+        with torch.cuda.device(cuda_device):
+            # Reserve small amount of memory
+            torch.zeros(1, device=f"cuda:{cuda_device}")
+
+        logger.info(f"GPU {cuda_device} initialized")
 
     def verify_gpu_setup(self) -> bool:
         """Verify GPU setup is correct."""
         try:
-            cuda_device = int(os.environ.get("CUDA_DEVICE", "0"))
+            cuda_device = self.gpu_id
 
             if not torch.cuda.is_available():
                 logger.error("CUDA not available")
@@ -54,7 +71,7 @@ class ModelManager:
         try:
             from app.config import settings
 
-            cuda_device = int(os.environ.get("CUDA_DEVICE", "0"))
+            cuda_device = self.gpu_id
             logger.info(f"Initializing LLM for device {cuda_device}")
             logger.info(
                 f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}"
@@ -74,7 +91,6 @@ class ModelManager:
                 tensor_parallel_size=1,
                 vllm_kwargs={
                     "tokenizer_mode": tokenizer_mode,
-                    # "gpu_memory_utilization": gpu_utilization,
                 },
             )
 
@@ -91,6 +107,5 @@ class ModelManager:
             self.llm = None
             return False
 
-
-# Initialize the singleton
-model_manager = ModelManager.get_instance()
+    def get_llm(self):
+        return self.llm

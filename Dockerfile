@@ -43,4 +43,4 @@ RUN chmod +x /app/scripts/start.sh
 
 # Set the entrypoint to our start script
 # Prev: ENTRYPOINT ["/app/scripts/start.sh"]
-ENTRYPOINT ["/app/scripts/start_service.py"]
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "vllm", "python", "/app/scripts/start_service.py"]
