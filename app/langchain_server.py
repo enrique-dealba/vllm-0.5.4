@@ -59,39 +59,94 @@ async def generate_response_api(request: Request):
 @app.get("/health")
 async def health_check():
     """Check the health status of the model service."""
-    from app.model import llm, vlm
+    from app.model import check_gpu_status, llm, vlm
 
-    if settings.MODEL_TYPE.upper() == "LLM":
-        if llm is None:
-            logger.warning("LLM is not initialized.")
+    try:
+        # Check GPU status
+        check_gpu_status()
+
+        if settings.MODEL_TYPE.upper() == "LLM":
+            if llm is None:
+                logger.warning(
+                    f"LLM is not initialized for service {settings.SERVICE_NAME}"
+                )
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "status": "unhealthy",
+                        "message": f"LLM not initialized for service {settings.SERVICE_NAME}",
+                        "service_name": settings.SERVICE_NAME,
+                        "cuda_device": settings.CUDA_DEVICE,
+                        "model_type": settings.MODEL_TYPE,
+                    },
+                )
+
+            # Try a simple inference to verify LLM is working
+            try:
+                _ = llm.invoke("test")
+                logger.info(
+                    f"LLM health check passed for service {settings.SERVICE_NAME}"
+                )
+            except Exception as e:
+                logger.error(f"LLM inference test failed: {str(e)}")
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "status": "unhealthy",
+                        "message": f"LLM inference test failed: {str(e)}",
+                        "service_name": settings.SERVICE_NAME,
+                        "cuda_device": settings.CUDA_DEVICE,
+                        "model_type": settings.MODEL_TYPE,
+                    },
+                )
+
+        elif settings.MODEL_TYPE.upper() == "VLM":
+            if vlm is None:
+                logger.warning("VLM is not initialized")
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "status": "unhealthy",
+                        "message": "VLM is not initialized. GPU may not be available.",
+                        "service_name": settings.SERVICE_NAME,
+                        "cuda_device": settings.CUDA_DEVICE,
+                        "model_type": settings.MODEL_TYPE,
+                    },
+                )
+
+        else:
+            logger.error(f"Invalid MODEL_TYPE: {settings.MODEL_TYPE}")
             return JSONResponse(
-                status_code=503,
+                status_code=500,
                 content={
-                    "status": "unhealthy",
-                    "message": "LLM is not initialized. GPU may not be available.",
+                    "status": "invalid",
+                    "message": f"Invalid MODEL_TYPE: {settings.MODEL_TYPE}",
+                    "service_name": settings.SERVICE_NAME,
+                    "model_type": settings.MODEL_TYPE,
                 },
             )
-    elif settings.MODEL_TYPE.upper() == "VLM":
-        if vlm is None:
-            logger.warning("VLM is not initialized.")
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "unhealthy",
-                    "message": "VLM is not initialized. GPU may not be available.",
-                },
-            )
-    else:
-        logger.error("Invalid MODEL_TYPE configuration.")
+
+        # If we get here, service is healthy
+        logger.info(f"Model service {settings.SERVICE_NAME} is healthy")
         return JSONResponse(
-            status_code=500,
-            content={
-                "status": "invalid",
-                "message": "Invalid MODEL_TYPE configuration.",
-            },
+            {
+                "status": "healthy",
+                "message": f"Model is initialized and ready on CUDA device {settings.CUDA_DEVICE}",
+                "service_name": settings.SERVICE_NAME,
+                "model_type": settings.MODEL_TYPE,
+                "cuda_device": settings.CUDA_DEVICE,
+            }
         )
 
-    logger.info("Model service is healthy.")
-    return JSONResponse(
-        {"status": "healthy", "message": "Model is initialized and ready."}
-    )
+    except Exception as e:
+        logger.error(f"Health check failed with error: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "message": str(e),
+                "service_name": settings.SERVICE_NAME,
+                "model_type": settings.MODEL_TYPE,
+                "cuda_device": settings.CUDA_DEVICE,
+            },
+        )

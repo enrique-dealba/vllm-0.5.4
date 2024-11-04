@@ -198,5 +198,5 @@ setup_ssh_tunneling
 # Example usage:
 echo ""
 echo "Example API calls:"
-echo 'curl -X POST "http://localhost:8888/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is the meaning of life?\"}"'
-echo 'curl -X POST "http://localhost:8889/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is the meaning of life?\"}"'
+echo 'curl -X POST "http://localhost:8888/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
+echo 'curl -X POST "http://localhost:8889/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'

@@ -1,6 +1,7 @@
 import logging
 import os
 
+import torch
 from langchain_community.llms import VLLM as LangChainVLLM
 from vllm import LLM as VLM
 
@@ -14,30 +15,43 @@ vlm = None
 image = None
 
 
-def check_gpu_setup():
-    """Verify GPU setup."""
-    import torch
+def check_gpu_status():
+    """Check and log GPU status."""
+    try:
+        logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        logger.info(f"Number of GPUs: {torch.cuda.device_count()}")
+        logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
-    logger.info(f"CUDA available: {torch.cuda.is_available()}")
-    logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
-    logger.info(f"Device count: {torch.cuda.device_count()}")
-    logger.info(f"Device name: {torch.cuda.get_device_name(0)}")
-    logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+        # Check each GPU
+        for i in range(torch.cuda.device_count()):
+            props = torch.cuda.get_device_properties(i)
+            mem_used = torch.cuda.memory_allocated(i) / 1024**3  # Convert to GB
+            mem_total = props.total_memory / 1024**3
+            logger.info(
+                f"GPU {i}: {props.name}, Memory: {mem_used:.2f}GB / {mem_total:.2f}GB"
+            )
+
+    except Exception as e:
+        logger.error(f"Error checking GPU status: {e}")
 
 
 def initialize_models():
     global llm, vlm, image
 
-    check_gpu_setup()
-
+    # Log initial state
     logger.info(
-        f"Initializing model for service {settings.SERVICE_NAME} on CUDA device {settings.CUDA_DEVICE}"
+        f"Initializing {settings.MODEL_TYPE} for service {settings.SERVICE_NAME}"
     )
+    logger.info(f"Target CUDA device: {settings.CUDA_DEVICE}")
+    check_gpu_status()
 
-    # Set CUDA device
-    cuda_device = str(settings.CUDA_DEVICE)
-    os.environ["CUDA_VISIBLE_DEVICES"] = cuda_device
-    logger.info(f"Set CUDA_VISIBLE_DEVICES={cuda_device}")
+    # Set CUDA device first
+    target_device = str(settings.CUDA_DEVICE)
+    os.environ["CUDA_VISIBLE_DEVICES"] = target_device
+    logger.info(f"Set CUDA_VISIBLE_DEVICES={target_device}")
+
+    # Verify CUDA setup after setting device
+    check_gpu_status()
 
     # Set Hugging Face Hub Token
     if settings.HUGGING_FACE_HUB_TOKEN:
@@ -97,5 +111,9 @@ def initialize_models():
         )
 
 
-# Initialize models
-initialize_models()
+# Initialize models when module is loaded
+try:
+    initialize_models()
+except Exception as e:
+    logger.error(f"Failed to initialize models on startup: {e}")
+    # Don't raise here - let the health check endpoint handle it
