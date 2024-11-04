@@ -44,6 +44,4 @@ RUN chmod +x /app/scripts/start.sh
 ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=DEBUG
 
-# Set the entrypoint to our start script
-# Prev: ENTRYPOINT ["/app/scripts/start.sh"]
-ENTRYPOINT ["python", "/app/scripts/start_service.py"]
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "vllm", "python", "/app/scripts/start_service.py"]

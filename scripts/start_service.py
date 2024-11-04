@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import traceback
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
@@ -10,7 +11,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from app.langchain_server import app
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+try:
+    logger.info(f"Python path: {sys.path}")
+    logger.info(f"Current directory: {os.getcwd()}")
+    from app.langchain_server import app
+except Exception as e:
+    logger.error(f"Import error: {str(e)}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    sys.exit(1)
 
 
 def check_gpu_availability():
