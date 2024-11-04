@@ -48,10 +48,23 @@ check_nvidia_docker() {
     fi
 }
 
-# Function to clean up existing containers
+# Function to clean up Docker containers and networks
 cleanup() {
-    echo "Cleaning up existing containers..."
-    docker rm -f llm1 llm2 2>/dev/null || true
+    echo "Starting cleanup..."
+    
+    # Clean up containers if they exist
+    if docker ps -a --format '{{.Names}}' | grep -q "llm[12]"; then
+        echo "Removing existing LLM containers..."
+        docker rm -f llm1 llm2 2>/dev/null || true
+    fi
+    
+    # Clean up network if it exists
+    if docker network ls --format '{{.Name}}' | grep -q "^${NETWORK_NAME}$"; then
+        echo "Removing Docker network: ${NETWORK_NAME}"
+        docker network rm "${NETWORK_NAME}" 2>/dev/null || true
+    fi
+    
+    echo "Cleanup completed."
 }
 
 # Function to create Docker network
@@ -74,6 +87,7 @@ deploy_llm() {
         --network "$NETWORK_NAME" \
         -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
         --gpus "device=$gpu" \
+        --shm-size=1g \
         -p "$port:$port" \
         -e CUDA_VISIBLE_DEVICES="$gpu" \
         -e PORT="$port" \
@@ -118,7 +132,7 @@ check_container_health() {
             return 0
         fi
         echo "Waiting for $name to be healthy... (attempt $attempt/$max_attempts)"
-        sleep 2
+        sleep 4
         ((attempt++))
     done
     

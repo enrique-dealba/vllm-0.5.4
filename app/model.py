@@ -14,10 +14,30 @@ vlm = None
 image = None
 
 
+def check_gpu_setup():
+    """Verify GPU setup."""
+    import torch
+
+    logger.info(f"CUDA available: {torch.cuda.is_available()}")
+    logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
+    logger.info(f"Device count: {torch.cuda.device_count()}")
+    logger.info(f"Device name: {torch.cuda.get_device_name(0)}")
+    logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+
+
 def initialize_models():
     global llm, vlm, image
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(settings.CUDA_DEVICE)
+    check_gpu_setup()
+
+    logger.info(
+        f"Initializing model for service {settings.SERVICE_NAME} on CUDA device {settings.CUDA_DEVICE}"
+    )
+
+    # Set CUDA device
+    cuda_device = str(settings.CUDA_DEVICE)
+    os.environ["CUDA_VISIBLE_DEVICES"] = cuda_device
+    logger.info(f"Set CUDA_VISIBLE_DEVICES={cuda_device}")
 
     # Set Hugging Face Hub Token
     if settings.HUGGING_FACE_HUB_TOKEN:
@@ -49,7 +69,8 @@ def initialize_models():
                 },
             )
             logger.info(
-                f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully."
+                f"LangChain LLM model '{settings.LLM_MODEL_NAME}' initialized successfully "
+                f"on CUDA device {settings.CUDA_DEVICE}"
             )
         except Exception as e:
             logger.error(f"Error initializing LangChain LLM: {e}")
