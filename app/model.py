@@ -25,15 +25,30 @@ class ModelManager:
 
     def _setup_gpu_environment(self, cuda_device: int) -> None:
         """Strict GPU isolation setup."""
+        # Validate GPU availability
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available")
+
+        n_gpus = torch.cuda.device_count()
+        if cuda_device >= n_gpus:
+            raise RuntimeError(
+                f"GPU {cuda_device} requested but only {n_gpus} GPUs available"
+            )
+
+        logger.info(f"Setting up GPU {cuda_device} (Total GPUs: {n_gpus})")
+
         os.environ["CUDA_VISIBLE_DEVICES"] = str(cuda_device)
         torch.cuda.set_device(cuda_device)
 
         # Force initialization on specific GPU
-        with torch.cuda.device(cuda_device):
-            # Reserve small amount of memory
-            torch.zeros(1, device=f"cuda:{cuda_device}")
-
-        logger.info(f"GPU {cuda_device} initialized")
+        try:
+            with torch.cuda.device(cuda_device):
+                # Reserve small amount of memory
+                torch.zeros(1, device=f"cuda:{cuda_device}")
+            logger.info(f"GPU {cuda_device} initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize GPU {cuda_device}: {e}")
+            raise
 
     def verify_gpu_setup(self) -> bool:
         """Verify GPU setup is correct."""

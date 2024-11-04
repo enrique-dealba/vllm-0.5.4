@@ -68,16 +68,23 @@ if __name__ == "__main__":
         port = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
         logger.info(f"Starting server on port {port}")
 
-        # Start server
+        # Start server with proper config
         import uvicorn
 
-        uvicorn.run(
+        config = uvicorn.Config(
             app,
             host="0.0.0.0",
             port=port,
             workers=1,
             log_level=os.getenv("LOG_LEVEL", "info").lower(),
+            timeout_keep_alive=65,
+            limit_concurrency=100,
+            limit_max_requests=100000,
+            backlog=2048,
+            timeout_graceful_shutdown=30,
         )
+        server = uvicorn.Server(config)
+        server.run()
     except Exception as e:
         logger.error(f"Failed to start server: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
