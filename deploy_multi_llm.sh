@@ -65,6 +65,21 @@ cleanup() {
     echo "Cleanup completed."
 }
 
+# Function to deploy the multi-LLM service
+deploy_multi_llm_service() {
+    echo "Deploying multi-LLM service..."
+    docker run -d \
+        --name "multi-llm-service" \
+        -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
+        --gpus all \
+        --shm-size=16g \
+        -p "8888:8888" \
+        -e PORT="8888" \
+        -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
+        -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
+        "$IMAGE_NAME"
+}
+
 # Main deployment process
 main() {
     echo "Starting multi-LLM deployment..."
@@ -80,16 +95,7 @@ main() {
     cleanup
 
     # Deploy the multi-LLM service
-    echo "Deploying multi-LLM service..."
-    docker run -d \
-        --name "multi-llm-service" \
-        -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
-        --gpus all \
-        -p "8888:8888" \
-        -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
-        -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-        "$IMAGE_NAME" \
-        /app/scripts/start_service.py 8888
+    deploy_multi_llm_service
 
     # Check if the container is running
     sleep 5  # Wait for the container to start
