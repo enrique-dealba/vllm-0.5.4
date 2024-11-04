@@ -26,17 +26,20 @@ else:
 
 @app.post("/generate")
 async def generate_response_api(request: Request):
-    """Generate a response using the initialized LLM or VLM."""
+    """Generate a response using the initialized LLM with optional peer call."""
     try:
         request_data = await request.json()
         query = request_data.get("text")
+        call_peer = request_data.get("call_peer", False)
 
         if not query:
             raise HTTPException(
                 status_code=400, detail="No text provided for generation."
             )
 
-        llm_response, execution_time = generate_response(query)
+        llm_response, execution_time = await generate_response(
+            query, call_peer=call_peer
+        )
 
         if settings.USE_STRUCTURED_OUTPUT:
             response_dict = llm_response.model_dump()

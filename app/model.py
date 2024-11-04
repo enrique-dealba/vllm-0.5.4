@@ -17,6 +17,8 @@ image = None
 def initialize_models():
     global llm, vlm, image
 
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(settings.CUDA_DEVICE)
+
     # Set Hugging Face Hub Token
     if settings.HUGGING_FACE_HUB_TOKEN:
         os.environ["HUGGINGFACEHUB_API_TOKEN"] = settings.HUGGING_FACE_HUB_TOKEN
