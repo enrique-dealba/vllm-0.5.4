@@ -68,7 +68,7 @@ cleanup() {
 # Function to deploy the multi-LLM service
 deploy_multi_llm_service() {
     echo "Deploying multi-LLM service..."
-    docker run -d \
+    container_id=$(docker run -d \
         --name "multi-llm-service" \
         -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
         --gpus all \
@@ -77,7 +77,25 @@ deploy_multi_llm_service() {
         -e PORT="8888" \
         -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
         -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-        "$IMAGE_NAME"
+        -e PYTHONUNBUFFERED=1 \
+        -e LOG_LEVEL=DEBUG \
+        "$IMAGE_NAME")
+
+    # Wait a moment for container to start
+    sleep 2
+
+    # Check container status and logs
+    echo "Container Status:"
+    docker ps -a --filter "name=multi-llm-service"
+    
+    echo -e "\nContainer Logs:"
+    docker logs multi-llm-service
+
+    # Check if container is running
+    if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
+        echo "Error: Failed to start multi-LLM service container"
+        exit 1
+    fi
 }
 
 # Main deployment process
