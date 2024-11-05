@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -12,11 +14,15 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     TEMPERATURE: float = 0.2
     MAX_TOKENS: int = 8192  # prev: 256,
-    MODEL_TYPE: str = "LLM"  # Default to LLM; options: 'LLM', 'VLM'
+    MODEL_TYPE: str = os.getenv(
+        "MODEL_TYPE", "LLM"
+    )  # Default to LLM; options: 'LLM', 'VLM'
 
     # LLM Settings
-    LLM_MODEL_NAME: str = "mistralai/Mistral-Small-Instruct-2409"
-    IS_MISTRAL: bool = True
+    LLM_MODEL_NAME: str = os.getenv(
+        "LLM_MODEL_NAME", "mistralai/Mistral-Small-Instruct-2409"
+    )
+    IS_MISTRAL: bool = os.getenv("IS_MISTRAL", "true").lower() == "true"
 
     # VLM Settings
     VLM_MODEL_NAME: str = "llava-hf/llava-1.5-7b-hf"

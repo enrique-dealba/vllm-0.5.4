@@ -11,6 +11,11 @@ services:
               capabilities: [gpu]
               device_ids: ['0']  # Only specify device_ids
     environment:
+      - LLM_MODEL_NAME=${LLM1_MODEL_NAME}
+      - MODEL_TYPE=${LLM1_MODEL_TYPE}
+      - TEMPERATURE=${LLM1_TEMPERATURE}
+      - MAX_TOKENS=${LLM1_MAX_TOKENS}
+      - IS_MISTRAL=${LLM1_IS_MISTRAL}
       - NVIDIA_VISIBLE_DEVICES=0
       - CUDA_VISIBLE_DEVICES=0
       - SERVICE_NAME=llm1
@@ -36,6 +41,11 @@ services:
               capabilities: [gpu]
               device_ids: ['1']  # Only specify device_ids
     environment:
+      - LLM_MODEL_NAME=${LLM2_MODEL_NAME}
+      - MODEL_TYPE=${LLM2_MODEL_TYPE}
+      - TEMPERATURE=${LLM2_TEMPERATURE}
+      - MAX_TOKENS=${LLM2_MAX_TOKENS}
+      - IS_MISTRAL=${LLM2_IS_MISTRAL}
       - NVIDIA_VISIBLE_DEVICES=1
       - CUDA_VISIBLE_DEVICES=0
       - SERVICE_NAME=llm2
