@@ -27,7 +27,7 @@ services:
     ports:
       - "8881:8888"
     volumes:
-      - huggingface_cache:/root/.cache/huggingface
+      - ~/.cache/huggingface:/root/.cache/huggingface
     networks:
       - llm-network
 
@@ -57,12 +57,12 @@ services:
     ports:
       - "8882:8888"
     volumes:
-      - huggingface_cache:/root/.cache/huggingface
+      - ~/.cache/huggingface:/root/.cache/huggingface
     networks:
       - llm-network
 
 volumes:
-  huggingface_cache:
+  # huggingface_cache:
 
 networks:
   llm-network:
