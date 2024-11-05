@@ -180,7 +180,7 @@ main() {
     attempt=1
 
     while (( attempt <= max_attempts )); do
-        echo "Health check attempt $attempt of $max_attempts..."
+        echo "Health check (Attempt $attempt/$max_attempts)"
 
         # Health check for llm1
         if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
