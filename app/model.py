@@ -102,6 +102,9 @@ class ModelManager:
                 raise RuntimeError("GPU setup verification failed")
 
             tokenizer_mode = "mistral" if settings.IS_MISTRAL else "auto"
+            device = f"cuda:{cuda_device}"
+            logger.info(f"Using device: {device}")
+
             self.llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
                 trust_remote_code=True,
@@ -111,6 +114,7 @@ class ModelManager:
                 tensor_parallel_size=1,
                 vllm_kwargs={
                     "tokenizer_mode": tokenizer_mode,
+                    "device": device,
                 },
             )
 
