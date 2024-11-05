@@ -4,6 +4,8 @@ import sys
 import traceback
 from pathlib import Path
 
+import torch
+
 # Setup logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -52,9 +54,33 @@ def verify_environment():
     return True
 
 
+def verify_gpu_setup():
+    """Verify GPU setup before starting server."""
+    try:
+        n_gpus = torch.cuda.device_count()
+        logger.info(f"Available GPUs: {n_gpus}")
+
+        if n_gpus < 2:
+            logger.error(f"Need at least 2 GPUs, found {n_gpus}")
+            return False
+
+        for i in range(n_gpus):
+            props = torch.cuda.get_device_properties(i)
+            logger.info(f"GPU {i}: {props.name} ({props.total_memory/1e9:.2f}GB)")
+
+        return True
+    except Exception as e:
+        logger.error(f"GPU verification failed: {e}")
+        return False
+
+
 if __name__ == "__main__":
     try:
         logger.info("Starting multi-LLM service initialization...")
+
+        # Check GPUs first
+        if not verify_gpu_setup():
+            sys.exit(1)
 
         # Check environment
         if not verify_environment():

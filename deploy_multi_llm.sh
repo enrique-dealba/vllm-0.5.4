@@ -68,11 +68,21 @@ cleanup() {
 # Function to deploy the multi-LLM service
 deploy_multi_llm_service() {
     echo "Deploying multi-LLM service..."
+    
+    # First verify GPU availability
+    if ! nvidia-smi > /dev/null 2>&1; then
+        echo "Error: NVIDIA GPUs not accessible"
+        exit 1
+    fi
+    
+    echo "Available GPUs:"
+    nvidia-smi -L
+    
     container_id=$(docker run -d \
         --name "multi-llm-service" \
         -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
-        --gpus all \
-        --shm-size=16g \
+        --gpus '"device=0,1"' \
+        --shm-size=32g \
         -p "8888:8888" \
         -e PORT="8888" \
         -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
@@ -81,19 +91,26 @@ deploy_multi_llm_service() {
         -e LOG_LEVEL=DEBUG \
         "$IMAGE_NAME")
 
-    # Wait a moment for container to start
-    sleep 2
+    # Wait longer for initialization
+    echo "Waiting for container initialization..."
+    sleep 10
 
-    # Check container status and logs
+    # Verify GPU visibility inside container
+    echo "Verifying GPU visibility in container:"
+    docker exec multi-llm-service nvidia-smi || true
+
+    # Check container status
     echo "Container Status:"
     docker ps -a --filter "name=multi-llm-service"
     
     echo -e "\nContainer Logs:"
     docker logs multi-llm-service
 
-    # Check if container is running
+    # Verify container is running
     if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
         echo "Error: Failed to start multi-LLM service container"
+        echo "Last container logs:"
+        docker logs multi-llm-service --tail 50
         exit 1
     fi
 }

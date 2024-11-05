@@ -25,29 +25,34 @@ class ModelManager:
 
     def _setup_gpu_environment(self, cuda_device: int) -> None:
         """Strict GPU isolation setup."""
-        # Validate GPU availability
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA is not available")
+        try:
+            # Don't set CUDA_VISIBLE_DEVICES here anymore
+            # Let Docker handle GPU visibility
+            n_gpus = torch.cuda.device_count()
+            logger.info(f"Available GPUs in container: {n_gpus}")
 
-        n_gpus = torch.cuda.device_count()
-        if cuda_device >= n_gpus:
-            raise RuntimeError(
-                f"GPU {cuda_device} requested but only {n_gpus} GPUs available"
+            if cuda_device >= n_gpus:
+                raise RuntimeError(
+                    f"GPU {cuda_device} requested but only {n_gpus} GPUs available"
+                )
+
+            # Just set the device for this instance
+            torch.cuda.set_device(cuda_device)
+
+            # Log device properties
+            device_props = torch.cuda.get_device_properties(cuda_device)
+            logger.info(
+                f"Using GPU {cuda_device}: {device_props.name} with {device_props.total_memory/1e9:.2f}GB memory"
             )
 
-        logger.info(f"Setting up GPU {cuda_device} (Total GPUs: {n_gpus})")
-
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(cuda_device)
-        torch.cuda.set_device(cuda_device)
-
-        # Force initialization on specific GPU
-        try:
+            # Initialize device
             with torch.cuda.device(cuda_device):
-                # Reserve small amount of memory
                 torch.zeros(1, device=f"cuda:{cuda_device}")
-            logger.info(f"GPU {cuda_device} initialized")
+
+            logger.info(f"GPU {cuda_device} initialized successfully")
+
         except Exception as e:
-            logger.error(f"Failed to initialize GPU {cuda_device}: {e}")
+            logger.error(f"GPU setup failed for device {cuda_device}: {e}")
             raise
 
     def verify_gpu_setup(self) -> bool:
