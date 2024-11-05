@@ -24,6 +24,19 @@ if [ -z "$HF_TOKEN" ] || [ -z "$LANGCHAIN_API_KEY" ]; then
     usage
 fi
 
+# Function to check disk space
+check_disk_space() {
+    local required_space=50  # GB
+    local docker_root=$(docker info --format '{{.DockerRootDir}}')
+    local available_space=$(df -BG "$docker_root" | awk 'NR==2 {print $4}' | sed 's/G//')
+    
+    if [ "$available_space" -lt "$required_space" ]; then
+        echo "Error: Not enough disk space in Docker root directory. Available: ${available_space}GB, Required: ${required_space}GB"
+        exit 1
+    fi
+    echo "Docker storage space check passed. Available: ${available_space}GB"
+}
+
 # Function to make scripts executable
 make_executable() {
     local script=$1
@@ -37,6 +50,9 @@ make_executable() {
 }
 
 echo "Starting setup process..."
+
+# Check disk space
+check_disk_space
 
 # Make all scripts executable
 make_executable "v2_deploy_multi_llm.sh"

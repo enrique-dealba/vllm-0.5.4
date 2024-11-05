@@ -65,6 +65,14 @@ show_gpu_status() {
 cleanup() {
     echo "Cleaning up existing deployments..."
     
+    # Kill any existing Python processes using GPUs
+    nvidia-smi --query-compute-apps=pid --format=csv,noheader | while read -r pid; do
+        if [ ! -z "$pid" ]; then
+            echo "Killing process $pid using GPU..."
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+    
     # Stop any running containers using the ports
     for port in 8881 8882; do
         container_id=$(docker container ls -q --filter "publish=$port")
@@ -78,6 +86,9 @@ cleanup() {
     docker compose -f "$COMPOSE_FILE" down --remove-orphans
 
     echo "Cleanup completed"
+    
+    # Wait for GPU memory to clear
+    sleep 5
 }
 
 # Main deployment process
