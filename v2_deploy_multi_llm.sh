@@ -40,13 +40,13 @@ check_docker() {
 # Function to build Docker images
 build_docker_images() {
     echo "Building Docker images..."
-    docker-compose -f "$COMPOSE_FILE" build
+    docker compose -f "$COMPOSE_FILE" build
 }
 
 # Function to deploy services
 deploy_services() {
-    echo "Deploying services using docker-compose..."
-    docker-compose -f "$COMPOSE_FILE" up -d
+    echo "Deploying services using docker compose..."
+    docker compose -f "$COMPOSE_FILE" up -d
 }
 
 # Function to wait for services to become healthy
