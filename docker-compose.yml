@@ -8,9 +8,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
               capabilities: [gpu]
-              device_ids: ['0']  # Explicitly use GPU 0
+              device_ids: ['0']  # Only specify device_ids
     environment:
       - NVIDIA_VISIBLE_DEVICES=0
       - CUDA_VISIBLE_DEVICES=0
@@ -23,7 +22,7 @@ services:
     ports:
       - "8881:8888"
     volumes:
-      - huggingface_cache:/root/.cache/huggingface  # Add shared volume for model cache
+      - huggingface_cache:/root/.cache/huggingface
     networks:
       - llm-network
 
@@ -34,12 +33,11 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
               capabilities: [gpu]
-              device_ids: ['1']  # Explicitly use GPU 1
+              device_ids: ['1']  # Only specify device_ids
     environment:
       - NVIDIA_VISIBLE_DEVICES=1
-      - CUDA_VISIBLE_DEVICES=0  # Keep as 0 since it's isolated by NVIDIA_VISIBLE_DEVICES
+      - CUDA_VISIBLE_DEVICES=0
       - SERVICE_NAME=llm2
       - CUDA_DEVICE=0
       - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
@@ -49,12 +47,12 @@ services:
     ports:
       - "8882:8888"
     volumes:
-      - huggingface_cache:/root/.cache/huggingface  # Add shared volume for model cache
+      - huggingface_cache:/root/.cache/huggingface
     networks:
       - llm-network
 
 volumes:
-  huggingface_cache:  # Define shared volume for model cache
+  huggingface_cache:
 
 networks:
   llm-network:
