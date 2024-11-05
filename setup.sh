@@ -63,7 +63,7 @@ echo "Starting setup process..."
 check_disk_space
 
 # Make all scripts executable
-make_executable "v2_deploy_multi_llm.sh"
+make_executable "deploy_multi_llm.sh"
 make_executable "generate_env.sh"
 make_executable "wait_for_service.sh"
 
@@ -78,4 +78,4 @@ export MAX_TOKENS=${MAX_TOKENS}
 
 echo -e "\nSetup completed successfully!"
 echo -e "\nYou can now run the deployment with:"
-echo "./v2_deploy_multi_llm.sh -h \"$HF_TOKEN\" -l \"$LANGCHAIN_API_KEY\""
+echo "./deploy_multi_llm.sh -h \"$HF_TOKEN\" -l \"$LANGCHAIN_API_KEY\""

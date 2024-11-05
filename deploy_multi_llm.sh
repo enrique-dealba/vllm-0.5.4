@@ -2,10 +2,9 @@
 set -e  # Exit on any error
 
 # Configuration
-IMAGE_NAME="vllm:cuda11.8"
+COMPOSE_FILE="docker-compose.yml"
 HF_TOKEN="your-huggingface-token"  # Replace or pass as argument
-LANGCHAIN_API_KEY="your-langchain-key"  # Replace or pass as argument
-SHARED_CACHE_DIR="$HOME/.cache/huggingface"
+LANGCHAIN_API_KEY="your-langchain-api-key"  # Replace or pass as argument
 
 # Function to display script usage
 usage() {
@@ -38,152 +37,99 @@ check_docker() {
     fi
 }
 
-# Function to build Docker image
-build_docker_image() {
-    echo "Building Docker image..."
-    docker build -t "$IMAGE_NAME" .
+# Function to build Docker images
+build_docker_images() {
+    echo "Building Docker images..."
+    docker compose -f "$COMPOSE_FILE" build
 }
 
-# Function to check if NVIDIA Docker runtime is available
-check_nvidia_docker() {
-    if ! docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi > /dev/null 2>&1; then
-        echo "Error: NVIDIA Docker runtime is not available"
-        exit 1
-    fi
+# Function to deploy services
+deploy_services() {
+    echo "Deploying services using docker compose..."
+    docker compose -f "$COMPOSE_FILE" up -d
 }
 
-# Function to clean up Docker containers
+# Function to wait for services to become healthy
+wait_for_services() {
+    echo "Waiting for services to become healthy..."
+    ./wait_for_service.sh
+}
+
+# Function to show GPU status
+show_gpu_status() {
+    echo -e "\nCurrent GPU Status:"
+    nvidia-smi
+}
+
+# Function to cleanup existing deployments
 cleanup() {
-    echo "Starting cleanup..."
+    echo "Cleaning up existing deployments..."
+    
+    # Kill any existing Python processes using GPUs
+    nvidia-smi --query-compute-apps=pid --format=csv,noheader | while read -r pid; do
+        if [ ! -z "$pid" ]; then
+            echo "Killing process $pid using GPU..."
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+    
+    # Stop any running containers using the ports
+    for port in 8881 8882; do
+        container_id=$(docker container ls -q --filter "publish=$port")
+        if [ ! -z "$container_id" ]; then
+            echo "Stopping container using port $port..."
+            docker stop $container_id
+        fi
+    done
 
-    # Clean up multi-LLM service container if it exists
-    if docker ps -a --format '{{.Names}}' | grep -q "multi-llm-service"; then
-        echo "Removing existing multi-LLM container..."
-        docker rm -f multi-llm-service 2>/dev/null || true
-    fi
+    # Remove containers from this deployment
+    docker compose -f "$COMPOSE_FILE" down --remove-orphans
 
-    # Clean up llm1 container if it exists
-    if docker ps -a --format '{{.Names}}' | grep -q "llm1"; then
-        echo "Removing existing llm1 container..."
-        docker rm -f llm1 2>/dev/null || true
-    fi
-
-    # Clean up llm2 container if it exists
-    if docker ps -a --format '{{.Names}}' | grep -q "llm2"; then
-        echo "Removing existing llm2 container..."
-        docker rm -f llm2 2>/dev/null || true
-    fi
-
-    echo "Cleanup completed."
-}
-
-# Function to deploy an LLM service
-deploy_llm_service() {
-    local service_name=$1
-    local port=$2
-    local gpu_device=$3
-
-    echo "Deploying $service_name on GPU $gpu_device..."
-
-    docker run -d \
-        --name "$service_name" \
-        -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
-        --gpus "device=$gpu_device" \
-        --shm-size=32g \
-        -p "$port:8888" \
-        -e PORT="8888" \
-        -e SERVICE_NAME="$service_name" \
-        -e CUDA_DEVICE=0 \
-        -e CUDA_VISIBLE_DEVICES=0 \
-        -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
-        -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-        -e PYTHONUNBUFFERED=1 \
-        -e LOG_LEVEL=DEBUG \
-        "$IMAGE_NAME"
+    echo "Cleanup completed"
+    
+    # Wait for GPU memory to clear
+    sleep 5
 }
 
 # Main deployment process
 main() {
-    echo "Starting multi-LLM deployment..."
+    echo "Starting multi-LLM deployment using docker-compose..."
 
     # Initial checks
     check_docker
-    check_nvidia_docker
 
-    # Build the Docker image
-    build_docker_image
-
-    # Cleanup previous instances
+    # Cleanup before deployment
     cleanup
 
-    # Deploy the LLM services
-    # Deploy llm1 on GPU 0
-    deploy_llm_service "llm1" 8881 0
+    # Export tokens as environment variables for docker-compose
+    export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
+    export LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY"
 
-    # Deploy llm2 on GPU 1
-    deploy_llm_service "llm2" 8882 1
+    # Build Docker images
+    build_docker_images
 
-    # Allow time for services to initialize
-    max_attempts=10
-    attempt=1
+    # Deploy services
+    deploy_services
 
-    while (( attempt <= max_attempts )); do
-        echo "Health check attempt $attempt of $max_attempts..."
-
-        # Health check for llm1
-        if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
-            echo "llm1 is healthy and running on port 8881"
-        else
-            if (( attempt == max_attempts )); then
-                echo "Error: llm1 failed health check on port 8881 after $max_attempts attempts"
-                docker logs llm1 --tail 50
-            else
-                echo "llm1 not yet healthy, retrying..."
-            fi
-        fi
-
-        # Health check for llm2
-        if curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
-            echo "llm2 is healthy and running on port 8882"
-        else
-            if (( attempt == max_attempts )); then
-                echo "Error: llm2 failed health check on port 8882 after $max_attempts attempts"
-                docker logs llm2 --tail 50
-            else
-                echo "llm2 not yet healthy, retrying..."
-            fi
-        fi
-
-        # Exit loop if both services are healthy
-        if curl -s http://localhost:8881/health | grep -q '"status":"healthy"' && curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
-            echo "Both llm1 and llm2 are healthy."
-            break
-        fi
-
-        # Sleep before the next attempt if max attempts not reached
-        if (( attempt < max_attempts )); then
-            sleep 4
-        fi
-        ((attempt++))
-    done
+    # Wait for services to become healthy
+    wait_for_services
 
     echo "Deployment successful!"
     echo "Multi-LLM services available at: http://localhost:8881 and http://localhost:8882"
 
     # Show GPU status
-    echo -e "\nCurrent GPU Status:"
-    nvidia-smi
+    show_gpu_status
 }
 
 # Run the deployment
 main
 
-# Example usage
+# Example API calls
 echo -e "\nExample API calls:"
 echo 'curl -X POST "http://localhost:8881/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
 echo 'curl -X POST "http://localhost:8882/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
 
 # Health check example
-echo -e "\nHealth check endpoint:"
+echo -e "\nHealth check endpoints:"
 echo 'curl http://localhost:8881/health'
 echo 'curl http://localhost:8882/health'
