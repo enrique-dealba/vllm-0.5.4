@@ -163,20 +163,35 @@ main() {
     # Deploy llm2 on GPU 1
     deploy_llm_service "llm2" 8882 1
 
-    # # Check if the container is running
-    # sleep 5  # Wait for the container to start
-    # if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
-    #     echo "Error: Failed to start multi-LLM service container"
-    #     exit 1
-    # fi
+    # Allow time for services to initialize
+    sleep 10  
+
+    # Health check for llm1
+    if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
+        echo "llm1 is healthy and running on port 8881"
+    else
+        echo "Error: llm1 failed health check on port 8881"
+        docker logs llm1 --tail 50
+        exit 1
+    fi
+
+    # Health check for llm2
+    if curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
+        echo "llm2 is healthy and running on port 8882"
+    else
+        echo "Error: llm2 failed health check on port 8882"
+        docker logs llm2 --tail 50
+        exit 1
+    fi
 
     echo "Deployment successful!"
-    echo "Multi-LLM service available at: http://localhost:8888"
+    echo "Multi-LLM services available at: http://localhost:8881 and http://localhost:8882"
 
     # Show GPU status
     echo -e "\nCurrent GPU Status:"
     nvidia-smi
 }
+
 
 # Run the deployment
 main
