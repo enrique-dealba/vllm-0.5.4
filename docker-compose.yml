@@ -1,0 +1,54 @@
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  llm1:
+    image: vllm:cuda11.8
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=0
+      - SERVICE_NAME=llm1
+      - CUDA_DEVICE=0
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+    ports:
+      - "8881:8888"
+    networks:
+      - llm-network
+
+  llm2:
+    image: vllm:cuda11.8
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1
+      - CUDA_VISIBLE_DEVICES=0
+      - SERVICE_NAME=llm2
+      - CUDA_DEVICE=0
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+    ports:
+      - "8882:8888"
+    networks:
+      - llm-network
+
+networks:
+  llm-network:
+    driver: bridge

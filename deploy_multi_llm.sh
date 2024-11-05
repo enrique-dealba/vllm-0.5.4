@@ -77,56 +77,6 @@ cleanup() {
     echo "Cleanup completed."
 }
 
-# Function to deploy the multi-LLM service
-deploy_multi_llm_service() {
-    echo "Deploying multi-LLM service..."
-    
-    # First verify GPU availability
-    if ! nvidia-smi > /dev/null 2>&1; then
-        echo "Error: NVIDIA GPUs not accessible"
-        exit 1
-    fi
-    
-    echo "Available GPUs:"
-    nvidia-smi -L
-    
-    container_id=$(docker run -d \
-        --name "multi-llm-service" \
-        -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
-        --gpus '"device=0,1"' \
-        --shm-size=32g \
-        -p "8888:8888" \
-        -e PORT="8888" \
-        -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
-        -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-        -e PYTHONUNBUFFERED=1 \
-        -e LOG_LEVEL=DEBUG \
-        "$IMAGE_NAME")
-
-    # Wait longer for initialization
-    echo "Waiting for container initialization..."
-    sleep 10
-
-    # Verify GPU visibility inside container
-    echo "Verifying GPU visibility in container:"
-    docker exec multi-llm-service nvidia-smi || true
-
-    # Check container status
-    echo "Container Status:"
-    docker ps -a --filter "name=multi-llm-service"
-    
-    echo -e "\nContainer Logs:"
-    docker logs multi-llm-service
-
-    # Verify container is running
-    if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
-        echo "Error: Failed to start multi-LLM service container"
-        echo "Last container logs:"
-        docker logs multi-llm-service --tail 50
-        exit 1
-    fi
-}
-
 # Function to deploy an LLM service
 deploy_llm_service() {
     local service_name=$1
@@ -143,7 +93,8 @@ deploy_llm_service() {
         -p "$port:8888" \
         -e PORT="8888" \
         -e SERVICE_NAME="$service_name" \
-        -e CUDA_DEVICE="$gpu_device" \
+        -e CUDA_DEVICE=0 \
+        -e CUDA_VISIBLE_DEVICES=0 \
         -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
         -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
         -e PYTHONUNBUFFERED=1 \
@@ -165,10 +116,7 @@ main() {
     # Cleanup previous instances
     cleanup
 
-    # Deploy the multi-LLM service
-    # deploy_multi_llm_service
-
-    # Multi-LLM:
+    # Deploy the LLM services
     # Deploy llm1 on GPU 0
     deploy_llm_service "llm1" 8881 0
 
@@ -180,7 +128,7 @@ main() {
     attempt=1
 
     while (( attempt <= max_attempts )); do
-        echo "Health check (Attempt $attempt/$max_attempts)"
+        echo "Health check attempt $attempt of $max_attempts..."
 
         # Health check for llm1
         if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
@@ -227,15 +175,15 @@ main() {
     nvidia-smi
 }
 
-
 # Run the deployment
 main
 
 # Example usage
 echo -e "\nExample API calls:"
-echo 'curl -X POST "http://localhost:8888/llm1/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
-echo 'curl -X POST "http://localhost:8888/llm2/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
+echo 'curl -X POST "http://localhost:8881/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
+echo 'curl -X POST "http://localhost:8882/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
 
 # Health check example
 echo -e "\nHealth check endpoint:"
-echo 'curl http://localhost:8888/health'
+echo 'curl http://localhost:8881/health'
+echo 'curl http://localhost:8882/health'

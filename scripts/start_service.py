@@ -73,9 +73,9 @@ def verify_gpu_setup():
 
 
 def set_cuda_visible_devices():
-    from app.config import settings
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(settings.CUDA_DEVICE)
+    # Since CUDA_VISIBLE_DEVICES is already set to 0 in the container,
+    # we ensure it remains as such.
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     logger.info(f"Set CUDA_VISIBLE_DEVICES to {os.environ['CUDA_VISIBLE_DEVICES']}")
 
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     try:
         logger.info("Starting multi-LLM service initialization...")
 
-        # Check GPUs first
+        # Check GPU setup
         if not verify_gpu_setup():
             sys.exit(1)
 
@@ -91,10 +91,11 @@ if __name__ == "__main__":
         if not verify_environment():
             sys.exit(1)
 
-        # Check GPU
+        # Check GPU availability
         if not check_gpu_availability():
             sys.exit(1)
 
+        # Ensure CUDA_VISIBLE_DEVICES is correctly set
         set_cuda_visible_devices()
 
         # Get port
