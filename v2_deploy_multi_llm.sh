@@ -61,12 +61,34 @@ show_gpu_status() {
     nvidia-smi
 }
 
+# Function to cleanup existing deployments
+cleanup() {
+    echo "Cleaning up existing deployments..."
+    
+    # Stop any running containers using the ports
+    for port in 8881 8882; do
+        container_id=$(docker container ls -q --filter "publish=$port")
+        if [ ! -z "$container_id" ]; then
+            echo "Stopping container using port $port..."
+            docker stop $container_id
+        fi
+    done
+
+    # Remove containers from this deployment
+    docker compose -f "$COMPOSE_FILE" down --remove-orphans
+
+    echo "Cleanup completed"
+}
+
 # Main deployment process
 main() {
     echo "Starting multi-LLM deployment using docker-compose..."
 
     # Initial checks
     check_docker
+
+    # Cleanup before deployment
+    cleanup
 
     # Export tokens as environment variables for docker-compose
     export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
