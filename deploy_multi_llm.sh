@@ -56,10 +56,22 @@ check_nvidia_docker() {
 cleanup() {
     echo "Starting cleanup..."
 
-    # Clean up container if it exists
+    # Clean up multi-LLM service container if it exists
     if docker ps -a --format '{{.Names}}' | grep -q "multi-llm-service"; then
         echo "Removing existing multi-LLM container..."
         docker rm -f multi-llm-service 2>/dev/null || true
+    fi
+
+    # Clean up llm1 container if it exists
+    if docker ps -a --format '{{.Names}}' | grep -q "llm1"; then
+        echo "Removing existing llm1 container..."
+        docker rm -f llm1 2>/dev/null || true
+    fi
+
+    # Clean up llm2 container if it exists
+    if docker ps -a --format '{{.Names}}' | grep -q "llm2"; then
+        echo "Removing existing llm2 container..."
+        docker rm -f llm2 2>/dev/null || true
     fi
 
     echo "Cleanup completed."
@@ -164,25 +176,48 @@ main() {
     deploy_llm_service "llm2" 8882 1
 
     # Allow time for services to initialize
-    sleep 10  
+    max_attempts=10
+    attempt=1
 
-    # Health check for llm1
-    if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
-        echo "llm1 is healthy and running on port 8881"
-    else
-        echo "Error: llm1 failed health check on port 8881"
-        docker logs llm1 --tail 50
-        exit 1
-    fi
+    while (( attempt <= max_attempts )); do
+        echo "Health check attempt $attempt of $max_attempts..."
 
-    # Health check for llm2
-    if curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
-        echo "llm2 is healthy and running on port 8882"
-    else
-        echo "Error: llm2 failed health check on port 8882"
-        docker logs llm2 --tail 50
-        exit 1
-    fi
+        # Health check for llm1
+        if curl -s http://localhost:8881/health | grep -q '"status":"healthy"'; then
+            echo "llm1 is healthy and running on port 8881"
+        else
+            if (( attempt == max_attempts )); then
+                echo "Error: llm1 failed health check on port 8881 after $max_attempts attempts"
+                docker logs llm1 --tail 50
+            else
+                echo "llm1 not yet healthy, retrying..."
+            fi
+        fi
+
+        # Health check for llm2
+        if curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
+            echo "llm2 is healthy and running on port 8882"
+        else
+            if (( attempt == max_attempts )); then
+                echo "Error: llm2 failed health check on port 8882 after $max_attempts attempts"
+                docker logs llm2 --tail 50
+            else
+                echo "llm2 not yet healthy, retrying..."
+            fi
+        fi
+
+        # Exit loop if both services are healthy
+        if curl -s http://localhost:8881/health | grep -q '"status":"healthy"' && curl -s http://localhost:8882/health | grep -q '"status":"healthy"'; then
+            echo "Both llm1 and llm2 are healthy."
+            break
+        fi
+
+        # Sleep before the next attempt if max attempts not reached
+        if (( attempt < max_attempts )); then
+            sleep 4
+        fi
+        ((attempt++))
+    done
 
     echo "Deployment successful!"
     echo "Multi-LLM services available at: http://localhost:8881 and http://localhost:8882"
