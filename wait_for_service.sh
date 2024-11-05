@@ -3,8 +3,8 @@
 wait_for_service() {
     local service=$1
     local port=$2
-    local max_attempts=30
-    local wait_seconds=10
+    local max_attempts=10
+    local wait_seconds=4
 
     for ((i=1; i<=max_attempts; i++)); do
         if curl -s "http://localhost:${port}/health" | grep -q '"status":"healthy"'; then
