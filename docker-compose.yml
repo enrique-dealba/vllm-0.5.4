@@ -6,8 +6,7 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command: >
       "source activate vllm && pip install transformers && 
-       python -c 'from transformers import AutoModel;
-       AutoModel.from_pretrained(\"mistralai/Mistral-Small-Instruct-2409\", local_files_only=True)'"
+       python -c 'from transformers import AutoModel; AutoModel.from_pretrained(\"mistralai/Mistral-Small-Instruct-2409\", local_files_only=True)'"
     deploy:
       resources:
         reservations:
