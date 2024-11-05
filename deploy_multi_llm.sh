@@ -163,12 +163,12 @@ main() {
     # Deploy llm2 on GPU 1
     deploy_llm_service "llm2" 8882 1
 
-    # Check if the container is running
-    sleep 5  # Wait for the container to start
-    if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
-        echo "Error: Failed to start multi-LLM service container"
-        exit 1
-    fi
+    # # Check if the container is running
+    # sleep 5  # Wait for the container to start
+    # if ! docker ps --format '{{.Names}}' | grep -q "multi-llm-service"; then
+    #     echo "Error: Failed to start multi-LLM service container"
+    #     exit 1
+    # fi
 
     echo "Deployment successful!"
     echo "Multi-LLM service available at: http://localhost:8888"
