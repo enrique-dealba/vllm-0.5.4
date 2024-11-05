@@ -1,12 +1,9 @@
 version: '3.8'
 
 services:
+  # Main service for llm1
   llm1:
     image: vllm:cuda11.8
-    entrypoint: ["/bin/bash", "-c"]
-    command: >
-      "source activate vllm && pip install transformers && 
-       python -c 'from transformers import AutoModel; AutoModel.from_pretrained(\"mistralai/Mistral-Small-Instruct-2409\", local_files_only=True)'"
     deploy:
       resources:
         reservations:
@@ -35,6 +32,28 @@ services:
     networks:
       - llm-network
 
+  # Model pre-loading service for llm1
+  llm1_preload:
+    image: vllm:cuda11.8
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "source activate vllm && pip install transformers &&
+       python -c 'from transformers import AutoModel; AutoModel.from_pretrained(\"mistralai/Mistral-Small-Instruct-2409\", local_files_only=True)'"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ['0']
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    networks:
+      - llm-network
+
+  # Main service for llm2
   llm2:
     image: vllm:cuda11.8
     deploy:
