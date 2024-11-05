@@ -29,8 +29,6 @@ except Exception as e:
 
 def check_gpu_availability():
     try:
-        import torch
-
         if not torch.cuda.is_available():
             logger.error("CUDA is not available")
             return False
@@ -74,6 +72,13 @@ def verify_gpu_setup():
         return False
 
 
+def set_cuda_visible_devices():
+    from app.config import settings
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(settings.CUDA_DEVICE)
+    logger.info(f"Set CUDA_VISIBLE_DEVICES to {os.environ['CUDA_VISIBLE_DEVICES']}")
+
+
 if __name__ == "__main__":
     try:
         logger.info("Starting multi-LLM service initialization...")
@@ -89,6 +94,8 @@ if __name__ == "__main__":
         # Check GPU
         if not check_gpu_availability():
             sys.exit(1)
+
+        set_cuda_visible_devices()
 
         # Get port
         port = int(sys.argv[1]) if len(sys.argv) > 1 else 8888

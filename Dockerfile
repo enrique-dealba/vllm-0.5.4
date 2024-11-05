@@ -44,4 +44,6 @@ RUN chmod +x /app/scripts/start.sh
 ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=DEBUG
 
+EXPOSE 8888
+
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "vllm", "python", "/app/scripts/start_service.py"]

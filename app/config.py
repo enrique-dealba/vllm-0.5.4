@@ -3,8 +3,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Single LLM Specific Settings
-    # SERVICE_NAME: str = "llm1"  # or "llm2"
-    # CUDA_DEVICE: int = 0  # or 1, 2, 3...
+    SERVICE_NAME: str = "llm1"  # or "llm2"
+    CUDA_DEVICE: int = 0  # or 1, 2, 3...
     # PEER_SERVICE_URL: str = None  # URL of the other LLM service
 
     # General Settings

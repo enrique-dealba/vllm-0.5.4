@@ -115,6 +115,30 @@ deploy_multi_llm_service() {
     fi
 }
 
+# Function to deploy an LLM service
+deploy_llm_service() {
+    local service_name=$1
+    local port=$2
+    local gpu_device=$3
+
+    echo "Deploying $service_name on GPU $gpu_device..."
+
+    docker run -d \
+        --name "$service_name" \
+        -v "$SHARED_CACHE_DIR":/root/.cache/huggingface \
+        --gpus "device=$gpu_device" \
+        --shm-size=32g \
+        -p "$port:8888" \
+        -e PORT="8888" \
+        -e SERVICE_NAME="$service_name" \
+        -e CUDA_DEVICE="$gpu_device" \
+        -e HUGGING_FACE_HUB_TOKEN="$HF_TOKEN" \
+        -e LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
+        -e PYTHONUNBUFFERED=1 \
+        -e LOG_LEVEL=DEBUG \
+        "$IMAGE_NAME"
+}
+
 # Main deployment process
 main() {
     echo "Starting multi-LLM deployment..."
@@ -130,7 +154,14 @@ main() {
     cleanup
 
     # Deploy the multi-LLM service
-    deploy_multi_llm_service
+    # deploy_multi_llm_service
+
+    # Multi-LLM:
+    # Deploy llm1 on GPU 0
+    deploy_llm_service "llm1" 8881 0
+
+    # Deploy llm2 on GPU 1
+    deploy_llm_service "llm2" 8882 1
 
     # Check if the container is running
     sleep 5  # Wait for the container to start
