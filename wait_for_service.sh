@@ -19,7 +19,7 @@ wait_for_service() {
 }
 
 # Wait for main_server
-wait_for_service "main_server" 8000
+wait_for_service "main_server" 8888
 
 # Wait for llm1
 wait_for_service "llm1" 8881

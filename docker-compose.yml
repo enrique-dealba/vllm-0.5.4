@@ -10,7 +10,7 @@ services:
       - LLM1_URL=http://llm1:8888/generate
       - LLM2_URL=http://llm2:8888/generate
     ports:
-      - "8000:8000"
+      - "8888:8888"  # Host port 8888 mapped to container port 8888
     volumes:
       - ./frontend/static:/frontend/static
     networks:
@@ -41,7 +41,7 @@ services:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
     ports:
-      - "8881:8888"
+      - "8881:8888"  # Host port 8881 mapped to container port 8888
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
     networks:
@@ -93,7 +93,7 @@ services:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
     ports:
-      - "8882:8888"
+      - "8882:8888"  # Host port 8882 mapped to container port 8888
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
     networks:

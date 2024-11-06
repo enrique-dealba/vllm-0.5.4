@@ -1,5 +1,3 @@
-# File: /frontend/main_server.py
-
 import asyncio
 import logging
 import os
@@ -79,3 +77,8 @@ async def meta_generate(request: MetaGenerateRequest):
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@app.get("/health")
+async def health_check():
+    return {"service": "main_server", "status": "healthy"}
