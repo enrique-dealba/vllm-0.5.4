@@ -31,6 +31,20 @@ class MetaGenerateRequest(BaseModel):
 class MetaGenerateResponse(BaseModel):
     llm1_response: str
     llm2_response: str
+    llm_discussion: list = [
+        {
+            "role": "llm1",
+            "message": "[Mock] LLM1: Let me analyze this query in detail...",
+        },
+        {
+            "role": "llm2",
+            "message": "[Mock] LLM2: I agree, here's my additional perspective...",
+        },
+        {
+            "role": "llm1",
+            "message": "[Mock] LLM1: Great points. Let's finalize our responses...",
+        },
+    ]
 
 
 # Environment variables for LLM service URLs
