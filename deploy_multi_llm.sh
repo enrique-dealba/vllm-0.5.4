@@ -74,7 +74,7 @@ cleanup() {
     done
     
     # Stop any running containers using the ports
-    for port in 8881 8882; do
+    for port in 8000 8881 8882; do
         container_id=$(docker container ls -q --filter "publish=$port")
         if [ ! -z "$container_id" ]; then
             echo "Stopping container using port $port..."
@@ -115,7 +115,9 @@ main() {
     wait_for_services
 
     echo "Deployment successful!"
-    echo "Multi-LLM services available at: http://localhost:8881 and http://localhost:8882"
+    echo "Main Server available at: http://localhost:8000"
+    echo "LLM1 available at: http://localhost:8881"
+    echo "LLM2 available at: http://localhost:8882"
 
     # Show GPU status
     show_gpu_status
@@ -126,10 +128,10 @@ main
 
 # Example API calls
 echo -e "\nExample API calls:"
-echo 'curl -X POST "http://localhost:8881/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
-echo 'curl -X POST "http://localhost:8882/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
+echo 'curl -X POST "http://localhost:8000/meta/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is 7+8?\"}"'
 
 # Health check example
 echo -e "\nHealth check endpoints:"
+echo 'curl http://localhost:8000/health'
 echo 'curl http://localhost:8881/health'
 echo 'curl http://localhost:8882/health'

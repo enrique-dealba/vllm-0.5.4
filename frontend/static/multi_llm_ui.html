@@ -1,9 +1,11 @@
+<!-- File: /frontend/static/multi_llm_ui.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-LLM Chat Interface</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -130,6 +132,7 @@
             }
         }
     </style>
+
 </head>
 <body>
     <div class="input-container">
@@ -138,21 +141,21 @@
     </div>
 
     <div class="chat-container">
-        <div class="chat-box">
+        <div class="chat-box" id="chat-llm1">
             <div class="chat-title">User ↔ LLM-1</div>
         </div>
 
-        <div class="chat-box">
+        <div class="chat-box" id="chat-llm1-llm2">
             <div class="chat-title">LLM-1 ↔ LLM-2</div>
         </div>
 
-        <div class="chat-box">
+        <div class="chat-box" id="chat-llm2">
             <div class="chat-title">User ↔ LLM-2</div>
         </div>
     </div>
 
     <script>
-        document.getElementById('submit-btn').addEventListener('click', function() {
+        document.getElementById('submit-btn').addEventListener('click', async function() {
             const input = document.getElementById('user-input');
             const userQuery = input.value.trim();
             
@@ -167,57 +170,81 @@
                     </div>
                 `;
                 
-                // LLM-1 response
-                const llm1ResponseHTML = `
-                    <div class="message llm1-message">
-                        Let me look into your query for: ${userQuery}
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                `;
-                
-                // LLM1-LLM2 conversation (4 messages)
-                const llmConversationHTML = `
-                    <div class="message llm1-message">
-                        Here are my initial thoughts on analyzing: ${userQuery}
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                    <div class="message llm2-message">
-                        Well, here are my thoughts about your analysis: Let's explore this further.
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                    <div class="message llm1-message">
-                        Good insights. Let me add some additional perspectives...
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                    <div class="message llm2-message">
-                        Excellent points. Here's my final synthesis of our discussion.
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                `;
-                
-                // LLM-2 response
-                const llm2ResponseHTML = `
-                    <div class="message llm2-message">
-                        Doing research for your query about: ${userQuery}
+                // Add user message to LLM1 ↔ LLM2 conversation
+                const userMessageConversationHTML = `
+                    <div class="message user-message">
+                        ${userQuery}
                         <div class="timestamp">${timestamp}</div>
                     </div>
                 `;
                 
                 // Add messages to appropriate chat boxes
-                const chatBoxes = document.querySelectorAll('.chat-box');
-                chatBoxes[0].insertAdjacentHTML('beforeend', userMessageHTML + llm1ResponseHTML);
-                chatBoxes[1].insertAdjacentHTML('beforeend', llmConversationHTML);
-                chatBoxes[2].insertAdjacentHTML('beforeend', userMessageHTML + llm2ResponseHTML);
+                document.getElementById('chat-llm1').insertAdjacentHTML('beforeend', userMessageHTML);
+                document.getElementById('chat-llm1-llm2').insertAdjacentHTML('beforeend', userMessageConversationHTML);
+                document.getElementById('chat-llm2').insertAdjacentHTML('beforeend', userMessageHTML);
+                
+                // Send the user query to the meta endpoint
+                try {
+                    const response = await fetch('/meta/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ text: userQuery })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Add LLM1 response
+                    const llm1ResponseHTML = `
+                        <div class="message llm1-message">
+                            ${data.llm1_response}
+                            <div class="timestamp">${timestamp}</div>
+                        </div>
+                    `;
+                    document.getElementById('chat-llm1').insertAdjacentHTML('beforeend', llm1ResponseHTML);
+
+                    // Add LLM1 ↔ LLM2 conversation
+                    const llmConversationHTML = `
+                        <div class="message llm1-message">
+                            LLM1: ${data.llm1_response}
+                            <div class="timestamp">${timestamp}</div>
+                        </div>
+                        <div class="message llm2-message">
+                            LLM2: ${data.llm2_response}
+                            <div class="timestamp">${timestamp}</div>
+                        </div>
+                    `;
+                    document.getElementById('chat-llm1-llm2').insertAdjacentHTML('beforeend', llmConversationHTML);
+
+                    // Add LLM2 response
+                    const llm2ResponseHTML = `
+                        <div class="message llm2-message">
+                            ${data.llm2_response}
+                            <div class="timestamp">${timestamp}</div>
+                        </div>
+                    `;
+                    document.getElementById('chat-llm2').insertAdjacentHTML('beforeend', llm2ResponseHTML);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing your request.');
+                }
                 
                 // Clear input and scroll chat boxes
                 input.value = '';
+                const chatBoxes = document.querySelectorAll('.chat-box');
                 chatBoxes.forEach(box => {
                     box.scrollTop = box.scrollHeight;
                 });
             }
         });
 
-        // Keep the Enter key handler
+        // Handle Enter key for submission
         document.getElementById('user-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 document.getElementById('submit-btn').click();

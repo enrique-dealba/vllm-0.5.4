@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Main FastAPI server
+  main_server:
+    build:
+      context: .
+      dockerfile: Dockerfile.main
+    environment:
+      - LLM1_URL=http://llm1:8888/generate
+      - LLM2_URL=http://llm2:8888/generate
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./frontend/static:/frontend/static
+    networks:
+      - llm-network
+
   # Main service for llm1
   llm1:
     image: vllm:cuda11.8

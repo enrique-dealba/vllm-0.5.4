@@ -1,0 +1,28 @@
+# File: /Dockerfile.main
+
+FROM python:3.10-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /frontend
+
+# Copy frontend requirements if any (optional)
+# COPY frontend/requirements.txt .
+# RUN pip install --no-cache-dir -r requirements.txt
+
+# Install FastAPI and Uvicorn
+RUN pip install --no-cache-dir fastapi uvicorn httpx
+
+# Copy main_server and static files
+COPY frontend/main_server.py .
+COPY frontend/static ./static
+
+# Expose port
+EXPOSE 8000
+
+# Command to run the main server
+CMD ["uvicorn", "main_server:app", "--host", "0.0.0.0", "--port", "8000"]
