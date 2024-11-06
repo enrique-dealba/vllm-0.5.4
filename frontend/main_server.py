@@ -23,9 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files (HTML UI)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
 
 # Define request and response schemas
 class MetaGenerateRequest(BaseModel):
@@ -82,3 +79,7 @@ async def meta_generate(request: MetaGenerateRequest):
 @app.get("/health")
 async def health_check():
     return {"service": "main_server", "status": "healthy"}
+
+
+# Mount static files AFTER defining API routes
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
