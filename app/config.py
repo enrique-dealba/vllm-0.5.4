@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     # Single LLM Specific Settings
     SERVICE_NAME: str = "llm1"  # or "llm2"
     CUDA_DEVICE: int = 0  # or 1, 2, 3...
-    # PEER_SERVICE_URL: str = None  # URL of the other LLM service
+    PEER_SERVICE_URL: str = os.getenv("PEER_SERVICE_URL")
+    SERVICE_ROLE: str = os.getenv("SERVICE_ROLE", "llm1")  # or "llm2"
 
     # General Settings
     PORT: int = 8888

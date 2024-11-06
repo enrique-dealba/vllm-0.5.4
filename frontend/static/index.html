@@ -169,17 +169,8 @@
                     </div>
                 `;
                 
-                // Add user message to LLM1 ↔ LLM2 conversation
-                const userMessageConversationHTML = `
-                    <div class="message user-message">
-                        ${userQuery}
-                        <div class="timestamp">${timestamp}</div>
-                    </div>
-                `;
-                
-                // Add messages to appropriate chat boxes
+                // Add user message only to side chat boxes (not in LLM discussion)
                 document.getElementById('chat-llm1').insertAdjacentHTML('beforeend', userMessageHTML);
-                document.getElementById('chat-llm1-llm2').insertAdjacentHTML('beforeend', userMessageConversationHTML);
                 document.getElementById('chat-llm2').insertAdjacentHTML('beforeend', userMessageHTML);
                 
                 // Send the user query to the meta endpoint
@@ -198,7 +189,7 @@
 
                     const data = await response.json();
 
-                    // Add LLM1 response
+                    // Add LLM1 response to first chat box
                     const llm1ResponseHTML = `
                         <div class="message llm1-message">
                             ${data.llm1_response}
@@ -207,20 +198,20 @@
                     `;
                     document.getElementById('chat-llm1').insertAdjacentHTML('beforeend', llm1ResponseHTML);
 
-                    // Add LLM1 ↔ LLM2 conversation
-                    const llmConversationHTML = `
-                        <div class="message llm1-message">
-                            LLM1: ${data.llm1_response}
-                            <div class="timestamp">${timestamp}</div>
-                        </div>
-                        <div class="message llm2-message">
-                            LLM2: ${data.llm2_response}
-                            <div class="timestamp">${timestamp}</div>
-                        </div>
-                    `;
-                    document.getElementById('chat-llm1-llm2').insertAdjacentHTML('beforeend', llmConversationHTML);
+                    // Add LLM discussion to middle chat box
+                    if (data.llm_discussion) {
+                        data.llm_discussion.forEach(msg => {
+                            const discussionHTML = `
+                                <div class="message ${msg.role === 'llm1' ? 'llm1-message' : 'llm2-message'}">
+                                    ${msg.role.toUpperCase()}: ${msg.message}
+                                    <div class="timestamp">${timestamp}</div>
+                                </div>
+                            `;
+                            document.getElementById('chat-llm1-llm2').insertAdjacentHTML('beforeend', discussionHTML);
+                        });
+                    }
 
-                    // Add LLM2 response
+                    // Add LLM2 response to third chat box
                     const llm2ResponseHTML = `
                         <div class="message llm2-message">
                             ${data.llm2_response}

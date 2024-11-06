@@ -27,6 +27,8 @@ services:
               capabilities: [gpu]
               device_ids: ['0']  # Only specify device_ids
     environment:
+      - PEER_SERVICE_URL=http://llm2:8888
+      - SERVICE_ROLE=llm1
       - LLM_MODEL_NAME=${LLM1_MODEL_NAME}
       - MODEL_TYPE=${LLM1_MODEL_TYPE}
       - TEMPERATURE=${LLM1_TEMPERATURE}
@@ -79,6 +81,8 @@ services:
               capabilities: [gpu]
               device_ids: ['1']  # Only specify device_ids
     environment:
+      - PEER_SERVICE_URL=http://llm1:8888
+      - SERVICE_ROLE=llm2
       - LLM_MODEL_NAME=${LLM2_MODEL_NAME}
       - MODEL_TYPE=${LLM2_MODEL_TYPE}
       - TEMPERATURE=${LLM2_TEMPERATURE}

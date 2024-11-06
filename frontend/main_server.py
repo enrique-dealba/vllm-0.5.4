@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 
@@ -46,25 +45,25 @@ async def meta_generate(request: MetaGenerateRequest):
     """
     try:
         async with httpx.AsyncClient() as client:
-            payload = {"text": request.text}
+            # Get responses from both LLMs
+            llm1_response = await client.post(LLM1_URL, json={"text": request.text})
+            llm2_response = await client.post(LLM2_URL, json={"text": request.text})
 
-            # Send requests concurrently
-            llm1_task = client.post(LLM1_URL, json=payload)
-            llm2_task = client.post(LLM2_URL, json=payload)
+            llm1_data = llm1_response.json()
+            llm2_data = llm2_response.json()
 
-            llm1_response, llm2_response = await asyncio.gather(llm1_task, llm2_task)
+            # Extract the discussion between LLMs
+            llm_discussion = []
+            if "discussion" in llm1_data:
+                llm_discussion.extend(llm1_data["discussion"])
+            if "discussion" in llm2_data:
+                llm_discussion.extend(llm2_data["discussion"])
 
-            # Raise exceptions for bad responses
-            llm1_response.raise_for_status()
-            llm2_response.raise_for_status()
-
-            # Extract responses
-            llm1_result = llm1_response.json().get("response", "")
-            llm2_result = llm2_response.json().get("response", "")
-
-            return MetaGenerateResponse(
-                llm1_response=llm1_result, llm2_response=llm2_result
-            )
+            return {
+                "llm1_response": llm1_data["response"],
+                "llm2_response": llm2_data["response"],
+                "llm_discussion": llm_discussion,
+            }
 
     except httpx.HTTPError as http_err:
         logger.error(f"HTTP error occurred: {http_err}")
