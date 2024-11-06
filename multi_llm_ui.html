@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-LLM Chat Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .input-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        #user-input {
+            width: 90%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        #submit-btn {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .chat-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 80px;
+            gap: 20px;
+        }
+
+        .chat-box {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            height: 600px;
+            overflow-y: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .chat-title {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .llm1-message {
+            background: #e9ecef;
+            color: #212529;
+        }
+
+        .llm2-message {
+            background: #6c757d;
+            color: white;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        /* Different timestamp colors based on message type */
+        .user-message .timestamp {
+            color: rgba(255, 255, 255, 0.8);  /* Light color for dark backgrounds */
+        }
+
+        .llm1-message .timestamp {
+            color: #6c757d;  /* Dark color for light backgrounds */
+        }
+
+        .llm2-message .timestamp {
+            color: rgba(255, 255, 255, 0.8);  /* Light color for dark backgrounds */
+        }
+
+        /* Scrollbar styling */
+        .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+            }
+            
+            .chat-box {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="input-container">
+        <input type="text" id="user-input" placeholder="Type your message here...">
+        <button id="submit-btn">Send</button>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-box">
+            <div class="chat-title">User ↔ LLM-1</div>
+        </div>
+
+        <div class="chat-box">
+            <div class="chat-title">LLM-1 ↔ LLM-2</div>
+        </div>
+
+        <div class="chat-box">
+            <div class="chat-title">User ↔ LLM-2</div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            const input = document.getElementById('user-input');
+            const userQuery = input.value.trim();
+            
+            if (userQuery) {
+                const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                // Add user message to both user chat boxes
+                const userMessageHTML = `
+                    <div class="message user-message">
+                        ${userQuery}
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                `;
+                
+                // LLM-1 response
+                const llm1ResponseHTML = `
+                    <div class="message llm1-message">
+                        Let me look into your query for: ${userQuery}
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                `;
+                
+                // LLM1-LLM2 conversation (4 messages)
+                const llmConversationHTML = `
+                    <div class="message llm1-message">
+                        Here are my initial thoughts on analyzing: ${userQuery}
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                    <div class="message llm2-message">
+                        Well, here are my thoughts about your analysis: Let's explore this further.
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                    <div class="message llm1-message">
+                        Good insights. Let me add some additional perspectives...
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                    <div class="message llm2-message">
+                        Excellent points. Here's my final synthesis of our discussion.
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                `;
+                
+                // LLM-2 response
+                const llm2ResponseHTML = `
+                    <div class="message llm2-message">
+                        Doing research for your query about: ${userQuery}
+                        <div class="timestamp">${timestamp}</div>
+                    </div>
+                `;
+                
+                // Add messages to appropriate chat boxes
+                const chatBoxes = document.querySelectorAll('.chat-box');
+                chatBoxes[0].insertAdjacentHTML('beforeend', userMessageHTML + llm1ResponseHTML);
+                chatBoxes[1].insertAdjacentHTML('beforeend', llmConversationHTML);
+                chatBoxes[2].insertAdjacentHTML('beforeend', userMessageHTML + llm2ResponseHTML);
+                
+                // Clear input and scroll chat boxes
+                input.value = '';
+                chatBoxes.forEach(box => {
+                    box.scrollTop = box.scrollHeight;
+                });
+            }
+        });
+
+        // Keep the Enter key handler
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('submit-btn').click();
+            }
+        });
+    </script>
+</body>
+</html>

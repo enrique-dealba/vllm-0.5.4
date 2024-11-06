@@ -1,84 +1,95 @@
-# Mulit-LLM
-Testing vLLM 0.5.4
+# Multi-LLM
+Testing vLLM with multiple LLMs running on different GPUs
 
-To build Docker image:
+## Initial Model Pre-loading
+
+Before running any other commands, pre-load the models:
+```sh
+docker compose up llm1_preload
+```
+
+This ensures models are properly cached before starting the main services.
+
+## Build Docker Image
 
 ```sh
 docker build -t vllm:cuda11.8 .
 ```
 
-To run Docker container with LLMs:
+## Setup and Deployment
 
+1. Set up environment:
 ```sh
-docker run \
-  -v ~/.cache/huggingface:/root/.cache/huggingface \
-  --gpus all \
-  --name llm_server \
-  -p 8888:8888 \
-  -e RUN_MODE=server \
-  -e MODEL_TYPE=LLM \
-  -e LLM_MODEL_NAME="mistralai/Mistral-Small-Instruct-2409" \
-  -e HUGGING_FACE_HUB_TOKEN=<your-hugging-face-token> \
-  vllm:cuda11.8
-
+./setup.sh -h "your_huggingface_token" -l "your_langchain_api_key"
 ```
 
-To run Docker container with VLMs (Vision Language Models):
-
+2. Deploy the multi-LLM services:
 ```sh
-docker run \
-  -v ~/.cache/huggingface:/root/.cache/huggingface \
-  --gpus all \
-  --name vlm_server \
-  -p 8888:8888 \
-  -e RUN_MODE=server \
-  -e MODEL_TYPE=VLM \
-  -e VLM_MODEL_NAME="llava-hf/llava-1.5-7b-hf" \
-  -e FIXED_IMAGE_URL="https://example.com/your-image.jpg" \
-  vllm:cuda11.8
-
+./deploy_multi_llm.sh -h "your_huggingface_token" -l "your_langchain_api_key"
 ```
 
-To run Docker container with Streamlit UI:
-```sh
-docker run \
-  -v ~/.cache/huggingface:/root/.cache/huggingface \
-  --gpus all \
-  --name llm_ui \
-  -p 8888:8888 \
-  -e RUN_MODE=ui \
-  -e MODEL_TYPE=LLM \
-  -e LLM_MODEL_NAME="mistralai/Mistral-Small-Instruct-2409" \
-  -e HUGGING_FACE_HUB_TOKEN=<your-hugging-face-token> \
-  vllm:cuda11.8
+This will start two LLM services:
+- LLM1 on port 8881 using GPU 0
+- LLM2 on port 8882 using GPU 1
 
+## Docker Compose Configuration
+
+The system uses a `docker-compose.yml` file that defines:
+- Two main LLM services (llm1 and llm2)
+- A preload service for model caching
+- Shared Hugging Face cache volume
+- GPU device assignments
+- Network configuration
+
+## API Usage
+
+### LLM1 (Port 8881)
+```sh
+curl -X POST http://localhost:8881/generate \
+    -H "Content-Type: application/json" \
+    -d '{
+          "text": "Translate the following English text to French: Hello, how are you?"
+        }'
 ```
 
-<!-- TODO: remove '| jq' from these curl commands -->
-To query the FastAPI server:
-
+### LLM2 (Port 8882)
 ```sh
-curl -X POST "http://localhost:8888/generate" -H "Content-Type: application/json" -d "{\"text\": \"What is the content of this image?\"}" | jq
+curl -X POST http://localhost:8882/generate \
+    -H "Content-Type: application/json" \
+    -d '{
+          "text": "Summarize the following text: Machine learning enables computers to learn from data."
+        }'
 ```
 
-To check FastAPI server health:
+## Environment Variables
 
-```sh
-curl http://localhost:8888/health | jq
+Key environment variables in the configuration:
+- `HUGGING_FACE_HUB_TOKEN`: Your Hugging Face authentication token
+- `LANGCHAIN_API_KEY`: Your Langchain API key
+- `LLM_MODEL_NAME`: Model name for each LLM service
+- `CUDA_VISIBLE_DEVICES`: GPU device assignment
+- `SERVICE_NAME`: Unique identifier for each service
+
+## Volume Mounts
+
+The system mounts the local Hugging Face cache to ensure efficient model loading:
+```yaml
+volumes:
+  - ~/.cache/huggingface:/root/.cache/huggingface
 ```
 
-To query the Streamlit UI:
+## Network Configuration
 
-1. Since the container is running Streamlit on port `8888`, you need to set up SSH tunneling to access it from your local machine:
-```sh
-# Activate conda environment if not already active
-conda activate llm  # or your preferred environment
-
-# SSH tunneling
-ssh -L 8888:localhost:8888 <your-username>@<machine>
-
+Services communicate through a bridge network defined in Docker Compose:
+```yaml
+networks:
+  llm-network:
+    driver: bridge
 ```
 
-2. Open your web browser and navigate to:
-[http://localhost:8888](http://localhost:8888)
-You should see the Streamlit UI where you can input queries and interact with the model.
+## Model Pre-loading
+
+Before starting the main services, models are pre-loaded using the `llm1_preload` service to ensure faster startup times and proper caching.
+```sh
+docker compose up llm1_preload
+```
