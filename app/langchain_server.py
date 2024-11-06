@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
