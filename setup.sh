@@ -62,6 +62,10 @@ echo "Starting setup process..."
 # Check disk space
 check_disk_space
 
+# Build and preload containers
+docker compose build
+docker compose up llm1_preload
+
 # Make all scripts executable
 make_executable "deploy_multi_llm.sh"
 make_executable "generate_env.sh"
