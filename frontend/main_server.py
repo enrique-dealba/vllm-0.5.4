@@ -50,9 +50,9 @@ async def meta_generate(request: MetaGenerateRequest):
     logger.info(f"[{request_id}] Received user query: '{request.text}'")
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             # Step 1: Send initial query to LLM1
-            llm1_prompt = f"As LLM1, analyze the following: '{request.text}'. Give you initial thoughts:"
+            llm1_prompt = f"As LLM1, analyze the following: '{request.text}'. Give your initial thoughts:"
             logger.info(f"[{request_id}] Sending initial prompt to LLM1: {llm1_prompt}")
             llm1_resp = await client.post(LLM1_URL, json={"text": llm1_prompt})
 
@@ -67,6 +67,12 @@ async def meta_generate(request: MetaGenerateRequest):
             llm1_data = llm1_resp.json()
             llm1_response = llm1_data.get("response", "").strip()
             logger.info(f"[{request_id}] Received response from LLM1: {llm1_response}")
+
+            if not llm1_response:
+                logger.warning(f"[{request_id}] LLM1 returned an empty response.")
+                raise HTTPException(
+                    status_code=502, detail="LLM1 returned an empty response."
+                )
 
             # Step 2: Send LLM1's response to LLM2
             llm2_prompt = (
@@ -88,17 +94,31 @@ async def meta_generate(request: MetaGenerateRequest):
             llm2_response = llm2_data.get("response", "").strip()
             logger.info(f"[{request_id}] Received response from LLM2: {llm2_response}")
 
-            # Step 3: Send LLM2's response back to LLM1 for final synthesis with retries
-            final_prompt = (
-                f"Based on the following discussion:\n"
+            if not llm2_response:
+                logger.warning(f"[{request_id}] LLM2 returned an empty response.")
+                raise HTTPException(
+                    status_code=502, detail="LLM2 returned an empty response."
+                )
+
+            # Step 3: Send LLM2's response back to LLM1 (and vice-versa) for final synthesis with retries
+            final_prompt_llm1 = (
+                f"You are LLM1. Based on the following discussion:\n"
                 f"'LLM1: {llm1_response}'\n"
                 f"'LLM2: {llm2_response}',\n"
                 f"please provide a final synthesized response to the question: {request.text}:"
             )
-            logger.info(f"[{request_id}] Sending final prompt to LLM1: {final_prompt}")
+            final_prompt_llm2 = (
+                f"You are LLM2. Based on the following discussion:\n"
+                f"'LLM1: {llm1_response}'\n"
+                f"'LLM2: {llm2_response}',\n"
+                f"please provide a final synthesized response to the question: {request.text}:"
+            )
 
+            logger.info(
+                f"[{request_id}] Sending final prompt to LLM1: {final_prompt_llm1}"
+            )
+            llm1_final_response = ""
             for attempt in range(1, MAX_RETRIES + 1):
-                final_prompt_llm1 = f"You are LLM1. {final_prompt}"
                 llm1_final_resp = await client.post(
                     LLM1_URL, json={"text": final_prompt_llm1}
                 )
@@ -129,11 +149,11 @@ async def meta_generate(request: MetaGenerateRequest):
                     if attempt == MAX_RETRIES:
                         llm1_final_response = "I'm sorry, I couldn't synthesize a final response at this time."
 
+            logger.info(
+                f"[{request_id}] Sending final prompt to LLM2: {final_prompt_llm2}"
+            )
+            llm2_final_response = ""
             for attempt in range(1, MAX_RETRIES + 1):
-                personality_llm2 = "you are very critical and paranoid"
-                final_prompt_llm2 = (
-                    f"You are LLM2, and {personality_llm2}. {final_prompt}"
-                )
                 llm2_final_resp = await client.post(
                     LLM2_URL, json={"text": final_prompt_llm2}
                 )
@@ -168,7 +188,6 @@ async def meta_generate(request: MetaGenerateRequest):
             llm_discussion = [
                 {"role": "LLM1", "message": llm1_response},
                 {"role": "LLM2", "message": llm2_response},
-                # {"role": "LLM1", "message": llm1_final_response}
             ]
 
             return {
