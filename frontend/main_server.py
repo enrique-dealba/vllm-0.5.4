@@ -98,7 +98,7 @@ async def meta_generate(request: MetaGenerateRequest):
             logger.info(f"[{request_id}] Sending final prompt to LLM1: {final_prompt}")
 
             for attempt in range(1, MAX_RETRIES + 1):
-                final_prompt_llm1 = f"As LLM1, analyze the following: {final_prompt}"
+                final_prompt_llm1 = f"You are LLM1. {final_prompt}"
                 llm1_final_resp = await client.post(
                     LLM1_URL, json={"text": final_prompt_llm1}
                 )
@@ -130,8 +130,10 @@ async def meta_generate(request: MetaGenerateRequest):
                         llm1_final_response = "I'm sorry, I couldn't synthesize a final response at this time."
 
             for attempt in range(1, MAX_RETRIES + 1):
-                personality_llm2 = "be very critical and careful with your anaysis"
-                final_prompt_llm2 = f"As LLM2, {personality_llm2}, analyze the following: {final_prompt}"
+                personality_llm2 = "you are very critical and paranoid"
+                final_prompt_llm2 = (
+                    f"You are LLM2, and {personality_llm2}. {final_prompt}"
+                )
                 llm2_final_resp = await client.post(
                     LLM2_URL, json={"text": final_prompt_llm2}
                 )
