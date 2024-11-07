@@ -211,10 +211,10 @@
                     // Add LLM discussion to middle chat box
                     if (data.llm_discussion) {
                         data.llm_discussion.forEach(msg => {
-                            const messageClass = msg.role === 'llm1' ? 'llm1-message' : 'llm2-message';
+                            const messageClass = msg.role === 'LLM1' ? 'llm1-message' : 'llm2-message';
                             const discussionHTML = `
                                 <div class="message ${messageClass}">
-                                    ${msg.role.toUpperCase()}: ${msg.message}
+                                    ${msg.role}: ${msg.message}
                                     <div class="timestamp">${timestamp}</div>
                                 </div>
                             `;
