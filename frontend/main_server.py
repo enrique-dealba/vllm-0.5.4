@@ -31,20 +31,7 @@ class MetaGenerateRequest(BaseModel):
 class MetaGenerateResponse(BaseModel):
     llm1_response: str
     llm2_response: str
-    llm_discussion: list = [
-        {
-            "role": "llm1",
-            "message": "[Mock] LLM1: Let me analyze this query in detail...",
-        },
-        {
-            "role": "llm2",
-            "message": "[Mock] LLM2: I agree, here's my additional perspective...",
-        },
-        {
-            "role": "llm1",
-            "message": "[Mock] LLM1: Great points. Let's finalize our responses...",
-        },
-    ]
+    llm_discussion: list
 
 
 # Environment variables for LLM service URLs
@@ -54,117 +41,60 @@ LLM2_URL = os.getenv("LLM2_URL", "http://llm2:8888/generate")
 
 @app.post("/meta/generate", response_model=MetaGenerateResponse)
 async def meta_generate(request: MetaGenerateRequest):
-    """Receives a user query and forwards it to both LLM1 and LLM2.
-    Returns the aggregated responses.
-    """
-    debug_discussion = []
+    """Orchestrates collaboration between LLM1 and LLM2."""
     try:
         async with httpx.AsyncClient() as client:
-            # Debug: Log initial request
-            debug_discussion.append(
-                {
-                    "role": "debug",
-                    "message": f"[Debug] Received user query: {request.text}",
-                }
-            )
-
-            # Get responses from both LLMs
-            debug_discussion.append(
-                {
-                    "role": "debug",
-                    "message": f"[Debug] Attempting to contact LLM1 at {LLM1_URL}",
-                }
-            )
-            llm1_response = await client.post(LLM1_URL, json={"text": request.text})
-
-            debug_discussion.append(
-                {
-                    "role": "debug",
-                    "message": f"[Debug] Attempting to contact LLM2 at {LLM2_URL}",
-                }
-            )
-            llm2_response = await client.post(LLM2_URL, json={"text": request.text})
-
-            llm1_data = llm1_response.json()
-            llm2_data = llm2_response.json()
-
-            # Debug: Log response data structure
-            debug_discussion.append(
-                {
-                    "role": "debug",
-                    "message": f"[Debug] LLM1 response keys: {list(llm1_data.keys())}",
-                }
-            )
-            debug_discussion.append(
-                {
-                    "role": "debug",
-                    "message": f"[Debug] LLM2 response keys: {list(llm2_data.keys())}",
-                }
-            )
-
-            # Extract the discussion between LLMs
-            llm_discussion = []
-            if "discussion" in llm1_data:
-                debug_discussion.append(
-                    {
-                        "role": "debug",
-                        "message": "[Debug] Found discussion in LLM1 response",
-                    }
+            # Step 1: Send initial query to LLM1
+            llm1_prompt = f"As LLM1, analyzing: '{request.text}'. Initial thoughts:"
+            llm1_resp = await client.post(LLM1_URL, json={"text": llm1_prompt})
+            if llm1_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=llm1_resp.status_code, detail="LLM1 service error"
                 )
-                llm_discussion.extend(llm1_data["discussion"])
-            else:
-                debug_discussion.append(
-                    {
-                        "role": "debug",
-                        "message": "[Debug] No discussion found in LLM1 response",
-                    }
-                )
+            llm1_data = llm1_resp.json()
+            llm1_response = llm1_data.get("response", "")
 
-            if "discussion" in llm2_data:
-                debug_discussion.append(
-                    {
-                        "role": "debug",
-                        "message": "[Debug] Found discussion in LLM2 response",
-                    }
+            # Step 2: Send LLM1's response to LLM2
+            llm2_prompt = f"Considering my colleague's thoughts: '{llm1_response}', what's your perspective on: '{request.text}'?"
+            llm2_resp = await client.post(LLM2_URL, json={"text": llm2_prompt})
+            if llm2_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=llm2_resp.status_code, detail="LLM2 service error"
                 )
-                llm_discussion.extend(llm2_data["discussion"])
-            else:
-                debug_discussion.append(
-                    {
-                        "role": "debug",
-                        "message": "[Debug] No discussion found in LLM2 response",
-                    }
-                )
+            llm2_data = llm2_resp.json()
+            llm2_response = llm2_data.get("response", "")
 
-            # If no real discussion, use debug info
-            if not llm_discussion:
-                debug_discussion.append(
-                    {
-                        "role": "debug",
-                        "message": "[Debug] No LLM discussion found, using debug messages",
-                    }
+            # Step 3: Send LLM2's response back to LLM1 for final synthesis
+            final_prompt = f"After peer discussion on '{request.text}', synthesizing final response: '{llm2_response}'"
+            llm1_final_resp = await client.post(LLM1_URL, json={"text": final_prompt})
+            if llm1_final_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=llm1_final_resp.status_code,
+                    detail="LLM1 final synthesis error",
                 )
-                llm_discussion = debug_discussion
+            llm1_final_data = llm1_final_resp.json()
+            llm1_final_response = llm1_final_data.get("response", "")
+
+            # Construct the discussion thread
+            llm_discussion = [
+                {"role": "LLM1", "message": llm1_response},
+                {"role": "LLM2", "message": llm2_response},
+                {"role": "LLM1", "message": llm1_final_response},
+            ]
 
             return {
-                "llm1_response": llm1_data["response"],
-                "llm2_response": llm2_data["response"],
+                "llm1_response": llm1_final_response,
+                "llm2_response": llm2_response,
                 "llm_discussion": llm_discussion,
             }
 
     except httpx.HTTPError as http_err:
         logger.error(f"HTTP error occurred: {http_err}")
-        debug_discussion.append(
-            {"role": "error", "message": f"[Error] HTTP error: {str(http_err)}"}
-        )
         raise HTTPException(
             status_code=500, detail="Error communicating with LLM services"
         )
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        debug_discussion.append(
-            {"role": "error", "message": f"[Error] Unexpected error: {str(e)}"}
-        )
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 

@@ -4,8 +4,7 @@ import traceback
 import uuid
 from typing import List, Optional
 
-import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -44,181 +43,36 @@ class CollaborationResult(BaseModel):
     discussion: List[DiscussionMessage]
 
 
-async def collaborate_with_peer(
-    query: str, debug_mode: bool = True
-) -> CollaborationResult:
-    """Enhanced collaboration with detailed debug tracking"""
+async def process_request(query: str, debug_mode: bool = True) -> CollaborationResult:
+    """Processes a single LLM generate request without collaboration."""
     discussion_messages: List[DiscussionMessage] = []
     debug_messages: List[DiscussionMessage] = []
 
     try:
-        # Initial debug info
+        # Log the received query
         debug_messages.append(
             DiscussionMessage(
-                role="debug",
-                message=f"[Debug] Starting collaboration as {settings.SERVICE_ROLE}",
-            )
-        )
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug", message=f"[Debug] Query received: '{query}'"
-            )
-        )
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug",
-                message=f"[Debug] Peer service URL: {settings.PEER_SERVICE_URL}",
+                role="debug", message=f"[Debug] Received query: '{query}'"
             )
         )
 
-        # Initial thoughts generation
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug",
-                message=f"[Debug] {settings.SERVICE_ROLE} generating initial thoughts...",
-            )
-        )
-
+        # Generate response from LLM
         try:
-            initial_prompt = (
-                f"As {settings.SERVICE_ROLE}, analyzing: '{query}'. Initial thoughts:"
-            )
-            initial_response = model_manager.get_llm().invoke(initial_prompt)
-
+            response = model_manager.get_llm().invoke(query)
             debug_messages.append(
                 DiscussionMessage(
                     role="debug",
-                    message=f"[Debug] Initial response generated ({len(initial_response)} chars)",
+                    message=f"[Debug] LLM generated response ({len(response)} chars)",
                 )
             )
-            debug_messages.append(
-                DiscussionMessage(
-                    role="debug",
-                    message=f"[Debug] Initial response preview: {initial_response[:100]}...",
-                )
-            )
-
             discussion_messages.append(
-                DiscussionMessage(role=settings.SERVICE_ROLE, message=initial_response)
+                DiscussionMessage(role=settings.SERVICE_ROLE, message=response)
             )
         except Exception as e:
             debug_messages.append(
                 DiscussionMessage(
                     role="error",
-                    message=f"[Error] Failed to generate initial thoughts: {str(e)}",
-                )
-            )
-            raise
-
-        # Peer collaboration
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug", message="[Debug] Initiating peer collaboration..."
-            )
-        )
-
-        try:
-            async with httpx.AsyncClient() as client:
-                debug_messages.append(
-                    DiscussionMessage(
-                        role="debug",
-                        message=f"[Debug] Sending request to peer at {settings.PEER_SERVICE_URL}",
-                    )
-                )
-
-                peer_prompt = f"Considering my colleague's thoughts: '{initial_response}', what's your perspective on: '{query}'?"
-                debug_messages.append(
-                    DiscussionMessage(
-                        role="debug",
-                        message=f"[Debug] Peer prompt: {peer_prompt[:100]}...",
-                    )
-                )
-
-                peer_response = await client.post(
-                    f"{settings.PEER_SERVICE_URL}/generate", json={"text": peer_prompt}
-                )
-
-                debug_messages.append(
-                    DiscussionMessage(
-                        role="debug",
-                        message=f"[Debug] Peer response status: {peer_response.status_code}",
-                    )
-                )
-
-                if peer_response.status_code != 200:
-                    debug_messages.append(
-                        DiscussionMessage(
-                            role="error",
-                            message=f"[Error] Peer returned status {peer_response.status_code}",
-                        )
-                    )
-                    raise HTTPException(
-                        status_code=peer_response.status_code,
-                        detail="Peer service error",
-                    )
-
-                peer_data = peer_response.json()
-                debug_messages.append(
-                    DiscussionMessage(
-                        role="debug",
-                        message=f"[Debug] Peer response keys: {list(peer_data.keys())}",
-                    )
-                )
-
-                peer_message = peer_data["response"]
-                debug_messages.append(
-                    DiscussionMessage(
-                        role="debug",
-                        message=f"[Debug] Peer response preview: {peer_message[:100]}...",
-                    )
-                )
-
-                discussion_messages.append(
-                    DiscussionMessage(role="peer", message=peer_message)
-                )
-
-        except Exception as e:
-            debug_messages.append(
-                DiscussionMessage(
-                    role="error", message=f"[Error] Peer collaboration failed: {str(e)}"
-                )
-            )
-            raise
-
-        # Final synthesis
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug", message="[Debug] Generating final synthesis..."
-            )
-        )
-
-        try:
-            final_prompt = (
-                f"After peer discussion on '{query}', synthesizing final response..."
-            )
-            final_response = model_manager.get_llm().invoke(final_prompt)
-
-            debug_messages.append(
-                DiscussionMessage(
-                    role="debug",
-                    message=f"[Debug] Final response generated ({len(final_response)} chars)",
-                )
-            )
-            debug_messages.append(
-                DiscussionMessage(
-                    role="debug",
-                    message=f"[Debug] Final response preview: {final_response[:100]}...",
-                )
-            )
-
-            discussion_messages.append(
-                DiscussionMessage(role=settings.SERVICE_ROLE, message=final_response)
-            )
-
-        except Exception as e:
-            debug_messages.append(
-                DiscussionMessage(
-                    role="error", message=f"[Error] Final synthesis failed: {str(e)}"
+                    message=f"[Error] Failed to generate response: {str(e)}",
                 )
             )
             raise
@@ -228,16 +82,14 @@ async def collaborate_with_peer(
             debug_messages + discussion_messages if debug_mode else discussion_messages
         )
 
-        return CollaborationResult(
-            final_response=final_response, discussion=all_messages
-        )
+        return CollaborationResult(final_response=response, discussion=all_messages)
 
     except Exception as e:
-        logger.error(f"Collaboration error: {str(e)}")
+        logger.error(f"Processing error: {str(e)}")
         debug_messages.append(
             DiscussionMessage(
                 role="error",
-                message=f"[Critical Error] Collaboration failed: {str(e)}\n{traceback.format_exc()}",
+                message=f"[Critical Error] Processing failed: {str(e)}\n{traceback.format_exc()}",
             )
         )
         raise
@@ -245,37 +97,12 @@ async def collaborate_with_peer(
 
 @app.post("/generate", response_model=LLMResponse)
 async def generate(request: Request):
-    """Main generate endpoint using collaboration"""
-    debug_messages: List[DiscussionMessage] = []
-
+    """Generates a response based on the user query."""
     try:
         request_data = await request.json()
         logger.info(f"Generate request received: {request_data}")
 
-        debug_messages.append(
-            DiscussionMessage(
-                role="debug",
-                message=f"[Debug] Generate endpoint received request: {request_data}",
-            )
-        )
-
-        # Get collaborative response
-        try:
-            collaboration_result = await collaborate_with_peer(request_data["text"])
-            debug_messages.append(
-                DiscussionMessage(
-                    role="debug",
-                    message=f"[Debug] Collaboration successful. Result length: {len(collaboration_result.discussion)} messages",
-                )
-            )
-        except Exception as e:
-            debug_messages.append(
-                DiscussionMessage(
-                    role="error", message=f"[Error] Collaboration failed: {str(e)}"
-                )
-            )
-            raise
-
+        collaboration_result = await process_request(request_data.get("text", ""))
         return LLMResponse(
             response=collaboration_result.final_response,
             discussion=collaboration_result.discussion,
@@ -283,13 +110,7 @@ async def generate(request: Request):
 
     except Exception as e:
         logger.error(f"Generation error: {str(e)}", exc_info=True)
-        debug_messages.append(
-            DiscussionMessage(
-                role="error",
-                message=f"[Critical Error] Generation failed: {str(e)}\n{traceback.format_exc()}",
-            )
-        )
-        return LLMResponse(response=f"Error: {str(e)}", discussion=debug_messages)
+        return LLMResponse(response=f"Error: {str(e)}", discussion=[])
 
 
 # Add middleware for request tracking
