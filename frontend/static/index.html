@@ -89,6 +89,16 @@
             color: white;
         }
 
+        #chat-llm1-llm2 .llm1-message {
+            background: #e9ecef;
+            color: #212529;
+        }
+
+        #chat-llm1-llm2 .llm2-message {
+            background: #6c757d;
+            color: white;
+        }
+
         .timestamp {
             font-size: 0.8em;
             margin-top: 5px;
@@ -96,15 +106,15 @@
 
         /* Different timestamp colors based on message type */
         .user-message .timestamp {
-            color: rgba(255, 255, 255, 0.8);  /* Light color for dark backgrounds */
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .llm1-message .timestamp {
-            color: #6c757d;  /* Dark color for light backgrounds */
+            color: #6c757d;
         }
 
         .llm2-message .timestamp {
-            color: rgba(255, 255, 255, 0.8);  /* Light color for dark backgrounds */
+            color: rgba(255, 255, 255, 0.8);
         }
 
         /* Scrollbar styling */
@@ -201,8 +211,9 @@
                     // Add LLM discussion to middle chat box
                     if (data.llm_discussion) {
                         data.llm_discussion.forEach(msg => {
+                            const messageClass = msg.role === 'llm1' ? 'llm1-message' : 'llm2-message';
                             const discussionHTML = `
-                                <div class="message ${msg.role === 'llm1' ? 'llm1-message' : 'llm2-message'}">
+                                <div class="message ${messageClass}">
                                     ${msg.role.toUpperCase()}: ${msg.message}
                                     <div class="timestamp">${timestamp}</div>
                                 </div>

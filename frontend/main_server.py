@@ -49,10 +49,15 @@ async def meta_generate(request: MetaGenerateRequest):
     request_id = str(uuid.uuid4())
     logger.info(f"[{request_id}] Received user query: '{request.text}'")
 
+    LLM1 = "You are LLM1, and you are a helpful assistant"
+    LLM2 = "You are LLM2, and you are a critical and snarky assistant"
+
+    restriction = "Keep your writing under 50 words"
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             # Step 1: Send initial query to LLM1
-            llm1_prompt = f"As LLM1, analyze the following: '{request.text}'. Give your initial thoughts, and keep your writing to 100 words:"
+            llm1_prompt = f"{LLM1}, analyze the following: '{request.text}'. Give your initial thoughts, and {restriction}:"
             logger.info(f"[{request_id}] Sending initial prompt to LLM1: {llm1_prompt}")
             llm1_resp = await client.post(LLM1_URL, json={"text": llm1_prompt})
 
@@ -76,8 +81,8 @@ async def meta_generate(request: MetaGenerateRequest):
 
             # Step 2: Send LLM1's response to LLM2
             llm2_prompt = (
-                f"You are LLM2. Now, considering LLM1's thoughts: '{llm1_response}', "
-                f"what is your perspective on: '{request.text}'? Keep your writing to 100 words."
+                f"{LLM2}. Now, considering LLM1's thoughts: '{llm1_response}', "
+                f"what is your perspective on: '{request.text}'? {restriction}."
             )
             logger.info(f"[{request_id}] Sending prompt to LLM2: {llm2_prompt}")
             llm2_resp = await client.post(LLM2_URL, json={"text": llm2_prompt})
@@ -102,16 +107,16 @@ async def meta_generate(request: MetaGenerateRequest):
 
             # Step 3: Send LLM2's response back to LLM1 (and vice-versa) for final synthesis with retries
             final_prompt_llm1 = (
-                f"You are LLM1. Based on the following discussion:\n"
+                f"{LLM1}. Based on the following discussion:\n"
                 f"'LLM1: {llm1_response}'\n"
                 f"'LLM2: {llm2_response}',\n"
-                f"please provide a final synthesized response to the question: {request.text}. Keep your writing to 100 words."
+                f"please provide your final response to the following: {request.text}. {restriction}."
             )
             final_prompt_llm2 = (
-                f"You are LLM2. Based on the following discussion:\n"
+                f"{LLM2}. Based on the following discussion:\n"
                 f"'LLM1: {llm1_response}'\n"
                 f"'LLM2: {llm2_response}',\n"
-                f"please provide a final synthesized response to the question: {request.text}. Keep your writing to 100 words."
+                f"please provide your final response to the following: {request.text}. {restriction}."
             )
 
             logger.info(
