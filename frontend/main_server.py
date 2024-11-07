@@ -52,7 +52,7 @@ async def meta_generate(request: MetaGenerateRequest):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             # Step 1: Send initial query to LLM1
-            llm1_prompt = f"As LLM1, analyze the following: '{request.text}'. Give your initial thoughts:"
+            llm1_prompt = f"As LLM1, analyze the following: '{request.text}'. Give your initial thoughts, and keep your writing to 100 words:"
             logger.info(f"[{request_id}] Sending initial prompt to LLM1: {llm1_prompt}")
             llm1_resp = await client.post(LLM1_URL, json={"text": llm1_prompt})
 
@@ -77,7 +77,7 @@ async def meta_generate(request: MetaGenerateRequest):
             # Step 2: Send LLM1's response to LLM2
             llm2_prompt = (
                 f"You are LLM2. Now, considering LLM1's thoughts: '{llm1_response}', "
-                f"what is your perspective on: '{request.text}'?"
+                f"what is your perspective on: '{request.text}'? Keep your writing to 100 words."
             )
             logger.info(f"[{request_id}] Sending prompt to LLM2: {llm2_prompt}")
             llm2_resp = await client.post(LLM2_URL, json={"text": llm2_prompt})
@@ -105,13 +105,13 @@ async def meta_generate(request: MetaGenerateRequest):
                 f"You are LLM1. Based on the following discussion:\n"
                 f"'LLM1: {llm1_response}'\n"
                 f"'LLM2: {llm2_response}',\n"
-                f"please provide a final synthesized response to the question: {request.text}:"
+                f"please provide a final synthesized response to the question: {request.text}. Keep your writing to 100 words."
             )
             final_prompt_llm2 = (
                 f"You are LLM2. Based on the following discussion:\n"
                 f"'LLM1: {llm1_response}'\n"
                 f"'LLM2: {llm2_response}',\n"
-                f"please provide a final synthesized response to the question: {request.text}:"
+                f"please provide a final synthesized response to the question: {request.text}. Keep your writing to 100 words."
             )
 
             logger.info(
