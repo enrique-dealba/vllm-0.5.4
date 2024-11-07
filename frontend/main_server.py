@@ -70,7 +70,7 @@ async def meta_generate(request: MetaGenerateRequest):
 
             # Step 2: Send LLM1's response to LLM2
             llm2_prompt = (
-                f"Considering your colleague's thoughts: '{llm1_response}', "
+                f"You are LLM2. Now, considering LLM1's thoughts: '{llm1_response}', "
                 f"what is your perspective on: '{request.text}'?"
             )
             logger.info(f"[{request_id}] Sending prompt to LLM2: {llm2_prompt}")
@@ -98,8 +98,9 @@ async def meta_generate(request: MetaGenerateRequest):
             logger.info(f"[{request_id}] Sending final prompt to LLM1: {final_prompt}")
 
             for attempt in range(1, MAX_RETRIES + 1):
+                final_prompt_llm1 = f"As LLM1, analyze the following: {final_prompt}"
                 llm1_final_resp = await client.post(
-                    LLM1_URL, json={"text": final_prompt}
+                    LLM1_URL, json={"text": final_prompt_llm1}
                 )
 
                 if llm1_final_resp.status_code != 200:
@@ -116,7 +117,7 @@ async def meta_generate(request: MetaGenerateRequest):
                 llm1_final_data = llm1_final_resp.json()
                 llm1_final_response = llm1_final_data.get("response", "").strip()
                 logger.info(
-                    f"[{request_id}] Received final response from LLM1: {llm1_final_response}"
+                    f"[{request_id}] Received final response [after {attempt} attempts] from LLM1: {llm1_final_response}"
                 )
 
                 if llm1_final_response:
@@ -129,8 +130,10 @@ async def meta_generate(request: MetaGenerateRequest):
                         llm1_final_response = "I'm sorry, I couldn't synthesize a final response at this time."
 
             for attempt in range(1, MAX_RETRIES + 1):
+                personality_llm2 = "be very critical and careful with your anaysis"
+                final_prompt_llm2 = f"As LLM2, {personality_llm2}, analyze the following: {final_prompt}"
                 llm2_final_resp = await client.post(
-                    LLM2_URL, json={"text": final_prompt}
+                    LLM2_URL, json={"text": final_prompt_llm2}
                 )
 
                 if llm2_final_resp.status_code != 200:
@@ -147,7 +150,7 @@ async def meta_generate(request: MetaGenerateRequest):
                 llm2_final_data = llm2_final_resp.json()
                 llm2_final_response = llm2_final_data.get("response", "").strip()
                 logger.info(
-                    f"[{request_id}] Received final response from LLM2: {llm2_final_response}"
+                    f"[{request_id}] Received final response [after {attempt} attempts] from LLM2: {llm2_final_response}"
                 )
 
                 if llm2_final_response:
