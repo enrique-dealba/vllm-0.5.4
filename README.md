@@ -1,5 +1,5 @@
-# vllm-0.5.4
-Testing vLLM 0.5.4
+# RAG LLM
+Testing vLLM-based RAG System
 
 To build Docker image:
 
