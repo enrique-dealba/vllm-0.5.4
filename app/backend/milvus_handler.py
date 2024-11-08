@@ -1,22 +1,41 @@
 import json
 import logging
+from pathlib import Path
 
+import config
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
 
-from app.config import settings
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MilvusHandler:
     def __init__(self, collection_name="rag_collection"):
-        # Ensure the path is absolute
-        db_path = settings.MILVUS_DB_PATH
-        self.uri = f"sqlite:///{db_path}"
+        db_path = config.MILVUS_DB_PATH
+        db_path_obj = Path(db_path).resolve()
 
-        # Log the URI for debugging
-        logging.info(f"Connecting to Milvus Lite with URI: {self.uri}")
+        # Ensure the directory exists
+        if not db_path_obj.parent.exists():
+            db_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created directory for Milvus Lite DB: {db_path_obj.parent}")
 
-        # Connect to Milvus Lite
-        connections.connect(alias="default", uri=self.uri)
+        # Ensure the database file exists
+        if not db_path_obj.exists():
+            db_path_obj.touch()
+            logger.info(f"Created Milvus Lite DB file: {db_path_obj}")
+
+        # Construct the URI
+        self.uri = f"sqlite:///{db_path_obj}"
+        logger.info(f"Connecting to Milvus Lite with URI: {self.uri}")
+
+        try:
+            connections.connect(alias="default", uri=self.uri)
+            logger.info("Successfully connected to Milvus Lite.")
+        except Exception as e:
+            logger.error(f"Failed to connect to Milvus Lite: {e}")
+            raise e
+
         self.collection_name = collection_name
 
         # Check if collection exists; if not, create it
@@ -28,7 +47,7 @@ class MilvusHandler:
         return connections.list_collections()
 
     def create_collection(
-        self, embedding_dim=settings.EMBEDDING_DIM
+        self, embedding_dim=400
     ):  # Adjust based on your embedding model
         fields = [
             FieldSchema(
@@ -55,7 +74,7 @@ class MilvusHandler:
         ]
         schema = CollectionSchema(fields=fields, description="RAG system collection")
         Collection(name=self.collection_name, schema=schema)
-        print(f"Collection '{self.collection_name}' created successfully.")
+        logger.info(f"Collection '{self.collection_name}' created successfully.")
 
     def insert_documents(self, documents: list):
         """Insert a list of documents into the collection.
@@ -130,3 +149,4 @@ class MilvusHandler:
 
     def disconnect(self):
         connections.disconnect(alias="default")
+        logger.info("Disconnected from Milvus Lite.")

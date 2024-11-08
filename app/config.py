@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
 
     # Milvus Settings for RAG
-    MILVUS_DB_PATH: str = os.path.abspath(
-        "milvus_demo.db"
+    MILVUS_DB_PATH: str = str(
+        Path("/app/milvus_demo.db").resolve()
     )  # Absolute path to Milvus Lite DB
     CHUNK_SIZE: int = 1000  # characters per chunk
     EMBEDDING_MODEL: str = "dunzhang/stella_en_400M_v5"
