@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     MILVUS_DB_PATH: str = "milvus_demo.db"  # Path to Milvus Lite DB
     CHUNK_SIZE: int = 1000  # characters per chunk
     EMBEDDING_MODEL: str = "dunzhang/stella_en_400M_v5"
+    EMBEDDING_DIM: int = 8192
 
     class Config:
         env_file = ".env"
