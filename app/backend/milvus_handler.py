@@ -2,7 +2,7 @@ import json
 
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
 
-from ..config import settings
+from app.config import settings
 
 
 class MilvusHandler:
