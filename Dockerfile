@@ -34,7 +34,6 @@ RUN chmod -R 755 /app
 COPY requirements.txt .
 COPY app/ ./app/
 COPY scripts/ ./scripts/
-COPY test_milvus_connection.py /app/
 
 # Install project dependencies
 RUN pip install -r requirements.txt
