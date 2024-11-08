@@ -27,6 +27,9 @@ RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_V
 # Set working directory
 WORKDIR /app
 
+# Ensure /app is writable
+RUN chmod -R 755 /app
+
 # Copy project files
 COPY requirements.txt .
 COPY app/ ./app/

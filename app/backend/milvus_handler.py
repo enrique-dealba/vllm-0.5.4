@@ -1,4 +1,5 @@
 import json
+import logging
 
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
 
@@ -7,9 +8,18 @@ from app.config import settings
 
 class MilvusHandler:
     def __init__(self, collection_name="rag_collection"):
-        self.uri = f"sqlite:///{settings.MILVUS_DB_PATH}"
+        # Ensure the path is absolute
+        db_path = settings.MILVUS_DB_PATH
+        self.uri = f"sqlite:///{db_path}"
+
+        # Log the URI for debugging
+        logging.info(f"Connecting to Milvus Lite with URI: {self.uri}")
+
+        # Connect to Milvus Lite
         connections.connect(alias="default", uri=self.uri)
         self.collection_name = collection_name
+
+        # Check if collection exists; if not, create it
         if self.collection_name not in self.list_collections():
             self.create_collection()
         self.collection = Collection(name=self.collection_name)
