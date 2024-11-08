@@ -18,7 +18,7 @@ if txt_file:
     chunk_size = 1000  # prev: 1000,
     chunks = [
         content[i : i + chunk_size] for i in range(0, len(content), chunk_size)
-    ]  # Split content into 100-char chunks
+    ]  # Split content into 1000-char chunks
 
     if st.button("Analyze Chunks"):
         st.subheader("Chunk Analysis")
