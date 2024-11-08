@@ -26,8 +26,9 @@ class MilvusHandler:
             db_path_obj.touch()
             logger.info(f"Created Milvus Lite DB file: {db_path_obj}")
 
-        # Construct the URI
-        self.uri = f"sqlite:///{db_path_obj}"
+        # Construct the URI using as_uri and replace scheme
+        # Correct replacement: 'file://' -> 'sqlite:///'
+        self.uri = db_path_obj.as_uri().replace("file://", "sqlite:///")
         logger.info(f"Connecting to Milvus Lite with URI: {self.uri}")
 
         try:
