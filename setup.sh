@@ -36,3 +36,5 @@ EOF
 echo ".env file created successfully!"
 echo "Contents:"
 cat .env
+
+docker compose up -d
