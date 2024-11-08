@@ -4,7 +4,7 @@ from typing import Any, Dict, Union
 from vllm import SamplingParams
 
 from app.config import settings
-from app.langchain_structured_outputs import generate_structured_response
+from app.langchain_structured_outputs import generate_structured_response as generate
 from app.model import image, llm, vlm
 from app.utils import log_to_langsmith, time_function
 
@@ -43,7 +43,7 @@ def generate_unstructured_response(user_input: str) -> str:
 def generate_response(user_input: str) -> Union[str, Dict[str, Any]]:
     try:
         if settings.USE_STRUCTURED_OUTPUT:
-            response, execution_time = generate_structured_response(user_input)
+            response, execution_time = generate(user_input)
             log_to_langsmith(
                 chain_name="Structured Output Chain",
                 inputs={"query": user_input},

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,6 +26,33 @@ class EvidenceLLMResponse(BaseModel):
     )
     confidence: float = Field(
         ..., ge=0, le=1, description="Confidence score of the response"
+    )
+
+
+class ChunkMetadata(BaseModel):
+    source_files: List[str] = Field(
+        ..., description="List of source JSON files contributing to this chunk"
+    )
+    json_keys_summary: List[str] = Field(
+        ...,
+        description="List of key names appearing in the chunk, providing a quick summary of the contents",
+    )
+    descriptive_labels: Dict[str, str] = Field(
+        ...,
+        description="Mapping of JSON keys to more understandable labels within the chunk, if applicable",
+    )
+    context_info: str = Field(
+        None,
+        description="Additional context or notes that describe the overall content of this chunk",
+    )
+    num_values: int = Field(
+        ..., description="Number of JSON key-value pairs in the chunk"
+    )
+    priority_level: int = Field(
+        1,
+        ge=1,
+        le=100,
+        description="Indicates the priority level of the chunk. 1 is low priority and 100 is highest priority",
     )
 
 
