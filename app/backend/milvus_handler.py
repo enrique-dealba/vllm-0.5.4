@@ -2,8 +2,9 @@ import json
 import logging
 from pathlib import Path
 
-import config
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
+
+from app.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class MilvusHandler:
     def __init__(self, collection_name="rag_collection"):
-        db_path = config.MILVUS_DB_PATH
+        db_path = settings.MILVUS_DB_PATH
         db_path_obj = Path(db_path).resolve()
 
         # Ensure the directory exists
