@@ -1,6 +1,5 @@
 import json
 import logging
-from pathlib import Path
 
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
 
@@ -13,29 +12,15 @@ logger = logging.getLogger(__name__)
 
 class MilvusHandler:
     def __init__(self, collection_name="rag_collection"):
-        db_path = settings.MILVUS_DB_PATH
-        db_path_obj = Path(db_path).resolve()
-
-        # Ensure the directory exists
-        if not db_path_obj.parent.exists():
-            db_path_obj.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created directory for Milvus Lite DB: {db_path_obj.parent}")
-
-        # Ensure the database file exists
-        if not db_path_obj.exists():
-            db_path_obj.touch()
-            logger.info(f"Created Milvus Lite DB file: {db_path_obj}")
-
-        # Construct the URI using as_uri and replace scheme
-        # Correct replacement: 'file://' -> 'sqlite:///'
-        self.uri = db_path_obj.as_uri().replace("file://", "sqlite:///")
-        logger.info(f"Connecting to Milvus Lite with URI: {self.uri}")
+        # Remove file-based DB path logic
+        self.uri = settings.MILVUS_URI
+        logger.info(f"Connecting to Milvus with URI: {self.uri}")
 
         try:
             connections.connect(alias="default", uri=self.uri)
-            logger.info("Successfully connected to Milvus Lite.")
+            logger.info("Successfully connected to Milvus.")
         except Exception as e:
-            logger.error(f"Failed to connect to Milvus Lite: {e}")
+            logger.error(f"Failed to connect to Milvus: {e}")
             raise e
 
         self.collection_name = collection_name
@@ -49,7 +34,7 @@ class MilvusHandler:
         return connections.list_collections()
 
     def create_collection(
-        self, embedding_dim=400
+        self, embedding_dim=settings.EMBEDDING_DIM
     ):  # Adjust based on your embedding model
         fields = [
             FieldSchema(
