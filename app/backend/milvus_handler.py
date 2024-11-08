@@ -18,7 +18,7 @@ class MilvusHandler:
         return connections.list_collections()
 
     def create_collection(
-        self, embedding_dim=400
+        self, embedding_dim=settings.EMBEDDING_DIM
     ):  # Adjust based on your embedding model
         fields = [
             FieldSchema(
