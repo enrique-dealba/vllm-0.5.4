@@ -42,18 +42,18 @@ cat .env
 
 # Validate docker-compose.yml before proceeding
 echo "Validating docker-compose.yml..."
-if ! docker-compose config > /dev/null 2>&1; then
+if ! docker compose config > /dev/null 2>&1; then
     echo "Error: docker-compose.yml is invalid. Please check the file for syntax errors."
     exit 1
 fi
 
 # Bring down any existing containers to ensure a clean start
 echo "Stopping and removing any existing Docker containers..."
-docker-compose down
+docker compose down
 
 # Start the Docker containers in detached mode
 echo "Starting Docker containers..."
-docker-compose up -d
+docker compose up -d
 
 # Provide feedback to the user
 echo "Docker Compose services are up and running."
@@ -67,7 +67,7 @@ elapsed=0
 while ! curl -sSf http://localhost:19121/health >/dev/null 2>&1; do
     if [ $elapsed -ge $TIMEOUT ]; then
         echo "Error: Milvus did not become healthy within $TIMEOUT seconds."
-        echo "Check the logs using 'docker-compose logs milvus' for more information."
+        echo "Check the logs using 'docker compose logs milvus' for more information."
         exit 1
     fi
     echo "Milvus is not healthy yet. Waiting..."
