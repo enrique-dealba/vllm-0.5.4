@@ -1,14 +1,15 @@
 version: '3.8'
 services:
   milvus:
-    image: milvusdb/milvus:latest
+    image: milvusdb/milvus-standalone:latest
     container_name: milvus-standalone
-    command: milvus run standalone
     ports:
-      - "19530:19530"
-      - "19121:19121"
+      - "19530:19530"  # Milvus gRPC port
+      - "19121:19121"  # Milvus HTTP port
     environment:
       - TZ=UTC
+      - "TZ=UTC"
+      # Optional: Configure other environment variables as needed
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
@@ -50,6 +51,6 @@ services:
 networks:
   default:
     name: my-network
-    
+
 volumes:
   milvus_data:
