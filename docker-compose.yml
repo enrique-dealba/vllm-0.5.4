@@ -7,9 +7,8 @@ services:
       - "19530:19530"  # Milvus gRPC port
       - "19121:19121"  # Milvus HTTP port
     environment:
-      - TZ=UTC
-      - "TZ=UTC"
-      # Optional: Configure other environment variables as needed
+      TZ: UTC
+      # Add other environment variables here if needed
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
@@ -33,15 +32,15 @@ services:
     ports:
       - "8888:8888"
     environment:
-      - RUN_MODE=ui
-      - MODEL_TYPE=LLM
-      - LLM_RESPONSE_SCHEMA=ChunkMetadata
-      - LANGCHAIN_PROJECT=demo-20241009
-      - LLM_MODEL_NAME=mistralai/Mistral-Small-Instruct-2409
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
-      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
-      - MILVUS_HOST=milvus-standalone
-      - MILVUS_PORT=19530
+      RUN_MODE: ui
+      MODEL_TYPE: LLM
+      LLM_RESPONSE_SCHEMA: ChunkMetadata
+      LANGCHAIN_PROJECT: demo-20241009
+      LLM_MODEL_NAME: mistralai/Mistral-Small-Instruct-2409
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY}
+      MILVUS_HOST: milvus-standalone
+      MILVUS_PORT: 19530
     depends_on:
       milvus:
         condition: service_healthy
