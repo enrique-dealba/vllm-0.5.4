@@ -26,7 +26,8 @@ services:
   app:
     build: .
     container_name: llm
-    gpus: all  # Enables GPU access
+    gpus:
+      - "all"  # Enables GPU access
     ports:
       - "8888:8888"
     environment:
