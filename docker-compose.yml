@@ -9,14 +9,22 @@ services:
       - "19121:19121"  # Milvus HTTP port
     environment:
       TZ: UTC
+      ETCD_USE_EMBED: "true"
+      ETCD_DATA_DIR: "/var/lib/milvus/etcd"
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19121/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
   app:
     build: .
@@ -34,7 +42,8 @@ services:
       MILVUS_HOST: milvus-standalone
       MILVUS_PORT: 19530
     depends_on:
-      - milvus
+      milvus:
+        condition: service_healthy
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
 
