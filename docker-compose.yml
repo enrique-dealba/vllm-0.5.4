@@ -1,8 +1,9 @@
 version: '3.8'
 services:
   milvus:
-    image: milvusdb/milvus-standalone:latest
+    image: milvusdb/milvus:latest
     container_name: milvus-standalone
+    command: milvus run standalone
     ports:
       - "19530:19530"  # Milvus gRPC port
       - "19121:19121"  # Milvus HTTP port
@@ -11,6 +12,8 @@ services:
       # Add other environment variables here if needed
     volumes:
       - milvus_data:/var/lib/milvus
+      - ./embedEtcd.yaml:/etc/milvus/embedEtcd.yaml  # Optional: If you have custom etcd configuration
+      - ./user.yaml:/etc/milvus/user.yaml            # Optional: If you have custom Milvus configuration
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19121/health"]
       interval: 10s
