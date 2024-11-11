@@ -41,6 +41,7 @@ echo "Contents of .env:"
 cat .env
 
 # Validate docker-compose.yml before proceeding
+echo "Validating docker-compose.yml..."
 if ! docker-compose config > /dev/null 2>&1; then
     echo "Error: docker-compose.yml is invalid. Please check the file for syntax errors."
     exit 1

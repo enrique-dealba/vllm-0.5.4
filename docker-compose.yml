@@ -12,8 +12,9 @@ services:
       # Add other environment variables here if needed
     volumes:
       - milvus_data:/var/lib/milvus
-      - ./embedEtcd.yaml:/etc/milvus/embedEtcd.yaml  # Optional: If you have custom etcd configuration
-      - ./user.yaml:/etc/milvus/user.yaml            # Optional: If you have custom Milvus configuration
+      # Uncomment and ensure these files exist if you have custom configurations
+      # - ./embedEtcd.yaml:/etc/milvus/embedEtcd.yaml
+      # - ./user.yaml:/etc/milvus/user.yaml
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19121/health"]
       interval: 10s
@@ -45,8 +46,7 @@ services:
       MILVUS_HOST: milvus-standalone
       MILVUS_PORT: 19530
     depends_on:
-      milvus:
-        condition: service_healthy
+      milvus: []
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
 
