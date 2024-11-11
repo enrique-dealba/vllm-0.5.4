@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   milvus:
     image: milvusdb/milvus:latest
@@ -12,7 +13,7 @@ services:
       # Add other environment variables here if needed
     volumes:
       - milvus_data:/var/lib/milvus
-      # Uncomment and ensure these files exist if you have custom configurations
+      # Uncomment the following lines if you have custom configuration files
       # - ./embedEtcd.yaml:/etc/milvus/embedEtcd.yaml
       # - ./user.yaml:/etc/milvus/user.yaml
     healthcheck:
@@ -25,14 +26,7 @@ services:
   app:
     build: .
     container_name: llm
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    gpus: all  # Enables GPU access
     ports:
       - "8888:8888"
     environment:
@@ -46,7 +40,7 @@ services:
       MILVUS_HOST: milvus-standalone
       MILVUS_PORT: 19530
     depends_on:
-      milvus: []
+      - milvus  # Simple list without conditions
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
 
