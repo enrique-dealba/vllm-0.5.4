@@ -11,12 +11,12 @@ services:
       - TZ=UTC
     volumes:
       - milvus_data:/var/lib/milvus
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "19530"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+    # healthcheck:
+    #   test: ["CMD", "nc", "-z", "localhost", "19530"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 20s
 
   app:
     build: .
