@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   milvus:
     image: milvusdb/milvus:latest
@@ -10,12 +9,8 @@ services:
       - "19121:19121"  # Milvus HTTP port
     environment:
       TZ: UTC
-      # Add other environment variables here if needed
     volumes:
       - milvus_data:/var/lib/milvus
-      # Uncomment the following lines if you have custom configuration files
-      # - ./embedEtcd.yaml:/etc/milvus/embedEtcd.yaml
-      # - ./user.yaml:/etc/milvus/user.yaml
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:19121/health"]
       interval: 10s
@@ -26,8 +21,6 @@ services:
   app:
     build: .
     container_name: llm
-    gpus:
-      - "all"  # Enables GPU access
     ports:
       - "8888:8888"
     environment:
@@ -41,7 +34,7 @@ services:
       MILVUS_HOST: milvus-standalone
       MILVUS_PORT: 19530
     depends_on:
-      - milvus  # Simple list without conditions
+      - milvus
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
 
