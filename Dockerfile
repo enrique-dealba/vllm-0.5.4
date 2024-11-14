@@ -3,9 +3,12 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
 
-# Install system dependencies
+# Install system dependencies including PostgreSQL dev packages
 RUN apt-get update && apt-get install -y \
     wget \
+    libpq-dev \
+    python3-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
