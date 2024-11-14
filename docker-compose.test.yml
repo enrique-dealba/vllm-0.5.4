@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  test_db:
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      - POSTGRES_DB=test_db
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  tests:
+    build: .
+    environment:
+      - TIMESCALE_SERVICE_URL=postgres://test_user:test_password@test_db:5432/test_db
+    depends_on:
+      test_db:
+        condition: service_healthy
+    command: pytest tests/ -v --log-cli-level=INFO

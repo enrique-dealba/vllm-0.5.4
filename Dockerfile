@@ -5,11 +5,15 @@ ENV PYTHON_VERSION=310
 
 # Install system dependencies including PostgreSQL dev packages
 RUN apt-get update && apt-get install -y \
-    wget \
+    libffi-dev \
     libpq-dev \
     python3-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
+
+# Reinstall psycopg2 with system libraries
+RUN pip uninstall -y psycopg2-binary psycopg2 && \
+    pip install --no-cache-dir psycopg2-binary
 
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \

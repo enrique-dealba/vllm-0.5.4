@@ -9,3 +9,6 @@ streamlit
 instructor
 timescale-vector
 pgvector
+pytest
+pytest-asyncio
+pytest-cov
