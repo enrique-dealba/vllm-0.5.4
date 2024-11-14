@@ -9,7 +9,9 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     python3-dev \
     gcc \
-    libffi-dev \
+    && wget http://archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb \
+    && dpkg -i libffi7_3.3-4_amd64.deb \
+    && rm libffi7_3.3-4_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
@@ -28,9 +30,8 @@ SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
-# Uninstall existing psycopg2 and install from source
-RUN pip uninstall -y psycopg2-binary psycopg2 && \
-    pip install --no-cache-dir psycopg2-binary --no-binary :all:
+# Install psycopg2 after libffi is properly installed
+RUN pip install --no-cache-dir psycopg2-binary
 
 # Set working directory
 WORKDIR /app
