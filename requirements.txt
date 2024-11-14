@@ -12,3 +12,5 @@ pgvector
 pytest
 pytest-asyncio
 pytest-cov
+psycopg2-binary
+pandas

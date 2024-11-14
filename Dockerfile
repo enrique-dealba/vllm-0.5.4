@@ -3,17 +3,14 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
 
-# Install system dependencies including PostgreSQL dev packages
+# Install system dependencies including proper libffi version
 RUN apt-get update && apt-get install -y \
-    libffi-dev \
+    wget \
     libpq-dev \
     python3-dev \
     gcc \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Reinstall psycopg2 with system libraries
-RUN pip uninstall -y psycopg2-binary psycopg2 && \
-    pip install --no-cache-dir psycopg2-binary
 
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
@@ -31,6 +28,10 @@ SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
+# Uninstall existing psycopg2 and install from source
+RUN pip uninstall -y psycopg2-binary psycopg2 && \
+    pip install --no-cache-dir psycopg2-binary --no-binary :all:
+
 # Set working directory
 WORKDIR /app
 
@@ -38,6 +39,7 @@ WORKDIR /app
 COPY requirements.txt .
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY tests/ ./tests/
 
 # Install project dependencies
 RUN pip install -r requirements.txt
