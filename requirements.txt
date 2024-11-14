@@ -7,3 +7,5 @@ pydantic_settings
 pydantic-core
 streamlit
 instructor
+timescale-vector
+pgvector
