@@ -1,3 +1,4 @@
+# docker-compose.test.yml
 version: '3.8'
 
 services:
@@ -15,6 +16,9 @@ services:
   tests:
     build: .
     env_file: .env
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - ./tests:/app/tests  # Optional: mount tests dir for faster development
     depends_on:
       test_db:
         condition: service_healthy
