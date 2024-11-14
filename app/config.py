@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from pydantic_settings import BaseSettings
 
 
@@ -30,6 +32,18 @@ class Settings(BaseSettings):
     # LLM Structured Output Settings
     USE_STRUCTURED_OUTPUT: bool = True
     LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
+
+    # Embedding Settings
+    EMBEDDING_MODEL: str = "dunzhang/stella_en_400M_v5"
+    EMBEDDING_DIM: int = 8192
+
+    # PostgreSQL/Timescale Settings
+    TIMESCALE_SERVICE_URL: str = "postgres://postgres:password@localhost:5432/postgres"
+    VECTOR_STORE_TABLE_NAME: str = "embeddings"
+    VECTOR_STORE_EMBEDDING_DIMENSIONS: int = (
+        1536  # TODO: Does this need to match EMBEDDING_DIM?
+    )
+    VECTOR_STORE_TIME_PARTITION_INTERVAL: timedelta = timedelta(days=7)
 
     class Config:
         env_file = ".env"

@@ -63,3 +63,19 @@ def generate_response(user_input: str) -> Union[str, Dict[str, Any]]:
     except Exception as e:
         logger.exception(f"Error during LLM generation: {e}")
         raise
+
+
+def generate(user_input: str) -> Union[str, Dict[str, Any]]:
+    try:
+        response, execution_time = generate_unstructured_response(user_input)
+        log_to_langsmith(
+            chain_name="Unstructured Output Chain",
+            inputs={"query": user_input},
+            outputs={"response": response},
+            metadata={"model_type": settings.MODEL_TYPE, "structured": False},
+        )
+
+        return response, execution_time
+    except Exception as e:
+        logger.exception(f"Error during LLM generation: {e}")
+        raise
