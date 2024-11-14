@@ -1,6 +1,4 @@
-# docker-compose.test.yml
 version: '3.8'
-
 services:
   test_db:
     image: timescale/timescaledb-ha:pg16
@@ -16,10 +14,14 @@ services:
   tests:
     build: .
     env_file: .env
+    environment:
+      - RUN_MODE=test
+      - PYTHONPATH=/app
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
-      - ./tests:/app/tests  # Optional: mount tests dir for faster development
+      - ./tests:/app/tests
     depends_on:
       test_db:
         condition: service_healthy
-    command: pytest tests/ -v --log-cli-level=INFO
+    # Add explicit test command
+    command: python -m pytest /app/tests -v --log-cli-level=INFO

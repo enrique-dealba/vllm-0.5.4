@@ -16,6 +16,9 @@ if [ "$RUN_MODE" = "server" ]; then
 elif [ "$RUN_MODE" = "ui" ]; then
     echo "Starting Streamlit UI..."
     exec streamlit run /app/app/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
+elif [ "$RUN_MODE" = "test" ]; then
+    echo "Running tests..."
+    exec pytest tests/ -v --log-cli-level=INFO
 else
     echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server' or 'ui'."
     exit 1
