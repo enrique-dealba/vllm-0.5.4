@@ -1,5 +1,5 @@
-# vllm-0.5.4
-Testing vLLM 0.5.4
+# PostgreSQL RAG
+Testing vLLM + RAG system
 
 To build Docker image:
 
