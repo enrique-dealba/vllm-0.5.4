@@ -67,8 +67,7 @@ if txt_file:
                     "id": chunk_id,
                     "metadata": llm_response,
                     "content": chunk,
-                    "chunk_embedding": chunk_embedding,
-                    "metadata_embedding": metadata_embedding,
+                    "embedding": metadata_embedding,  # Using metadata_embedding as main embedding
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
 
