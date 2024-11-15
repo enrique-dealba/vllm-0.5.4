@@ -25,11 +25,11 @@ COPY requirements.test.txt .
 COPY app/ ./app/
 COPY tests/ ./tests/
 COPY scripts/verify_*.sh ./
-COPY init-db.sh ./init-db.sh  # Add this line
+COPY init-db.sh ./init-db.sh
 
 # Set permissions for scripts
 RUN chmod +x verify_*.sh \
-    && chmod +x init-db.sh  # Add this line
+    && chmod +x init-db.sh
 
 # Install only required Python packages
 RUN pip install --no-cache-dir -r requirements.test.txt
