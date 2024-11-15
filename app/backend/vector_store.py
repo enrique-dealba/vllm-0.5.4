@@ -82,8 +82,15 @@ class VectorStore:
                 values = []
                 for _, row in df.iterrows():
                     record_id = row.get("id") or str(uuid.uuid4())
+                    # Convert embedding list to string format PostgreSQL expects
+                    embedding_str = f"[{','.join(map(str, row['embedding']))}]"
                     values.append(
-                        (record_id, row["metadata"], row["content"], row["embedding"])
+                        (
+                            record_id,
+                            Json(row["metadata"]),
+                            row["content"],
+                            embedding_str,
+                        )
                     )
 
                 execute_values(
@@ -95,7 +102,7 @@ class VectorStore:
                     DO UPDATE SET 
                         metadata = EXCLUDED.metadata,
                         content = EXCLUDED.content,
-                        embedding = EXCLUDED.embedding;
+                        embedding = EXCLUDED.embedding::vector;
                 """,
                     values,
                 )
@@ -116,14 +123,16 @@ class VectorStore:
         """Perform similarity search with optional filtering."""
         try:
             query_embedding = self.get_embedding(query_text)
+            embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
             query = f"""
-                SELECT id, metadata, content, embedding, 
-                    1 - (embedding <=> %s::vector) as similarity
-                FROM {settings.VECTOR_STORE_TABLE_NAME}
-                WHERE 1=1
+                WITH similarity_search AS (
+                    SELECT id, metadata, content, embedding,
+                           1 - (embedding <=> %s::vector) as similarity
+                    FROM {settings.VECTOR_STORE_TABLE_NAME}
+                    WHERE 1=1
             """
-            params = [query_embedding]
+            params = [embedding_str]
 
             if metadata_filter:
                 query += " AND metadata @> %s::jsonb"
@@ -134,10 +143,16 @@ class VectorStore:
                 query += " AND created_at BETWEEN %s AND %s"
                 params.extend([start_date, end_date])
 
-            query += " ORDER BY embedding <=> %s::vector LIMIT %s"
-            params.extend([query_embedding, limit])
+            query += """
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                )
+                SELECT * FROM similarity_search
+            """
+            params.extend([embedding_str, limit])
 
             with self.conn.cursor() as cur:
+                logger.debug(f"Executing search query: {cur.mogrify(query, params)}")
                 cur.execute(query, params)
                 results = cur.fetchall()
 
@@ -147,6 +162,16 @@ class VectorStore:
 
         except Exception as e:
             logger.error(f"Error during search: {e}")
+            raise
+
+    def get_embedding(self, text: str) -> List[float]:
+        """Generate embedding for a single text."""
+        text = text.replace("\n", " ")
+        try:
+            embedding = self.embedder.encode([text])[0]
+            return embedding
+        except Exception as e:
+            logger.error(f"Error generating embedding: {e}")
             raise
 
     def _create_dataframe_from_results(
@@ -183,16 +208,6 @@ class VectorStore:
             logger.error(f"Error formatting results: {e}")
             raise
 
-    def get_embedding(self, text: str) -> List[float]:
-        """Generate embedding for a single text."""
-        text = text.replace("\n", " ")
-        try:
-            embedding = self.embedder.encode([text])[0]
-            return embedding
-        except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
-            raise
-
     def delete(
         self,
         ids: Optional[List[str]] = None,
@@ -210,9 +225,11 @@ class VectorStore:
                 if delete_all:
                     cur.execute(f"TRUNCATE TABLE {settings.VECTOR_STORE_TABLE_NAME}")
                 elif ids:
+                    # Cast the string IDs to UUID
+                    uuid_array = [str(uuid.UUID(id_)) for id_ in ids]
                     cur.execute(
-                        f"DELETE FROM {settings.VECTOR_STORE_TABLE_NAME} WHERE id = ANY(%s)",
-                        (ids,),
+                        f"DELETE FROM {settings.VECTOR_STORE_TABLE_NAME} WHERE id = ANY(%s::uuid[])",
+                        (uuid_array,),
                     )
                 elif metadata_filter:
                     cur.execute(
