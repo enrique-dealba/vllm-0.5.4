@@ -125,14 +125,13 @@ class VectorStore:
         metadata_filter: Optional[Dict[str, Any]] = None,
         time_range: Optional[Tuple[datetime, datetime]] = None,
         return_dataframe: bool = True,
-        similarity_threshold: float = 0.0,  # Add threshold parameter
+        similarity_threshold: float = 0.0,
     ) -> Union[List[Tuple[Any, ...]], pd.DataFrame]:
         """Perform similarity search with optional filtering."""
         try:
             query_embedding = self.get_embedding(query_text)
             embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
-            # Debug logging
             logger.debug(f"Search query text: {query_text}")
             logger.debug(f"Query embedding first few values: {query_embedding[:5]}")
 
@@ -142,6 +141,7 @@ class VectorStore:
                     metadata, 
                     content, 
                     embedding,
+                    created_at,  -- Added
                     1 - (embedding <=> %s::vector) as similarity
                 FROM {settings.VECTOR_STORE_TABLE_NAME}
                 WHERE 1 - (embedding <=> %s::vector) >= %s
@@ -161,14 +161,12 @@ class VectorStore:
             params.append(limit)
 
             with self.conn.cursor() as cur:
-                # Debug the actual SQL being executed
                 formatted_query = cur.mogrify(query, params).decode("utf-8")
                 logger.debug(f"Executing search query: {formatted_query}")
 
                 cur.execute(query, params)
                 results = cur.fetchall()
 
-                # Debug the raw results
                 logger.debug(f"Raw results count: {len(results)}")
                 if results:
                     logger.debug(f"First result similarity: {results[0][-1]}")
@@ -202,29 +200,31 @@ class VectorStore:
             if not results:
                 logger.debug("No results to convert to DataFrame")
                 return pd.DataFrame(
-                    columns=["id", "metadata", "content", "embedding", "similarity"]
+                    columns=[
+                        "id",
+                        "metadata",
+                        "content",
+                        "embedding",
+                        "created_at",
+                        "similarity",
+                    ]
                 )
 
             logger.debug(f"Converting {len(results)} results to DataFrame")
             df = pd.DataFrame(
                 results,
-                columns=["id", "metadata", "content", "embedding", "similarity"],
+                columns=[
+                    "id",
+                    "metadata",
+                    "content",
+                    "embedding",
+                    "created_at",
+                    "similarity",
+                ],
             )
             logger.debug(f"DataFrame shape before metadata expansion: {df.shape}")
 
-            # Only try to expand metadata if there are results and metadata is not None
-            if len(df) > 0 and not df["metadata"].isna().all():
-                # Keep the original columns except metadata
-                original_cols = df.drop(columns=["metadata"])
-
-                # Expand metadata into new columns
-                metadata_df = pd.json_normalize(df["metadata"].fillna({}))
-                logger.debug(f"Metadata columns: {metadata_df.columns.tolist()}")
-
-                # Combine back together
-                df = pd.concat([original_cols, metadata_df], axis=1)
-                logger.debug(f"Final DataFrame shape: {df.shape}")
-
+            # Retain 'metadata' as a JSON column
             return df
         except Exception as e:
             logger.error(f"Error formatting results: {e}")

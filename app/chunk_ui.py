@@ -97,18 +97,20 @@ if txt_file:
                     st.info("No chunks found in the database")
                 else:
                     for _, row in results.iterrows():
+                        metadata = row.get("metadata", {})
+                        created_at = row.get("created_at", "N/A")
                         formatted_data = {
-                            "ID": row["id"],
-                            "Chunk": row["content"],
-                            "Source Files": row["metadata"].get("source_files", []),
-                            "JSON Keys": row["metadata"].get("json_keys_summary", []),
-                            "Descriptive Labels": row["metadata"].get(
+                            "ID": row.get("id", "N/A"),
+                            "Chunk": row.get("content", ""),
+                            "Source Files": metadata.get("source_files", []),
+                            "JSON Keys": metadata.get("json_keys_summary", []),
+                            "Descriptive Labels": metadata.get(
                                 "descriptive_labels", {}
                             ),
-                            "Context": row["metadata"].get("context_info", ""),
-                            "Number of Values": row["metadata"].get("num_values", 0),
-                            "Priority Level": row["metadata"].get("priority_level", 1),
-                            "Created At": row["created_at"],
+                            "Context": metadata.get("context_info", ""),
+                            "Number of Values": metadata.get("num_values", 0),
+                            "Priority Level": metadata.get("priority_level", 1),
+                            "Created At": created_at,
                         }
 
                         with st.expander(
