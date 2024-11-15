@@ -125,12 +125,12 @@ class VectorStore:
             query_embedding = self.get_embedding(query_text)
             embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
+            # Simpler query structure to start
             query = f"""
-                WITH similarity_search AS (
-                    SELECT id, metadata, content, embedding,
-                           1 - (embedding <=> %s::vector) as similarity
-                    FROM {settings.VECTOR_STORE_TABLE_NAME}
-                    WHERE 1=1
+                SELECT id, metadata, content, embedding,
+                    1 - (embedding <=> %s::vector) as similarity
+                FROM {settings.VECTOR_STORE_TABLE_NAME}
+                WHERE TRUE
             """
             params = [embedding_str]
 
@@ -143,22 +143,24 @@ class VectorStore:
                 query += " AND created_at BETWEEN %s AND %s"
                 params.extend([start_date, end_date])
 
-            query += """
-                    ORDER BY embedding <=> %s::vector
-                    LIMIT %s
-                )
-                SELECT * FROM similarity_search
-            """
+            # Order by cosine similarity
+            query += " ORDER BY (embedding <=> %s::vector) ASC LIMIT %s"
             params.extend([embedding_str, limit])
 
             with self.conn.cursor() as cur:
-                logger.debug(f"Executing search query: {cur.mogrify(query, params)}")
+                # Debug log the exact query being executed
+                formatted_query = cur.mogrify(query, params).decode("utf-8")
+                logger.debug(f"Executing search query: {formatted_query}")
+
                 cur.execute(query, params)
                 results = cur.fetchall()
+                logger.debug(f"Search returned {len(results)} results")
 
-            if return_dataframe:
-                return self._create_dataframe_from_results(results)
-            return results
+                if return_dataframe:
+                    df = self._create_dataframe_from_results(results)
+                    logger.debug(f"Converted to DataFrame with {len(df)} rows")
+                    return df
+                return results
 
         except Exception as e:
             logger.error(f"Error during search: {e}")
@@ -180,10 +182,12 @@ class VectorStore:
         """Format search results as DataFrame."""
         try:
             if not results:
+                logger.debug("No results to convert to DataFrame")
                 return pd.DataFrame(
                     columns=["id", "metadata", "content", "embedding", "similarity"]
                 )
 
+            logger.debug(f"Converting {len(results)} results to DataFrame")
             df = pd.DataFrame(
                 results,
                 columns=["id", "metadata", "content", "embedding", "similarity"],
@@ -191,10 +195,7 @@ class VectorStore:
 
             # Only try to expand metadata if there are results and metadata is not None
             if len(df) > 0 and not df["metadata"].isna().all():
-                # Keep the original metadata column and expand it
                 metadata_df = pd.json_normalize(df["metadata"].fillna({}))
-
-                # Combine the original DataFrame with the expanded metadata
                 df = pd.concat(
                     [
                         df.drop("metadata", axis=1),
@@ -203,6 +204,7 @@ class VectorStore:
                     axis=1,
                 )
 
+            logger.debug(f"Final DataFrame has {len(df)} rows")
             return df
         except Exception as e:
             logger.error(f"Error formatting results: {e}")
@@ -240,4 +242,19 @@ class VectorStore:
             logger.info("Delete operation completed successfully")
         except Exception as e:
             logger.error(f"Error during delete: {e}")
+            raise
+
+    def verify_record_exists(self, content: str) -> bool:
+        """Verify if a record with given content exists."""
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT COUNT(*) FROM {settings.VECTOR_STORE_TABLE_NAME} WHERE content = %s",
+                    (content,),
+                )
+                count = cur.fetchone()[0]
+                logger.debug(f"Found {count} records with content: {content}")
+                return count > 0
+        except Exception as e:
+            logger.error(f"Error verifying record: {e}")
             raise

@@ -78,12 +78,23 @@ def test_upsert_and_search(vector_store, sample_data):
     # Upsert sample data
     vector_store.upsert(sample_data)
 
+    # Verify records exist
+    for content in sample_data["content"]:
+        assert vector_store.verify_record_exists(
+            content
+        ), f"Record with content '{content}' not found"
+
     # Search for similar documents
     query = "test document"
     results = vector_store.search(query, limit=2)
 
-    assert len(results) == 2
-    assert "content" in results.columns
+    # Debug output
+    logger.info(f"Search results size: {len(results)}")
+    if len(results) > 0:
+        logger.info(f"First result similarity: {results.iloc[0]['similarity']}")
+
+    assert len(results) == 2, f"Expected 2 results, got {len(results)}"
+    assert "content" in results.columns, "Results should contain 'content' column"
     assert all("test document" in content.lower() for content in results["content"])
 
 
