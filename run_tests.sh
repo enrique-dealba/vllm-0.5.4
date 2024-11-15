@@ -62,12 +62,17 @@ HF_TOKEN=${HF_TOKEN:-$DEFAULT_HF_TOKEN}
 LANGCHAIN_TOKEN=${LANGCHAIN_TOKEN:-$DEFAULT_LANGCHAIN_TOKEN}
 
 # Run cleanup first
+echo "======================="
+echo "STEP 1: Cleanup"
+echo "======================="
 echo "Cleaning up existing containers..."
 docker compose -f docker-compose.test.yml down -v --remove-orphans
 
 # Generate .env file
-echo "Generating .env file..."
-cat > .env << EOF
+echo "======================="
+echo "STEP 2: Environment Setup"
+echo "======================="
+echo "Generating .env file..."cat > .env << EOF
 # Database Configuration
 POSTGRES_DB=$DB_NAME
 POSTGRES_USER=$DB_USER
@@ -89,26 +94,44 @@ EOF
 
 echo "Environment file created successfully!"
 
-# Build and run tests
+echo "======================="
+echo "STEP 3: Build"
+echo "======================="
 echo "Building test environment..."
 docker compose -f docker-compose.test.yml build
 
-echo "Verifying library setup..."
+echo "======================="
+echo "STEP 4: Library Verification"
+echo "======================="
+echo "Running library verification..."
 docker compose -f docker-compose.test.yml run tests /usr/local/bin/verify_libs.sh
-
 if [ $? -ne 0 ]; then
-    echo "Library verification failed!"
+    echo "ERROR: Library verification failed!"
     exit 1
 fi
 
-# Before running tests, verify environment
-echo "Verifying environment..."
+echo "======================="
+echo "STEP 5: Environment Verification"
+echo "======================="
+echo "Running environment verification..."
 docker compose -f docker-compose.test.yml run \
     -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
-    tests /bin/bash -c "./verify_env.sh && pytest tests/ -v --log-cli-level=INFO"
+    tests /bin/bash -c "./verify_env.sh"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Environment verification failed!"
+    exit 1
+fi
 
-echo "Running tests..."
-docker compose -f docker-compose.test.yml run tests
+echo "======================="
+echo "STEP 6: Running Tests"
+echo "======================="
+echo "Executing pytest..."
+docker compose -f docker-compose.test.yml run \
+    -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
+    tests pytest tests/ -v --log-cli-level=INFO
 
-# Cleanup
+echo "======================="
+echo "STEP 7: Cleanup"
+echo "======================="
+echo "Cleaning up containers..."
 docker compose -f docker-compose.test.yml down -v
