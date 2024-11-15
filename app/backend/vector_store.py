@@ -27,8 +27,8 @@ class VectorStore:
             self.vec_client = client.Sync(
                 service_url=settings.TIMESCALE_SERVICE_URL,
                 table_name=settings.VECTOR_STORE_TABLE_NAME,
-                embedding_dimensions=settings.VECTOR_STORE_EMBEDDING_DIMENSIONS,
-                time_partition_interval=TIME_PARTITION_INTERVAL,
+                num_dimensions=settings.VECTOR_STORE_EMBEDDING_DIMENSIONS,
+                # Note: time_partition_interval will be used when creating tables
                 distance_type="cosine",
             )
             logger.info("Connected to Timescale Vector store successfully.")
@@ -39,7 +39,10 @@ class VectorStore:
     def create_tables(self) -> None:
         """Create necessary tables in the database."""
         try:
-            self.vec_client.create_tables()
+            # Pass time partition interval when creating tables
+            self.vec_client.create_tables(
+                time_partition_interval=TIME_PARTITION_INTERVAL
+            )
             logger.info(f"Tables created in '{settings.VECTOR_STORE_TABLE_NAME}'.")
         except Exception as e:
             logger.error(f"Error creating tables: {e}")
