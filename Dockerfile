@@ -43,14 +43,12 @@ WORKDIR /app
 # Copy project files
 COPY requirements.txt .
 COPY app/ ./app/
-
-# Copy scripts to app directory
-COPY scripts/ ./app/scripts/
+COPY scripts/ ./scripts/
 COPY tests/ ./tests/
 
 # Make scripts executable and create symlink
-RUN chmod +x /app/scripts/* && \
-    ln -s /app/scripts/run_in_env.sh /usr/local/bin/run_in_env
+RUN chmod +x ./scripts/* && \
+    ln -s ./scripts/run_in_env.sh /usr/local/bin/run_in_env
 
 # Install remaining project dependencies
 RUN pip install --no-deps -r requirements.txt \
@@ -59,4 +57,4 @@ RUN pip install --no-deps -r requirements.txt \
 # Verify the environment using conda run
 RUN conda run -n vllm python3 -c "import psycopg2; print('psycopg2 imported successfully')"
 
-ENTRYPOINT ["/app/scripts/start.sh"]
+ENTRYPOINT ["./scripts/start.sh"]
