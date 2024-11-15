@@ -123,18 +123,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# echo "======================="
-# echo "STEP 6: Environment Verification"
-# echo "======================="
-# echo "Running environment verification..."
-# docker compose -f docker-compose.test.yml run \
-#     -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
-#     tests /bin/bash -c "./verify_env.sh"
-# if [ $? -ne 0 ]; then
-#     echo "ERROR: Environment verification failed!"
-#     exit 1
-# fi
-
 echo "======================="
 echo "STEP 6: Environment Verification"
 echo "======================="
@@ -147,9 +135,7 @@ echo "======================="
 echo "STEP 7: Running Tests"
 echo "======================="
 echo "Executing pytest..."
-docker compose -f docker-compose.test.yml run \
-    -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
-    tests pytest tests/ -v --log-cli-level=INFO
+docker compose -f docker-compose.test.yml run tests
 
 echo "======================="
 echo "STEP 8: Cleanup"
