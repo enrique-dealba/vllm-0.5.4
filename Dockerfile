@@ -43,7 +43,9 @@ WORKDIR /app
 # Copy project files
 COPY requirements.txt .
 COPY app/ ./app/
-COPY scripts/ /app/scripts/  # Copy directly to /app/scripts/
+
+# Copy scripts to app directory
+COPY scripts/ ./app/scripts/
 COPY tests/ ./tests/
 
 # Make scripts executable and create symlink
