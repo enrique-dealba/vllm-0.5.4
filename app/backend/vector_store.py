@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from timescale_vector import client
@@ -12,13 +12,6 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
-class MetadataDict(TypedDict, total=False):
-    created_at: str
-    category: str
-    source: str
-    type: str
-
-
 class VectorStore:
     def __init__(self) -> None:
         """Initialize VectorStore with Timescale and embedding model."""
@@ -28,7 +21,7 @@ class VectorStore:
                 service_url=settings.TIMESCALE_SERVICE_URL,
                 table_name=settings.VECTOR_STORE_TABLE_NAME,
                 num_dimensions=settings.VECTOR_STORE_EMBEDDING_DIMENSIONS,
-                # Note: time_partition_interval will be used when creating tables
+                time_partition_interval=TIME_PARTITION_INTERVAL,  # Moved here from create_tables
                 distance_type="cosine",
             )
             logger.info("Connected to Timescale Vector store successfully.")
@@ -39,10 +32,8 @@ class VectorStore:
     def create_tables(self) -> None:
         """Create necessary tables in the database."""
         try:
-            # Pass time partition interval when creating tables
-            self.vec_client.create_tables(
-                time_partition_interval=TIME_PARTITION_INTERVAL
-            )
+            # Removed time_partition_interval parameter
+            self.vec_client.create_tables()
             logger.info(f"Tables created in '{settings.VECTOR_STORE_TABLE_NAME}'.")
         except Exception as e:
             logger.error(f"Error creating tables: {e}")
@@ -62,7 +53,7 @@ class VectorStore:
     def upsert(self, df: pd.DataFrame) -> None:
         """Insert or update records with time-based UUIDs."""
         try:
-            records: List[Tuple[Any, MetadataDict, str, List[float]]] = []
+            records = []
             for _, row in df.iterrows():
                 timestamp = datetime.now()
                 if (
@@ -108,8 +99,8 @@ class VectorStore:
 
             # Add query parameters for DiskANN
             search_args["query_params"] = client.DiskAnnIndexParams(
-                rescore=50,
-                search_list_size=100,
+                rescore=50,  # Default rescore value
+                search_list_size=100,  # Default search list size
             )
 
             results = self.vec_client.search(query_embedding, **search_args)
