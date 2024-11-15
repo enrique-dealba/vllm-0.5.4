@@ -5,9 +5,9 @@ set -e
 eval "$(conda shell.bash hook)"
 conda activate vllm
 
-# Use conda python explicitly
-PYTHON_PATH=$(conda run -n vllm which python)
-export PYTHON_PATH
+# Get conda python path
+export CONDA_PYTHON=$(which python)
+echo "Using Python: $CONDA_PYTHON"
 
-# Execute command
+# Execute command with conda python
 exec "$@"

@@ -45,4 +45,4 @@ services:
       test_db:
         condition: service_healthy
     entrypoint: []
-    command: ["./scripts/run_in_env.sh", "bash", "-c", "./scripts/verify_env.sh && conda run -n vllm pytest /app/tests -v --log-cli-level=INFO"]
+    command: ["./scripts/run_in_env.sh", "bash", "-c", "./scripts/verify_env.sh && PYTHONPATH=/app $(conda run -n vllm which python) -m pytest /app/tests -v --log-cli-level=INFO"]
