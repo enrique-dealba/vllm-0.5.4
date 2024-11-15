@@ -51,7 +51,7 @@ RUN chmod +x ./scripts/* && \
     ln -s ./scripts/run_in_env.sh /usr/local/bin/run_in_env
 
 # Install remaining project dependencies
-RUN pip install --no-deps -r requirements.txt \
+RUN pip install --no-cache-dir -r requirements.test.txt \
     && pip install langchain langchain_community -q
 
 # Verify the environment using conda run

@@ -20,4 +20,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "=== Testing pluggy ==="
+python3 -c 'import pluggy; print("pluggy version:", pluggy.__version__)'
+
 echo "All verifications passed!"
