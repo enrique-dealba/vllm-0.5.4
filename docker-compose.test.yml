@@ -26,7 +26,7 @@ services:
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
     entrypoint: []
-    command: ["/app/scripts/verify_libs.sh"]
+    command: ["/bin/bash", "-c", "source /root/miniconda3/bin/activate vllm && /app/scripts/verify_libs.sh"]
 
   tests:
     build:
@@ -45,4 +45,4 @@ services:
       test_db:
         condition: service_healthy
     entrypoint: []
-    command: ["/bin/bash", "-c", "/app/scripts/verify_env.sh && pytest /app/tests -v --log-cli-level=INFO"]
+    command: ["/bin/bash", "-c", "source /root/miniconda3/bin/activate vllm && /app/scripts/verify_env.sh && pytest /app/tests -v --log-cli-level=INFO"]
