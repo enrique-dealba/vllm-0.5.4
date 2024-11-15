@@ -20,17 +20,18 @@ services:
   verify:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: Dockerfile
     env_file: .env
     environment:
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
+    entrypoint: []  # Override the Dockerfile's ENTRYPOINT
     command: ["./verify_libs.sh"]
 
   tests:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: Dockerfile
     env_file: .env
     environment:
       - RUN_MODE=test
@@ -43,4 +44,5 @@ services:
     depends_on:
       test_db:
         condition: service_healthy
+    entrypoint: []  # Override the Dockerfile's ENTRYPOINT
     command: ["pytest", "/app/tests", "-v", "--log-cli-level=INFO"]
