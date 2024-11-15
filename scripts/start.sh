@@ -7,18 +7,18 @@ source /root/miniconda3/bin/activate vllm
 # Set PYTHONPATH
 export PYTHONPATH="/app:$PYTHONPATH"
 
-# Function to check if the database is ready
-wait_for_db() {
-    echo "Waiting for TimescaleDB to be ready..."
-    while ! nc -z timescaledb 5432; do
-        echo "Database is not ready yet. Retrying in 2 seconds..."
-        sleep 2
-    done
-    echo "Database is up and running!"
-}
+# # Function to check if the database is ready
+# wait_for_db() {
+#     echo "Waiting for TimescaleDB to be ready..."
+#     while ! nc -z timescaledb 5432; do
+#         echo "Database is not ready yet. Retrying in 2 seconds..."
+#         sleep 2
+#     done
+#     echo "Database is up and running!"
+# }
 
-# Call the wait function
-wait_for_db
+# # Call the wait function
+# wait_for_db
 
 # Determine run mode
 RUN_MODE=${RUN_MODE:-server}
