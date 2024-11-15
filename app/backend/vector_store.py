@@ -119,20 +119,28 @@ class VectorStore:
         metadata_filter: Optional[Dict[str, Any]] = None,
         time_range: Optional[Tuple[datetime, datetime]] = None,
         return_dataframe: bool = True,
+        similarity_threshold: float = 0.0,  # Add threshold parameter
     ) -> Union[List[Tuple[Any, ...]], pd.DataFrame]:
         """Perform similarity search with optional filtering."""
         try:
             query_embedding = self.get_embedding(query_text)
             embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
-            # Simpler query structure to start
+            # Debug logging
+            logger.debug(f"Search query text: {query_text}")
+            logger.debug(f"Query embedding first few values: {query_embedding[:5]}")
+
             query = f"""
-                SELECT id, metadata, content, embedding,
+                SELECT 
+                    id, 
+                    metadata, 
+                    content, 
+                    embedding,
                     1 - (embedding <=> %s::vector) as similarity
                 FROM {settings.VECTOR_STORE_TABLE_NAME}
-                WHERE TRUE
+                WHERE 1 - (embedding <=> %s::vector) >= %s
             """
-            params = [embedding_str]
+            params = [embedding_str, embedding_str, similarity_threshold]
 
             if metadata_filter:
                 query += " AND metadata @> %s::jsonb"
@@ -143,22 +151,26 @@ class VectorStore:
                 query += " AND created_at BETWEEN %s AND %s"
                 params.extend([start_date, end_date])
 
-            # Order by cosine similarity
-            query += " ORDER BY (embedding <=> %s::vector) ASC LIMIT %s"
-            params.extend([embedding_str, limit])
+            query += " ORDER BY similarity DESC LIMIT %s"
+            params.append(limit)
 
             with self.conn.cursor() as cur:
-                # Debug log the exact query being executed
+                # Debug the actual SQL being executed
                 formatted_query = cur.mogrify(query, params).decode("utf-8")
                 logger.debug(f"Executing search query: {formatted_query}")
 
                 cur.execute(query, params)
                 results = cur.fetchall()
-                logger.debug(f"Search returned {len(results)} results")
+
+                # Debug the raw results
+                logger.debug(f"Raw results count: {len(results)}")
+                if results:
+                    logger.debug(f"First result similarity: {results[0][-1]}")
 
                 if return_dataframe:
                     df = self._create_dataframe_from_results(results)
-                    logger.debug(f"Converted to DataFrame with {len(df)} rows")
+                    if not df.empty:
+                        logger.debug(f"Similarity scores: {df['similarity'].tolist()}")
                     return df
                 return results
 
@@ -192,19 +204,21 @@ class VectorStore:
                 results,
                 columns=["id", "metadata", "content", "embedding", "similarity"],
             )
+            logger.debug(f"DataFrame shape before metadata expansion: {df.shape}")
 
             # Only try to expand metadata if there are results and metadata is not None
             if len(df) > 0 and not df["metadata"].isna().all():
-                metadata_df = pd.json_normalize(df["metadata"].fillna({}))
-                df = pd.concat(
-                    [
-                        df.drop("metadata", axis=1),
-                        metadata_df,
-                    ],
-                    axis=1,
-                )
+                # Keep the original columns except metadata
+                original_cols = df.drop(columns=["metadata"])
 
-            logger.debug(f"Final DataFrame has {len(df)} rows")
+                # Expand metadata into new columns
+                metadata_df = pd.json_normalize(df["metadata"].fillna({}))
+                logger.debug(f"Metadata columns: {metadata_df.columns.tolist()}")
+
+                # Combine back together
+                df = pd.concat([original_cols, metadata_df], axis=1)
+                logger.debug(f"Final DataFrame shape: {df.shape}")
+
             return df
         except Exception as e:
             logger.error(f"Error formatting results: {e}")

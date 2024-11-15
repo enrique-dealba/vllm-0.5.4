@@ -84,18 +84,20 @@ def test_upsert_and_search(vector_store, sample_data):
             content
         ), f"Record with content '{content}' not found"
 
-    # Search for similar documents
+    # Search with very low threshold to ensure we get all results
     query = "test document"
-    results = vector_store.search(query, limit=2)
+    results = vector_store.search(query, limit=2, similarity_threshold=-1.0)
 
     # Debug output
     logger.info(f"Search results size: {len(results)}")
-    if len(results) > 0:
-        logger.info(f"First result similarity: {results.iloc[0]['similarity']}")
+    if not results.empty:
+        logger.info(f"All similarities: {results['similarity'].tolist()}")
 
     assert len(results) == 2, f"Expected 2 results, got {len(results)}"
     assert "content" in results.columns, "Results should contain 'content' column"
-    assert all("test document" in content.lower() for content in results["content"])
+    assert all(
+        "test document" in content.lower() for content in results["content"]
+    ), "Results should contain test documents"
 
 
 def test_time_based_search(vector_store, sample_data):
