@@ -1,0 +1,5 @@
+pandas
+pytest
+psycopg2-binary
+sentence-transformers
+timescale-vector

@@ -12,16 +12,19 @@ services:
       retries: 5
 
   verify:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.test
     env_file: .env
     environment:
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
-    entrypoint: []
-    command: ["bash", "-c", "source /root/miniconda3/bin/activate vllm && /usr/local/bin/verify_libs.sh"]
+    command: ["./verify_libs.sh"]
 
   tests:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.test
     env_file: .env
     environment:
       - RUN_MODE=test
@@ -33,5 +36,4 @@ services:
     depends_on:
       test_db:
         condition: service_healthy
-    entrypoint: []
-    command: ["bash", "-c", "source /root/miniconda3/bin/activate vllm && pytest /app/tests -v --log-cli-level=INFO"]
+    command: ["pytest", "/app/tests", "-v", "--log-cli-level=INFO"]
