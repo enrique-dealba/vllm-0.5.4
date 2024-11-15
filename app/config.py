@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     VECTOR_STORE_EMBEDDING_DIMENSIONS: int = 384
     VECTOR_STORE_TIME_PARTITION_INTERVAL: timedelta = timedelta(days=7)
 
+    # RAG
+    CHUNK_SIZE: int = 1000
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
