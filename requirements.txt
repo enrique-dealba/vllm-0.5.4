@@ -7,9 +7,9 @@ pydantic_settings
 pydantic-core
 streamlit
 instructor
-timescale-vector
-pgvector
+timescale-vector==0.0.3
+sentence-transformers
+pandas
 pytest
 pytest-asyncio
 pytest-cov
-pandas

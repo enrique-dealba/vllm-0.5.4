@@ -1,10 +1,12 @@
+# Dockerfile (updated)
 FROM nvcr.io/nvidia/pytorch:22.12-py3
 
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH
+ENV PYTHONPATH=/app
 
-# Install specific versions of required libraries
+# Install system dependencies and proper library versions
 RUN apt-get update && apt-get install -y \
     wget \
     libpq-dev \
@@ -20,31 +22,25 @@ RUN apt-get update && apt-get install -y \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Miniconda
+# Install Miniconda and set up environment
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
     && bash miniconda.sh -b -p /root/miniconda3 \
     && rm miniconda.sh
 
-# Add conda to path
 ENV PATH="/root/miniconda3/bin:${PATH}"
 
 # Create and activate conda environment
 RUN conda create -n vllm python=3.10 -y
 SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 
-# Install vLLM with CUDA 11.8
+# Install vLLM with CUDA support
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
-# Install psycopg2 in conda environment
+# Install psycopg2 with proper flags
 RUN LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
     CPPFLAGS="-I/usr/include" \
     pip install --no-binary :all: psycopg2-binary==2.9.9
-
-# Verify libraries
-RUN ldconfig && \
-    ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 && \
-    ldd /usr/lib/x86_64-linux-gnu/libffi.so.7
 
 # Set working directory
 WORKDIR /app
@@ -54,45 +50,23 @@ COPY requirements.txt .
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
-
-# Install project dependencies
-RUN pip install -r requirements.txt
-
-# Install LangChain and LangChain Community
-RUN pip install langchain langchain_community -q
-
-# Copy verification scripts
-COPY scripts/verify_libs.sh scripts/verify_env.sh /usr/local/bin/
+COPY init-db.sh ./init-db.sh
 
 # Make scripts executable
-RUN chmod +x /usr/local/bin/verify_libs.sh /usr/local/bin/verify_env.sh
+RUN chmod +x /app/scripts/start.sh \
+    && chmod +x /app/scripts/verify_*.sh \
+    && chmod +x /app/init-db.sh
 
-# Create verification scripts
-RUN echo '#!/bin/bash' > /usr/local/bin/verify_libs.sh && \
-    echo 'source /root/miniconda3/bin/activate vllm' >> /usr/local/bin/verify_libs.sh && \
-    echo 'set -x' >> /usr/local/bin/verify_libs.sh && \
-    echo 'echo "=== Library Verification Start ==="' >> /usr/local/bin/verify_libs.sh && \
-    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldconfig -p | grep libffi' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldconfig -p | grep p11-kit' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldd /usr/lib/x86_64-linux-gnu/libffi.so.7' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0' >> /usr/local/bin/verify_libs.sh && \
-    echo 'python3 -c "import psycopg2; print(\"psycopg2 version:\", psycopg2.__version__)"' >> /usr/local/bin/verify_libs.sh && \
-    echo '#!/bin/bash' > /usr/local/bin/verify_env.sh && \
-    echo 'source /root/miniconda3/bin/activate vllm' >> /usr/local/bin/verify_env.sh && \
-    echo 'set -x' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "=== Environment Verification Start ==="' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "PYTHONPATH: $PYTHONPATH"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "Current working directory: $(pwd)"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "Python executable: $(which python3)"' >> /usr/local/bin/verify_env.sh && \
-    echo 'python3 --version' >> /usr/local/bin/verify_env.sh
+# Install project dependencies
+RUN pip install -r requirements.txt \
+    && pip install langchain langchain_community -q
 
-# Make start script executable
-RUN chmod +x /app/scripts/start.sh
-
-# Setup library path in bashrc
+# Setup library path
 RUN echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> /root/.bashrc
 
-# Set the entrypoint to our start script
+# Verify environment and install order
+RUN ldconfig && \
+    ldd $(find /usr/lib/x86_64-linux-gnu -name "libffi.so*") && \
+    python3 -c "import psycopg2; print('psycopg2 imported successfully')"
+
 ENTRYPOINT ["/app/scripts/start.sh"]
