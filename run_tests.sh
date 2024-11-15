@@ -73,26 +73,26 @@ echo "======================="
 echo "STEP 2: Environment Setup"
 echo "======================="
 echo "Generating .env file..."cat > .env << EOF
-# Database Configuration
+#Database Configuration
 POSTGRES_DB=$DB_NAME
 POSTGRES_USER=$DB_USER
 POSTGRES_PASSWORD=$DB_PASSWORD
 TIMESCALE_SERVICE_URL=postgres://${DB_USER}:${DB_PASSWORD}@test_db:5432/${DB_NAME}
 
-# Model Configuration
+#Model Configuration
 LLM_MODEL_NAME=mistralai/Mistral-Small-Instruct-2409
 IS_MISTRAL=true
 
-# API Tokens
+#API_Tokens
 HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
 LANGCHAIN_API_KEY=$LANGCHAIN_TOKEN
 LANGCHAIN_PROJECT=test-postgres-project
 LANGCHAIN_TRACING_V2=true
 
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+#Library_Path
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH
 EOF
-
-echo "Environment file created successfully!"
+echo "Environment file created!"
 
 echo "======================="
 echo "STEP 3: Build"
