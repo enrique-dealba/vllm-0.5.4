@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 import pandas as pd
 from timescale_vector import client
@@ -12,8 +12,15 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+class MetadataDict(TypedDict, total=False):
+    created_at: str
+    category: str
+    source: str
+    type: str
+
+
 class VectorStore:
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize VectorStore with Timescale and embedding model."""
         self.embedder = EmbeddingModel()
         try:
@@ -22,12 +29,12 @@ class VectorStore:
                 table_name=settings.VECTOR_STORE_TABLE_NAME,
                 embedding_dimensions=settings.VECTOR_STORE_EMBEDDING_DIMENSIONS,
                 time_partition_interval=TIME_PARTITION_INTERVAL,
-                distance_type="cosine",  # Explicitly set distance type
+                distance_type="cosine",
             )
             logger.info("Connected to Timescale Vector store successfully.")
         except Exception as e:
             logger.error(f"Failed to connect to Timescale Vector store: {e}")
-            raise e
+            raise
 
     def create_tables(self) -> None:
         """Create necessary tables in the database."""
@@ -36,7 +43,7 @@ class VectorStore:
             logger.info(f"Tables created in '{settings.VECTOR_STORE_TABLE_NAME}'.")
         except Exception as e:
             logger.error(f"Error creating tables: {e}")
-            raise e
+            raise
 
     def create_index(self) -> None:
         """Create the DiskANN index (recommended for most use cases)."""
@@ -47,16 +54,18 @@ class VectorStore:
             logger.info("DiskANN index created successfully.")
         except Exception as e:
             logger.error(f"Error creating index: {e}")
-            raise e
+            raise
 
     def upsert(self, df: pd.DataFrame) -> None:
         """Insert or update records with time-based UUIDs."""
         try:
-            # Convert records to list of tuples with time-based UUIDs
-            records = []
+            records: List[Tuple[Any, MetadataDict, str, List[float]]] = []
             for _, row in df.iterrows():
                 timestamp = datetime.now()
-                if "created_at" in row["metadata"]:
+                if (
+                    isinstance(row["metadata"], dict)
+                    and "created_at" in row["metadata"]
+                ):
                     timestamp = datetime.fromisoformat(
                         row["metadata"]["created_at"].replace("Z", "+00:00")
                     )
@@ -70,7 +79,7 @@ class VectorStore:
             logger.info(f"Inserted {len(df)} records.")
         except Exception as e:
             logger.error(f"Error during upsert: {e}")
-            raise e
+            raise
 
     def search(
         self,
@@ -83,13 +92,11 @@ class VectorStore:
         """Perform similarity search with optional time filtering."""
         try:
             query_embedding = self.get_embedding(query_text)
-            search_args = {"limit": limit}
+            search_args: Dict[str, Any] = {"limit": limit}
 
-            # Add metadata filter if provided
             if metadata_filter:
                 search_args["filter"] = metadata_filter
 
-            # Add time range filter if provided
             if time_range:
                 start_date, end_date = time_range
                 search_args["uuid_time_filter"] = client.UUIDTimeRange(
@@ -98,8 +105,8 @@ class VectorStore:
 
             # Add query parameters for DiskANN
             search_args["query_params"] = client.DiskAnnIndexParams(
-                rescore=50,  # Default rescore value
-                search_list_size=100,  # Default search list size
+                rescore=50,
+                search_list_size=100,
             )
 
             results = self.vec_client.search(query_embedding, **search_args)
@@ -110,7 +117,7 @@ class VectorStore:
 
         except Exception as e:
             logger.error(f"Error during search: {e}")
-            raise e
+            raise
 
     def get_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text."""
@@ -120,9 +127,11 @@ class VectorStore:
             return embedding
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
-            raise e
+            raise
 
-    def _create_dataframe_from_results(self, results) -> pd.DataFrame:
+    def _create_dataframe_from_results(
+        self, results: List[Tuple[Any, ...]]
+    ) -> pd.DataFrame:
         """Format search results as DataFrame."""
         try:
             df = pd.DataFrame(
@@ -134,7 +143,7 @@ class VectorStore:
             return df
         except Exception as e:
             logger.error(f"Error formatting results: {e}")
-            raise e
+            raise
 
     def delete(
         self,
@@ -159,4 +168,4 @@ class VectorStore:
             logger.info("Delete operation completed successfully")
         except Exception as e:
             logger.error(f"Error during delete: {e}")
-            raise e
+            raise
