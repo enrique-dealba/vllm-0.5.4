@@ -14,9 +14,14 @@ services:
   tests:
     build: .
     env_file: .env
+    environment:
+      - RUN_MODE=test
+      - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
+      - PYTHONPATH=/app
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
       - ./tests:/app/tests
     depends_on:
       test_db:
         condition: service_healthy
+    command: /app/scripts/start.sh
