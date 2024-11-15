@@ -23,4 +23,9 @@ fi
 echo "=== Testing pluggy ==="
 python3 -c 'import pluggy; print("pluggy version:", pluggy.__version__)'
 
+if [ $? -ne 0 ]; then
+    echo "ERROR: pluggy verification failed"
+    exit 1
+fi
+
 echo "All verifications passed!"
