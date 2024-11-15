@@ -7,6 +7,8 @@ DEFAULT_DB_NAME="test_db"
 DEFAULT_HF_TOKEN=""
 DEFAULT_LANGCHAIN_TOKEN=""
 
+export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+
 usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
@@ -81,6 +83,8 @@ HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
 LANGCHAIN_API_KEY=$LANGCHAIN_TOKEN
 LANGCHAIN_PROJECT=test-postgres-project
 LANGCHAIN_TRACING_V2=true
+
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 EOF
 
 echo "Environment file created successfully!"
@@ -96,6 +100,12 @@ if [ $? -ne 0 ]; then
     echo "Library verification failed!"
     exit 1
 fi
+
+# Before running tests, verify environment
+echo "Verifying environment..."
+docker compose -f docker-compose.test.yml run \
+    -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
+    tests /bin/bash -c "./verify_env.sh && pytest tests/ -v --log-cli-level=INFO"
 
 echo "Running tests..."
 docker compose -f docker-compose.test.yml run tests

@@ -2,6 +2,7 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH
 
 # Remove any existing libffi installations first
 RUN apt-get update && apt-get remove -y libffi* && apt-get autoremove -y
@@ -45,9 +46,10 @@ RUN ldconfig && \
     CPPFLAGS="-I/usr/include" \
     pip install --no-binary :all: psycopg2-binary
 
-# Add verification script
-COPY verify_libs.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/verify_libs.sh
+# Add verification scripts
+COPY verify_libs.sh verify_env.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/verify_libs.sh && \
+    chmod +x /usr/local/bin/verify_env.sh
 
 # Set working directory
 WORKDIR /app
@@ -66,6 +68,8 @@ RUN pip install langchain langchain_community -q
 
 # Make start script executable
 RUN chmod +x /app/scripts/start.sh
+
+RUN echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> /root/.bashrc
 
 # Set the entrypoint to our start script
 ENTRYPOINT ["/app/scripts/start.sh"]
