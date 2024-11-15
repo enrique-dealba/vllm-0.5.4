@@ -5,11 +5,20 @@ from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
 from timescale_vector import client
+from typing_extensions import TypedDict
 
 from app.backend.embedding import EmbeddingModel
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+# Add type definitions that work with Python 3.8
+class MetadataDict(TypedDict, total=False):
+    category: str
+    created_at: str
+    source: str
+    type: str
 
 
 class VectorStore:
@@ -82,8 +91,8 @@ class VectorStore:
         self,
         query_text: str,
         limit: int = 5,
-        metadata_filter: Union[dict, List[dict]] = None,
-        predicates: Optional[client.Predicates] = None,
+        metadata_filter: Union[MetadataDict, List[MetadataDict]] = None,
+        predicates: Optional[Any] = None,
         time_range: Optional[Tuple[datetime, datetime]] = None,
         return_dataframe: bool = True,
     ) -> Union[List[Tuple[Any, ...]], pd.DataFrame]:
@@ -137,8 +146,8 @@ class VectorStore:
 
     def delete(
         self,
-        ids: List[str] = None,
-        metadata_filter: dict = None,
+        ids: Optional[List[str]] = None,
+        metadata_filter: Optional[MetadataDict] = None,
         delete_all: bool = False,
     ) -> None:
         """Delete records from the vector database."""
