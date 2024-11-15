@@ -1,14 +1,24 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
+from timescale_vector import client
 
 from app.backend.vector_store import VectorStore
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def create_test_metadata(source: str, doc_type: str) -> dict:
+    """Create metadata with proper timestamp for testing."""
+    return {
+        "source": source,
+        "type": doc_type,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @pytest.fixture
@@ -29,18 +39,15 @@ def vector_store():
 @pytest.fixture
 def sample_data():
     """Fixture to create sample data"""
+    timestamp = datetime.now(timezone.utc)
     return pd.DataFrame(
         {
-            "id": ["test-1", "test-2"],
             "metadata": [
-                {"source": "test1", "type": "document"},
-                {"source": "test2", "type": "document"},
+                create_test_metadata("test1", "document"),
+                create_test_metadata("test2", "document"),
             ],
             "content": ["This is a test document 1", "This is a test document 2"],
-            "created_at": [
-                datetime.now(timezone.utc).isoformat(),
-                datetime.now(timezone.utc).isoformat(),
-            ],
+            "embedding": None,  # Will be generated during upsert
         }
     )
 
@@ -49,6 +56,7 @@ def test_vector_store_connection(vector_store):
     """Test basic connection to vector store"""
     assert vector_store.vec_client is not None
     assert vector_store.embedder is not None
+    assert isinstance(vector_store.vec_client, client.Sync)
 
 
 def test_embedding_generation(vector_store):
@@ -62,6 +70,11 @@ def test_embedding_generation(vector_store):
 
 def test_upsert_and_search(vector_store, sample_data):
     """Test upserting data and searching"""
+    # Generate embeddings for sample data
+    sample_data["embedding"] = [
+        vector_store.get_embedding(text) for text in sample_data["content"]
+    ]
+
     # Upsert sample data
     vector_store.upsert(sample_data)
 
@@ -74,13 +87,49 @@ def test_upsert_and_search(vector_store, sample_data):
     assert all("test document" in content.lower() for content in results["content"])
 
 
-def test_delete_operations(vector_store, sample_data):
-    """Test delete operations"""
+def test_time_based_search(vector_store, sample_data):
+    """Test time-based searching"""
+    # Generate embeddings for sample data
+    sample_data["embedding"] = [
+        vector_store.get_embedding(text) for text in sample_data["content"]
+    ]
+
     # Upsert sample data
     vector_store.upsert(sample_data)
 
+    now = datetime.now(timezone.utc)
+    hour_ago = now - timedelta(hours=1)
+    hour_ahead = now + timedelta(hours=1)
+
+    # Search within time range
+    results = vector_store.search(
+        "test document", limit=2, time_range=(hour_ago, hour_ahead)
+    )
+    assert len(results) == 2
+
+    # Search outside time range
+    results = vector_store.search(
+        "test document",
+        limit=2,
+        time_range=(hour_ahead, hour_ahead + timedelta(hours=1)),
+    )
+    assert len(results) == 0
+
+
+def test_delete_operations(vector_store, sample_data):
+    """Test delete operations"""
+    # Generate embeddings and upsert
+    sample_data["embedding"] = [
+        vector_store.get_embedding(text) for text in sample_data["content"]
+    ]
+    vector_store.upsert(sample_data)
+
+    # Get the first record's ID from a search
+    results = vector_store.search("test", limit=2)
+    first_id = results.iloc[0]["id"]
+
     # Delete by ID
-    vector_store.delete(ids=["test-1"])
+    vector_store.delete(ids=[first_id])
     results = vector_store.search("test", limit=2)
     assert len(results) == 1
 
@@ -92,7 +141,10 @@ def test_delete_operations(vector_store, sample_data):
 
 def test_metadata_filtering(vector_store, sample_data):
     """Test metadata filtering in search"""
-    # Upsert sample data
+    # Generate embeddings and upsert
+    sample_data["embedding"] = [
+        vector_store.get_embedding(text) for text in sample_data["content"]
+    ]
     vector_store.upsert(sample_data)
 
     # Search with metadata filter
@@ -104,3 +156,25 @@ def test_metadata_filtering(vector_store, sample_data):
         "test", limit=2, metadata_filter={"type": "non-existent"}
     )
     assert len(results) == 0
+
+
+def test_combined_filtering(vector_store, sample_data):
+    """Test combined metadata and time filtering"""
+    # Generate embeddings and upsert
+    sample_data["embedding"] = [
+        vector_store.get_embedding(text) for text in sample_data["content"]
+    ]
+    vector_store.upsert(sample_data)
+
+    now = datetime.now(timezone.utc)
+    hour_ago = now - timedelta(hours=1)
+    hour_ahead = now + timedelta(hours=1)
+
+    # Search with both metadata and time filters
+    results = vector_store.search(
+        "test",
+        limit=2,
+        metadata_filter={"type": "document"},
+        time_range=(hour_ago, hour_ahead),
+    )
+    assert len(results) > 0

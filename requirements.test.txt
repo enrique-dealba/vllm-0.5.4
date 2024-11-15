@@ -2,6 +2,6 @@ pandas
 pytest
 psycopg2-binary
 sentence-transformers
-timescale-vector
+timescale-vector>=0.0.7
 pytest-timeout
 typing-extensions
