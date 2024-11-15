@@ -34,15 +34,13 @@ class Settings(BaseSettings):
     LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
 
     # Embedding Settings
-    EMBEDDING_MODEL: str = "dunzhang/stella_en_400M_v5"
-    EMBEDDING_DIM: int = 8192
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    EMBEDDING_DIM: int = 384
 
     # PostgreSQL/Timescale Settings
     TIMESCALE_SERVICE_URL: str = "postgres://postgres:password@localhost:5432/postgres"
     VECTOR_STORE_TABLE_NAME: str = "embeddings"
-    VECTOR_STORE_EMBEDDING_DIMENSIONS: int = (
-        1536  # TODO: Does this need to match EMBEDDING_DIM?
-    )
+    VECTOR_STORE_EMBEDDING_DIMENSIONS: int = 384  # Must match EMBEDDING_DIM
     VECTOR_STORE_TIME_PARTITION_INTERVAL: timedelta = timedelta(days=7)
 
     class Config:
