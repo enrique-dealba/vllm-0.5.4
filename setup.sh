@@ -92,7 +92,7 @@ echo "======================="
 cat .env
 echo "======================="
 
-chmod +x init-db.sh
+chmod +x scripts/init-db.sh
 chmod +x scripts/verify_*.sh
 
 echo "======================="
