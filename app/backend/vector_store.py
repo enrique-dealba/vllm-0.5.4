@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 from datetime import datetime
@@ -120,7 +119,7 @@ class VectorStore:
 
             query = f"""
                 SELECT id, metadata, content, embedding, 
-                       1 - (embedding <=> %s::vector) as similarity
+                    1 - (embedding <=> %s::vector) as similarity
                 FROM {settings.VECTOR_STORE_TABLE_NAME}
                 WHERE 1=1
             """
@@ -128,15 +127,15 @@ class VectorStore:
 
             if metadata_filter:
                 query += " AND metadata @> %s::jsonb"
-                params.append(json.dumps(metadata_filter))
+                params.append(Json(metadata_filter))
 
             if time_range:
                 start_date, end_date = time_range
                 query += " AND created_at BETWEEN %s AND %s"
                 params.extend([start_date, end_date])
 
-            query += f" ORDER BY embedding <=> %s::vector LIMIT {limit}"
-            params.append(query_embedding)
+            query += " ORDER BY embedding <=> %s::vector LIMIT %s"
+            params.extend([query_embedding, limit])
 
             with self.conn.cursor() as cur:
                 cur.execute(query, params)
@@ -150,6 +149,40 @@ class VectorStore:
             logger.error(f"Error during search: {e}")
             raise
 
+    def _create_dataframe_from_results(
+        self, results: List[Tuple[Any, ...]]
+    ) -> pd.DataFrame:
+        """Format search results as DataFrame."""
+        try:
+            if not results:
+                return pd.DataFrame(
+                    columns=["id", "metadata", "content", "embedding", "similarity"]
+                )
+
+            df = pd.DataFrame(
+                results,
+                columns=["id", "metadata", "content", "embedding", "similarity"],
+            )
+
+            # Only try to expand metadata if there are results and metadata is not None
+            if len(df) > 0 and not df["metadata"].isna().all():
+                # Keep the original metadata column and expand it
+                metadata_df = pd.json_normalize(df["metadata"].fillna({}))
+
+                # Combine the original DataFrame with the expanded metadata
+                df = pd.concat(
+                    [
+                        df.drop("metadata", axis=1),
+                        metadata_df,
+                    ],
+                    axis=1,
+                )
+
+            return df
+        except Exception as e:
+            logger.error(f"Error formatting results: {e}")
+            raise
+
     def get_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text."""
         text = text.replace("\n", " ")
@@ -158,22 +191,6 @@ class VectorStore:
             return embedding
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
-            raise
-
-    def _create_dataframe_from_results(
-        self, results: List[Tuple[Any, ...]]
-    ) -> pd.DataFrame:
-        """Format search results as DataFrame."""
-        try:
-            df = pd.DataFrame(
-                results, columns=["id", "metadata", "content", "embedding", "distance"]
-            )
-            df = pd.concat(
-                [df.drop(["metadata"], axis=1), df["metadata"].apply(pd.Series)], axis=1
-            )
-            return df
-        except Exception as e:
-            logger.error(f"Error formatting results: {e}")
             raise
 
     def delete(

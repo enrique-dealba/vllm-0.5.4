@@ -124,19 +124,23 @@ def test_delete_operations(vector_store, sample_data):
     ]
     vector_store.upsert(sample_data)
 
-    # Get the first record's ID from a search
+    # Search for records
     results = vector_store.search("test", limit=2)
+    assert len(results) > 0, "Search should return at least one result"
+
+    # Get the first record's ID
     first_id = results.iloc[0]["id"]
+    assert first_id is not None, "First result should have an ID"
 
     # Delete by ID
     vector_store.delete(ids=[first_id])
-    results = vector_store.search("test", limit=2)
-    assert len(results) == 1
+    after_delete = vector_store.search("test", limit=2)
+    assert len(after_delete) == 1, "Should have one remaining record"
 
     # Delete all
     vector_store.delete(delete_all=True)
-    results = vector_store.search("test", limit=2)
-    assert len(results) == 0
+    final_results = vector_store.search("test", limit=2)
+    assert len(final_results) == 0, "Should have no records after delete_all"
 
 
 def test_metadata_filtering(vector_store, sample_data):
