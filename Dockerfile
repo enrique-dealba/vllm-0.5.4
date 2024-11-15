@@ -43,14 +43,12 @@ WORKDIR /app
 # Copy project files
 COPY requirements.txt .
 COPY app/ ./app/
-COPY scripts/ ./scripts/
+COPY scripts/ ./app/scripts/
 COPY tests/ ./tests/
-COPY init-db.sh ./init-db.sh
 
-# Make scripts executable
-RUN chmod +x /app/scripts/start.sh \
-    && chmod +x /app/scripts/verify_*.sh \
-    && chmod +x /app/init-db.sh
+# Make all scripts executable and create symlinks
+RUN chmod +x /app/scripts/* \
+    && ln -s /app/scripts/run_in_env.sh /usr/local/bin/run_in_env
 
 # Install remaining project dependencies
 RUN pip install --no-deps -r requirements.txt \
