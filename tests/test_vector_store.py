@@ -2,8 +2,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
+import psycopg2
 import pytest
-from timescale_vector import client
 
 from app.backend.vector_store import VectorStore
 from app.config import settings
@@ -54,9 +54,9 @@ def sample_data():
 
 def test_vector_store_connection(vector_store):
     """Test basic connection to vector store"""
-    assert vector_store.vec_client is not None
+    assert vector_store.conn is not None
     assert vector_store.embedder is not None
-    assert isinstance(vector_store.vec_client, client.Sync)
+    assert isinstance(vector_store.conn, psycopg2.extensions.connection)
 
 
 def test_embedding_generation(vector_store):

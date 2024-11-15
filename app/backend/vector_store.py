@@ -6,12 +6,16 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import psycopg2
-from psycopg2.extras import execute_values
+from psycopg2.extensions import register_adapter
+from psycopg2.extras import Json, execute_values
 
 from app.backend.embedding import EmbeddingModel
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Register JSON adapter for psycopg2
+register_adapter(dict, Json)
 
 
 class VectorStore:
@@ -185,12 +189,19 @@ class VectorStore:
                     "Provide exactly one of: ids, metadata_filter, or delete_all"
                 )
 
-            if delete_all:
-                self.vec_client.delete_all()
-            elif ids:
-                self.vec_client.delete_by_ids(ids)
-            elif metadata_filter:
-                self.vec_client.delete_by_metadata(metadata_filter)
+            with self.conn.cursor() as cur:
+                if delete_all:
+                    cur.execute(f"TRUNCATE TABLE {settings.VECTOR_STORE_TABLE_NAME}")
+                elif ids:
+                    cur.execute(
+                        f"DELETE FROM {settings.VECTOR_STORE_TABLE_NAME} WHERE id = ANY(%s)",
+                        (ids,),
+                    )
+                elif metadata_filter:
+                    cur.execute(
+                        f"DELETE FROM {settings.VECTOR_STORE_TABLE_NAME} WHERE metadata @> %s",
+                        (Json(metadata_filter),),
+                    )
 
             logger.info("Delete operation completed successfully")
         except Exception as e:
