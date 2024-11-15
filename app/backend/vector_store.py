@@ -1,12 +1,14 @@
+import json
 import logging
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-from timescale_vector import client
+import psycopg2
+from psycopg2.extras import execute_values
 
 from app.backend.embedding import EmbeddingModel
-from app.backend.ts_config import DISKANN_INDEX_PARAMS, TIME_PARTITION_INTERVAL
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -14,62 +16,87 @@ logger = logging.getLogger(__name__)
 
 class VectorStore:
     def __init__(self) -> None:
-        """Initialize VectorStore with Timescale and embedding model."""
+        """Initialize VectorStore with database connection and embedding model."""
         self.embedder = EmbeddingModel()
         try:
-            self.vec_client = client.Sync(
-                service_url=settings.TIMESCALE_SERVICE_URL,
-                table_name=settings.VECTOR_STORE_TABLE_NAME,
-                num_dimensions=settings.VECTOR_STORE_EMBEDDING_DIMENSIONS,
-                time_partition_interval=TIME_PARTITION_INTERVAL,  # Moved here from create_tables
-                distance_type="cosine",
-            )
-            logger.info("Connected to Timescale Vector store successfully.")
+            self.conn = psycopg2.connect(settings.TIMESCALE_SERVICE_URL)
+            self.conn.autocommit = True
+            logger.info("Connected to database successfully.")
         except Exception as e:
-            logger.error(f"Failed to connect to Timescale Vector store: {e}")
+            logger.error(f"Failed to connect to database: {e}")
             raise
 
     def create_tables(self) -> None:
-        """Create necessary tables in the database."""
+        """Create necessary tables and extensions."""
         try:
-            # Removed time_partition_interval parameter
-            self.vec_client.create_tables()
-            logger.info(f"Tables created in '{settings.VECTOR_STORE_TABLE_NAME}'.")
+            with self.conn.cursor() as cur:
+                # Create extensions
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+                # Create embeddings table
+                cur.execute(f"""
+                    CREATE TABLE IF NOT EXISTS {settings.VECTOR_STORE_TABLE_NAME} (
+                        id UUID PRIMARY KEY,
+                        metadata JSONB,
+                        content TEXT,
+                        embedding vector({settings.VECTOR_STORE_EMBEDDING_DIMENSIONS}),
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+
+                # Create index on metadata for faster filtering
+                cur.execute(f"""
+                    CREATE INDEX IF NOT EXISTS idx_{settings.VECTOR_STORE_TABLE_NAME}_metadata 
+                    ON {settings.VECTOR_STORE_TABLE_NAME} USING GIN (metadata);
+                """)
+
+            logger.info(
+                f"Tables and extensions created in '{settings.VECTOR_STORE_TABLE_NAME}'."
+            )
         except Exception as e:
             logger.error(f"Error creating tables: {e}")
             raise
 
     def create_index(self) -> None:
-        """Create the DiskANN index (recommended for most use cases)."""
+        """Create the vector similarity search index."""
         try:
-            self.vec_client.create_embedding_index(
-                client.DiskAnnIndex(**DISKANN_INDEX_PARAMS)
-            )
-            logger.info("DiskANN index created successfully.")
+            with self.conn.cursor() as cur:
+                cur.execute(f"""
+                    CREATE INDEX IF NOT EXISTS idx_{settings.VECTOR_STORE_TABLE_NAME}_embedding 
+                    ON {settings.VECTOR_STORE_TABLE_NAME} 
+                    USING ivfflat (embedding vector_cosine_ops)
+                    WITH (lists = 100);
+                """)
+            logger.info("Vector similarity index created successfully.")
         except Exception as e:
             logger.error(f"Error creating index: {e}")
             raise
 
     def upsert(self, df: pd.DataFrame) -> None:
-        """Insert or update records with time-based UUIDs."""
+        """Insert or update records."""
         try:
-            records = []
-            for _, row in df.iterrows():
-                timestamp = datetime.now()
-                if (
-                    isinstance(row["metadata"], dict)
-                    and "created_at" in row["metadata"]
-                ):
-                    timestamp = datetime.fromisoformat(
-                        row["metadata"]["created_at"].replace("Z", "+00:00")
+            with self.conn.cursor() as cur:
+                values = []
+                for _, row in df.iterrows():
+                    record_id = row.get("id") or str(uuid.uuid4())
+                    values.append(
+                        (record_id, row["metadata"], row["content"], row["embedding"])
                     )
 
-                record_id = client.uuid_from_time(timestamp)
-                records.append(
-                    (record_id, row["metadata"], row["content"], row["embedding"])
+                execute_values(
+                    cur,
+                    f"""
+                    INSERT INTO {settings.VECTOR_STORE_TABLE_NAME} (id, metadata, content, embedding)
+                    VALUES %s
+                    ON CONFLICT (id) 
+                    DO UPDATE SET 
+                        metadata = EXCLUDED.metadata,
+                        content = EXCLUDED.content,
+                        embedding = EXCLUDED.embedding;
+                """,
+                    values,
                 )
 
-            self.vec_client.upsert(records)
             logger.info(f"Inserted {len(df)} records.")
         except Exception as e:
             logger.error(f"Error during upsert: {e}")
@@ -83,27 +110,33 @@ class VectorStore:
         time_range: Optional[Tuple[datetime, datetime]] = None,
         return_dataframe: bool = True,
     ) -> Union[List[Tuple[Any, ...]], pd.DataFrame]:
-        """Perform similarity search with optional time filtering."""
+        """Perform similarity search with optional filtering."""
         try:
             query_embedding = self.get_embedding(query_text)
-            search_args: Dict[str, Any] = {"limit": limit}
+
+            query = f"""
+                SELECT id, metadata, content, embedding, 
+                       1 - (embedding <=> %s::vector) as similarity
+                FROM {settings.VECTOR_STORE_TABLE_NAME}
+                WHERE 1=1
+            """
+            params = [query_embedding]
 
             if metadata_filter:
-                search_args["filter"] = metadata_filter
+                query += " AND metadata @> %s::jsonb"
+                params.append(json.dumps(metadata_filter))
 
             if time_range:
                 start_date, end_date = time_range
-                search_args["uuid_time_filter"] = client.UUIDTimeRange(
-                    start_date, end_date
-                )
+                query += " AND created_at BETWEEN %s AND %s"
+                params.extend([start_date, end_date])
 
-            # Add query parameters for DiskANN
-            search_args["query_params"] = client.DiskAnnIndexParams(
-                rescore=50,  # Default rescore value
-                search_list_size=100,  # Default search list size
-            )
+            query += f" ORDER BY embedding <=> %s::vector LIMIT {limit}"
+            params.append(query_embedding)
 
-            results = self.vec_client.search(query_embedding, **search_args)
+            with self.conn.cursor() as cur:
+                cur.execute(query, params)
+                results = cur.fetchall()
 
             if return_dataframe:
                 return self._create_dataframe_from_results(results)

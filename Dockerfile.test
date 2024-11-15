@@ -25,6 +25,11 @@ COPY requirements.test.txt .
 COPY app/ ./app/
 COPY tests/ ./tests/
 COPY scripts/verify_*.sh ./
+COPY init-db.sh ./init-db.sh  # Add this line
+
+# Set permissions for scripts
+RUN chmod +x verify_*.sh \
+    && chmod +x init-db.sh  # Add this line
 
 # Install only required Python packages
 RUN pip install --no-cache-dir -r requirements.test.txt
@@ -33,6 +38,3 @@ RUN pip install --no-cache-dir -r requirements.test.txt
 RUN ldconfig && \
     ldd $(find /usr/lib/x86_64-linux-gnu -name "libffi.so*") && \
     python3 -c "import psycopg2; print('psycopg2 imported successfully')"
-
-# Make verification scripts executable
-RUN chmod +x verify_*.sh

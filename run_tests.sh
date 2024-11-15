@@ -93,14 +93,25 @@ echo "======================="
 cat .env
 echo "======================="
 
+chmod +x init-db.sh
+chmod +x scripts/verify_*.sh
+
 echo "======================="
-echo "STEP 3: Build"
+echo "STEP 3: Database Setup"
+echo "======================="
+echo "Starting database service..."
+docker compose -f docker-compose.test.yml up --build -d test_db
+echo "Waiting for database initialization..."
+sleep 10  # Give some time for init-db.sh to complete
+
+echo "======================="
+echo "STEP 4: Build"
 echo "======================="
 echo "Building test environment..."
 docker compose -f docker-compose.test.yml build
 
 echo "======================="
-echo "STEP 4: Library Verification"
+echo "STEP 5: Library Verification"
 echo "======================="
 echo "Running library verification..."
 
@@ -113,7 +124,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "======================="
-echo "STEP 5: Environment Verification"
+echo "STEP 6: Environment Verification"
 echo "======================="
 echo "Running environment verification..."
 docker compose -f docker-compose.test.yml run \
@@ -125,7 +136,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "======================="
-echo "STEP 6: Running Tests"
+echo "STEP 7: Running Tests"
 echo "======================="
 echo "Executing pytest..."
 docker compose -f docker-compose.test.yml run \
@@ -133,7 +144,7 @@ docker compose -f docker-compose.test.yml run \
     tests pytest tests/ -v --log-cli-level=INFO
 
 echo "======================="
-echo "STEP 7: Cleanup"
+echo "STEP 8: Cleanup"
 echo "======================="
 echo "Cleaning up containers..."
 docker compose -f docker-compose.test.yml down -v
