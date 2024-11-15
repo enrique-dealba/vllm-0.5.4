@@ -26,7 +26,11 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - RUN_MODE=server
+      - RUN_MODE=ui
+      - MODEL_TYPE=LLM
+      - LLM_RESPONSE_SCHEMA=ChunkMetadata
+      - LANGCHAIN_PROJECT=demo-20241009
+      - LLM_MODEL_NAME=mistralai/Mistral-Small-Instruct-2409
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
       - TIMESCALE_SERVICE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-postgres}
