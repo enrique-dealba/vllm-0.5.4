@@ -3,16 +3,24 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
 
-# Install system dependencies including proper libffi version
+# Remove any existing libffi installations first
+RUN apt-get update && apt-get remove -y libffi* && apt-get autoremove -y
+
+# Install specific versions of required libraries
 RUN apt-get update && apt-get install -y \
     wget \
     libpq-dev \
     python3-dev \
     gcc \
     && wget http://archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb \
+    && wget http://archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi-dev_3.3-4_amd64.deb \
     && dpkg -i libffi7_3.3-4_amd64.deb \
-    && rm libffi7_3.3-4_amd64.deb \
+    && dpkg -i libffi-dev_3.3-4_amd64.deb \
+    && rm libffi7_3.3-4_amd64.deb libffi-dev_3.3-4_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
+
+# Add library path explicitly
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
@@ -30,8 +38,16 @@ SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
-# Install psycopg2 after libffi is properly installed
-RUN pip install --no-cache-dir psycopg2-binary
+# Verify libffi installation and rebuild psycopg2
+RUN ldconfig && \
+    pip uninstall -y psycopg2-binary psycopg2 && \
+    LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+    CPPFLAGS="-I/usr/include" \
+    pip install --no-binary :all: psycopg2-binary
+
+# Add verification script
+COPY verify_libs.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/verify_libs.sh
 
 # Set working directory
 WORKDIR /app

@@ -89,6 +89,14 @@ echo "Environment file created successfully!"
 echo "Building test environment..."
 docker compose -f docker-compose.test.yml build
 
+echo "Verifying library setup..."
+docker compose -f docker-compose.test.yml run tests /usr/local/bin/verify_libs.sh
+
+if [ $? -ne 0 ]; then
+    echo "Library verification failed!"
+    exit 1
+fi
+
 echo "Running tests..."
 docker compose -f docker-compose.test.yml run tests
 
