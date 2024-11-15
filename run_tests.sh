@@ -84,7 +84,7 @@ HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
 LANGCHAIN_API_KEY=$LANGCHAIN_TOKEN
 LANGCHAIN_PROJECT=test-postgres-project
 LANGCHAIN_TRACING_V2=true
-LD_LIBRARY_PATH=${LIBRARY_PATH}
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
 EOF
 echo "Environment file created!"
 
