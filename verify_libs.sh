@@ -1,16 +1,17 @@
 #!/bin/bash
+set -x
 
-echo "Checking library versions and symbols..."
+echo "Library Paths:"
+echo $LD_LIBRARY_PATH
+echo
 
-# Check libffi
-echo "libffi details:"
+echo "Checking libffi:"
 ldconfig -p | grep libffi
-nm -D /usr/lib/x86_64-linux-gnu/libffi.so.7 | grep ffi_type_pointer
+ldd /usr/lib/x86_64-linux-gnu/libffi.so.7
 
-# Check psycopg2 installation
-echo -e "\npsycopg2 installation:"
+echo "Checking p11-kit:"
+ldconfig -p | grep p11-kit
+ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0
+
+echo "Testing psycopg2..."
 python3 -c "import psycopg2; print('psycopg2 version:', psycopg2.__version__)"
-
-# List all loaded libraries
-echo -e "\nLoaded libraries:"
-ldd $(python3 -c "import psycopg2._psycopg; print(psycopg2._psycopg.__file__)")

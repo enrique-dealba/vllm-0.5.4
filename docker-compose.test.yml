@@ -12,14 +12,8 @@ services:
       retries: 5
 
   tests:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    build: .
     env_file: .env
-    environment:
-      - RUN_MODE=test
-      - PYTHONPATH=/app
-      - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
       - ./tests:/app/tests

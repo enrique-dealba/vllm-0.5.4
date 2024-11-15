@@ -10,12 +10,21 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     python3-dev \
     gcc \
+    && wget http://archive.ubuntu.com/ubuntu/pool/main/p/p11-kit/libp11-kit0_0.23.20-1ubuntu0.1_amd64.deb \
     && wget http://archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb \
     && wget http://archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi-dev_3.3-4_amd64.deb \
+    && dpkg -i libp11-kit0_0.23.20-1ubuntu0.1_amd64.deb \
     && dpkg -i libffi7_3.3-4_amd64.deb \
     && dpkg -i libffi-dev_3.3-4_amd64.deb \
-    && rm libffi7_3.3-4_amd64.deb libffi-dev_3.3-4_amd64.deb \
+    && rm *.deb \
+    && ldconfig \
     && rm -rf /var/lib/apt/lists/*
+
+# Ensure psycopg2 is built against the correct libraries
+RUN pip uninstall -y psycopg2-binary psycopg2 && \
+    LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+    CPPFLAGS="-I/usr/include" \
+    pip install --no-binary :all: psycopg2-binary
 
 # Add library path explicitly
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
@@ -38,10 +47,8 @@ RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_V
 
 # Verify libffi installation and rebuild psycopg2
 RUN ldconfig && \
-    pip uninstall -y psycopg2-binary psycopg2 && \
-    LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
-    CPPFLAGS="-I/usr/include" \
-    pip install --no-binary :all: psycopg2-binary
+    ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 && \
+    ldd /usr/lib/x86_64-linux-gnu/libffi.so.7
 
 # Add verification scripts
 COPY verify_libs.sh verify_env.sh /usr/local/bin/
