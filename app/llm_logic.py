@@ -65,7 +65,7 @@ def generate_response(user_input: str) -> Union[str, Dict[str, Any]]:
         raise
 
 
-def generate(user_input: str) -> Union[str, Dict[str, Any]]:
+def generate_vanilla(user_input: str) -> Union[str, Dict[str, Any]]:
     try:
         response, execution_time = generate_unstructured_response(user_input)
         log_to_langsmith(

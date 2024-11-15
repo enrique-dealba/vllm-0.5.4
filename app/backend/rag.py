@@ -4,7 +4,7 @@ from typing import Any, Dict
 import pandas as pd
 
 from app.backend.vector_store import VectorStore
-from app.llm_logic import generate
+from app.llm_logic import generate_vanilla
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,9 @@ Please respond to the following question:
 {question}
 Provide a clear and concise answer based only on the context provided above. Keep your writing under 100 words."""
 
-            response, execution_time = generate(query)  # Using vanilla generate here
+            response, execution_time = generate_vanilla(
+                query
+            )  # Using vanilla generate here
             return {
                 "response": response,
                 "execution_time_seconds": execution_time,
