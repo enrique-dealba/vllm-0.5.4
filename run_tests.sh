@@ -103,9 +103,17 @@ echo "======================="
 echo "STEP 4: Library Verification"
 echo "======================="
 echo "Running library verification..."
+
+# Check if verify_libs.sh exists in the container
+docker compose -f docker-compose.test.yml run tests ls -la /usr/local/bin/verify_libs.sh
+
+echo "Executing verification script..."
 docker compose -f docker-compose.test.yml run tests /usr/local/bin/verify_libs.sh
+
 if [ $? -ne 0 ]; then
     echo "ERROR: Library verification failed!"
+    echo "Showing verify_libs.sh contents:"
+    docker compose -f docker-compose.test.yml run tests cat /usr/local/bin/verify_libs.sh
     exit 1
 fi
 

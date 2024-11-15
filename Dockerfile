@@ -52,8 +52,12 @@ RUN ldconfig && \
 
 # Add verification scripts
 COPY verify_libs.sh verify_env.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/verify_libs.sh && \
-    chmod +x /usr/local/bin/verify_env.sh
+RUN echo "Verifying scripts exist..." && \
+    ls -la /usr/local/bin/verify_libs.sh && \
+    ls -la /usr/local/bin/verify_env.sh && \
+    chmod +x /usr/local/bin/verify_libs.sh && \
+    chmod +x /usr/local/bin/verify_env.sh && \
+    echo "Scripts are executable"
 
 # Set working directory
 WORKDIR /app
