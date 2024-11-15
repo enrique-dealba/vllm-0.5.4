@@ -59,13 +59,13 @@ if txt_file:
                 Generate structured metadata based on the given schema."""
                 llm_response, execution_time = generate_response(query)
 
-                chunk_embedding = vec_store.get_embedding(chunk)
+                # chunk_embedding = vec_store.get_embedding(chunk)  # TODO: Check how we can use this
                 metadata_embedding = vec_store.get_embedding(str(llm_response))
                 chunk_id = str(uuid.uuid4())
 
                 document = {
                     "id": chunk_id,
-                    "metadata": llm_response,
+                    "metadata": llm_response.model_dump(),
                     "content": chunk,
                     "embedding": metadata_embedding,  # Using metadata_embedding as main embedding
                     "created_at": datetime.now(timezone.utc).isoformat(),
