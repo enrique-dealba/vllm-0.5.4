@@ -25,8 +25,13 @@ class VectorStore:
             self.conn = psycopg2.connect(settings.TIMESCALE_SERVICE_URL)
             self.conn.autocommit = True
             logger.info("Connected to database successfully.")
+
+            # Automatically create tables and index upon initialization
+            self.create_tables()
+            self.create_index()
+
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Failed to connect to database or initialize tables: {e}")
             raise
 
     def create_tables(self) -> None:
@@ -35,6 +40,7 @@ class VectorStore:
             with self.conn.cursor() as cur:
                 # Create extensions
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb;")
 
                 # Create embeddings table
                 cur.execute(f"""
