@@ -20,15 +20,6 @@ RUN apt-get update && apt-get install -y \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# Ensure psycopg2 is built against the correct libraries
-RUN pip uninstall -y psycopg2-binary psycopg2 && \
-    LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
-    CPPFLAGS="-I/usr/include" \
-    pip install --no-binary :all: psycopg2-binary
-
-# Add library path explicitly
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
     && bash miniconda.sh -b -p /root/miniconda3 \
@@ -45,35 +36,15 @@ SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
     --extra-index-url https://download.pytorch.org/whl/cu118
 
-# Verify libffi installation and rebuild psycopg2
+# Install psycopg2 in conda environment
+RUN LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+    CPPFLAGS="-I/usr/include" \
+    pip install --no-binary :all: psycopg2-binary==2.9.9
+
+# Verify libraries
 RUN ldconfig && \
     ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 && \
     ldd /usr/lib/x86_64-linux-gnu/libffi.so.7
-
-# Copy and setup verification scripts
-COPY scripts/verify_libs.sh scripts/verify_env.sh /usr/local/bin/
-
-# Make scripts executable and ensure their content
-RUN chmod +x /usr/local/bin/verify_libs.sh /usr/local/bin/verify_env.sh && \
-    # Setup verify_libs.sh
-    echo '#!/bin/bash' > /usr/local/bin/verify_libs.sh && \
-    echo 'set -x' >> /usr/local/bin/verify_libs.sh && \
-    echo 'echo "=== Library Verification Start ==="' >> /usr/local/bin/verify_libs.sh && \
-    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldconfig -p | grep libffi' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldconfig -p | grep p11-kit' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldd /usr/lib/x86_64-linux-gnu/libffi.so.7' >> /usr/local/bin/verify_libs.sh && \
-    echo 'ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0' >> /usr/local/bin/verify_libs.sh && \
-    echo 'python3 -c "import psycopg2; print(\"psycopg2 version:\", psycopg2.__version__)"' >> /usr/local/bin/verify_libs.sh && \
-    # Setup verify_env.sh
-    echo '#!/bin/bash' > /usr/local/bin/verify_env.sh && \
-    echo 'set -x' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "=== Environment Verification Start ==="' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "PYTHONPATH: $PYTHONPATH"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "Current working directory: $(pwd)"' >> /usr/local/bin/verify_env.sh && \
-    echo 'echo "Python executable: $(which python3)"' >> /usr/local/bin/verify_env.sh && \
-    echo 'python3 --version' >> /usr/local/bin/verify_env.sh
 
 # Set working directory
 WORKDIR /app
@@ -90,9 +61,37 @@ RUN pip install -r requirements.txt
 # Install LangChain and LangChain Community
 RUN pip install langchain langchain_community -q
 
+# Copy verification scripts
+COPY scripts/verify_libs.sh scripts/verify_env.sh /usr/local/bin/
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/verify_libs.sh /usr/local/bin/verify_env.sh
+
+# Create verification scripts
+RUN echo '#!/bin/bash\n\
+source /root/miniconda3/bin/activate vllm\n\
+set -x\n\
+echo "=== Library Verification Start ==="\n\
+echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"\n\
+ldconfig -p | grep libffi\n\
+ldconfig -p | grep p11-kit\n\
+ldd /usr/lib/x86_64-linux-gnu/libffi.so.7\n\
+ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0\n\
+python3 -c "import psycopg2; print(\"psycopg2 version:\", psycopg2.__version__)"' > /usr/local/bin/verify_libs.sh && \
+    echo '#!/bin/bash\n\
+source /root/miniconda3/bin/activate vllm\n\
+set -x\n\
+echo "=== Environment Verification Start ==="\n\
+echo "PYTHONPATH: $PYTHONPATH"\n\
+echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"\n\
+echo "Current working directory: $(pwd)"\n\
+echo "Python executable: $(which python3)"\n\
+python3 --version' > /usr/local/bin/verify_env.sh
+
 # Make start script executable
 RUN chmod +x /app/scripts/start.sh
 
+# Setup library path in bashrc
 RUN echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" >> /root/.bashrc
 
 # Set the entrypoint to our start script

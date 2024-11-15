@@ -17,8 +17,8 @@ services:
     environment:
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
-    entrypoint: []  # Override the default entrypoint
-    command: ["/usr/local/bin/verify_libs.sh"]
+    entrypoint: []
+    command: ["bash", "-c", "source /root/miniconda3/bin/activate vllm && /usr/local/bin/verify_libs.sh"]
 
   tests:
     build: .
@@ -33,5 +33,5 @@ services:
     depends_on:
       test_db:
         condition: service_healthy
-    entrypoint: []  # Override the default entrypoint
-    command: ["pytest", "/app/tests", "-v", "--log-cli-level=INFO"]
+    entrypoint: []
+    command: ["bash", "-c", "source /root/miniconda3/bin/activate vllm && pytest /app/tests -v --log-cli-level=INFO"]
