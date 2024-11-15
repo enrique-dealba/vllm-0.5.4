@@ -11,6 +11,13 @@ services:
       timeout: 5s
       retries: 5
 
+  verify:
+    build: .
+    env_file: .env
+    environment:
+      - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
+    command: ["/usr/local/bin/verify_libs.sh"]
+
   tests:
     build: .
     env_file: .env
@@ -24,4 +31,3 @@ services:
     depends_on:
       test_db:
         condition: service_healthy
-    command: /app/scripts/start.sh

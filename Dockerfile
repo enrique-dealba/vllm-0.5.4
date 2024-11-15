@@ -50,14 +50,30 @@ RUN ldconfig && \
     ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0 && \
     ldd /usr/lib/x86_64-linux-gnu/libffi.so.7
 
-# Add verification scripts
-COPY verify_libs.sh verify_env.sh /usr/local/bin/
-RUN echo "Verifying scripts exist..." && \
-    ls -la /usr/local/bin/verify_libs.sh && \
-    ls -la /usr/local/bin/verify_env.sh && \
-    chmod +x /usr/local/bin/verify_libs.sh && \
-    chmod +x /usr/local/bin/verify_env.sh && \
-    echo "Scripts are executable"
+# Copy and setup verification scripts
+COPY scripts/verify_libs.sh scripts/verify_env.sh /usr/local/bin/
+
+# Make scripts executable and ensure their content
+RUN chmod +x /usr/local/bin/verify_libs.sh /usr/local/bin/verify_env.sh && \
+    # Setup verify_libs.sh
+    echo '#!/bin/bash' > /usr/local/bin/verify_libs.sh && \
+    echo 'set -x' >> /usr/local/bin/verify_libs.sh && \
+    echo 'echo "=== Library Verification Start ==="' >> /usr/local/bin/verify_libs.sh && \
+    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_libs.sh && \
+    echo 'ldconfig -p | grep libffi' >> /usr/local/bin/verify_libs.sh && \
+    echo 'ldconfig -p | grep p11-kit' >> /usr/local/bin/verify_libs.sh && \
+    echo 'ldd /usr/lib/x86_64-linux-gnu/libffi.so.7' >> /usr/local/bin/verify_libs.sh && \
+    echo 'ldd /usr/lib/x86_64-linux-gnu/libp11-kit.so.0' >> /usr/local/bin/verify_libs.sh && \
+    echo 'python3 -c "import psycopg2; print(\"psycopg2 version:\", psycopg2.__version__)"' >> /usr/local/bin/verify_libs.sh && \
+    # Setup verify_env.sh
+    echo '#!/bin/bash' > /usr/local/bin/verify_env.sh && \
+    echo 'set -x' >> /usr/local/bin/verify_env.sh && \
+    echo 'echo "=== Environment Verification Start ==="' >> /usr/local/bin/verify_env.sh && \
+    echo 'echo "PYTHONPATH: $PYTHONPATH"' >> /usr/local/bin/verify_env.sh && \
+    echo 'echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"' >> /usr/local/bin/verify_env.sh && \
+    echo 'echo "Current working directory: $(pwd)"' >> /usr/local/bin/verify_env.sh && \
+    echo 'echo "Python executable: $(which python3)"' >> /usr/local/bin/verify_env.sh && \
+    echo 'python3 --version' >> /usr/local/bin/verify_env.sh
 
 # Set working directory
 WORKDIR /app
