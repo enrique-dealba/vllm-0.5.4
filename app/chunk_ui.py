@@ -60,7 +60,9 @@ if txt_file:
                 llm_response, execution_time = generate_response(query)
 
                 # chunk_embedding = vec_store.get_embedding(chunk)  # TODO: Check how we can use this
-                metadata_embedding = vec_store.get_embedding(str(llm_response))
+                metadata_embedding = vec_store.get_embedding(
+                    str(llm_response.model_dump())
+                )
                 chunk_id = str(uuid.uuid4())
 
                 document = {
@@ -91,14 +93,24 @@ if txt_file:
     if st.button("View Stored Chunks"):
         st.subheader("Stored Chunks and Metadata")
         try:
+            logger.info("View Stored Chunks button clicked.")
             with st.spinner("Fetching stored chunks..."):
-                results = vec_store.search("", limit=100)
+                logger.info("Attempting to fetch stored chunks.")
+                results = vec_store.search("", limit=100)  # Retrieves all records
+                logger.debug(f"Number of chunks fetched: {len(results)}")
+
                 if results.empty:
+                    logger.info("No chunks found in the database.")
                     st.info("No chunks found in the database")
                 else:
-                    for _, row in results.iterrows():
+                    logger.info(f"{len(results)} chunks retrieved successfully.")
+                    st.write(f"Total Chunks Retrieved: {len(results)}")
+
+                    for index, row in results.iterrows():
+                        logger.debug(f"Processing chunk at index {index}.")
                         metadata = row.get("metadata", {})
                         created_at = row.get("created_at", "N/A")
+
                         formatted_data = {
                             "ID": row.get("id", "N/A"),
                             "Chunk": row.get("content", ""),
@@ -113,13 +125,18 @@ if txt_file:
                             "Created At": created_at,
                         }
 
+                        logger.info(
+                            f"Formatted data for chunk ID {formatted_data['ID']}: {formatted_data}"
+                        )
+
                         with st.expander(
                             f"Document ID: {formatted_data['ID']} (Priority: {formatted_data['Priority Level']})"
                         ):
                             st.json(formatted_data)
         except Exception as e:
-            st.error(f"Failed to retrieve chunks: {e}")
             logger.error("Chunk retrieval error", exc_info=True)
+            st.error(f"Failed to retrieve chunks: {e}")
+            logger.info("Displayed error message to the user.")
 
     st.markdown("---")
 
