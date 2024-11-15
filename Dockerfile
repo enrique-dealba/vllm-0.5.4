@@ -4,9 +4,6 @@ ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH
 
-# Remove any existing libffi installations first
-RUN apt-get update && apt-get remove -y libffi* && apt-get autoremove -y
-
 # Install specific versions of required libraries
 RUN apt-get update && apt-get install -y \
     wget \
