@@ -26,8 +26,11 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 
 ENV PATH="/root/miniconda3/bin:${PATH}"
 
-# Create and activate conda environment
-RUN conda create -n vllm python=3.10 -y
+# Create conda environment with specific packages
+RUN conda create -n vllm python=3.10 \
+    psycopg2 \
+    -c conda-forge -y
+
 SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
 
 # Install vLLM with CUDA support
@@ -49,13 +52,11 @@ RUN chmod +x /app/scripts/start.sh \
     && chmod +x /app/scripts/verify_*.sh \
     && chmod +x /app/init-db.sh
 
-# Install project dependencies
-RUN pip install -r requirements.txt \
+# Install remaining project dependencies
+RUN pip install --no-deps -r requirements.txt \
     && pip install langchain langchain_community -q
 
-# Verify the environment
-RUN ldconfig && \
-    ldd $(find /usr/lib/x86_64-linux-gnu -name "libffi.so*") && \
-    python3 -c "import psycopg2; print('psycopg2 imported successfully')"
+# Verify the environment using conda run
+RUN conda run -n vllm python3 -c "import psycopg2; print('psycopg2 imported successfully')"
 
 ENTRYPOINT ["/app/scripts/start.sh"]
