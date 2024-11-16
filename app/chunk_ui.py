@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-st.title("Text File Analysis with Chunk Metadata and PostgreSQL/Timescale Integration")
+st.title("PostgreSQL RAG")
 
 # Initialize backend components
 try:
