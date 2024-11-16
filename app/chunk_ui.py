@@ -171,11 +171,11 @@ if txt_file:
                             "Number of Values": row["metadata"].get("num_values", 0),
                             "Priority Level": row["metadata"].get("priority_level", 1),
                             "Created At": row["created_at"],
-                            "Distance": row["distance"],
+                            "Distance": row["similarity"],
                         }
 
                         with st.expander(
-                            f"Result (Distance: {result_data['Distance']:.4f}, Priority: {result_data['Priority Level']})"
+                            f"Result (Similarity: {result_data['Distance']:.4f}, Priority: {result_data['Priority Level']})"
                         ):
                             st.json(result_data)
             except Exception as e:
