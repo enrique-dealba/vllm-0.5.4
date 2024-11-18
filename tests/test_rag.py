@@ -141,12 +141,14 @@ def test_metadata_filtering(vector_store, sample_chunks):
     records_df = pd.DataFrame(metadata_records)
     vector_store.upsert(records_df)
 
-    # Test filtering by metadata with proper JSONB path
+    # Test filtering by metadata with proper JSON-compatible filter
     pokemon_results = vector_store.search(
         "pokemon",
         limit=1,
         similarity_threshold=0.1,
-        metadata_filter={"metadata->>'descriptive_labels'->>'category': 'pokemon"},
+        metadata_filter={
+            "descriptive_labels.category": "pokemon"
+        },  # Simplified filter format
     )
 
     # Verify at least one result exists before accessing it
