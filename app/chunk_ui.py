@@ -179,7 +179,7 @@ if txt_file:
                             st.json(result_data)
 
                     # Add RAG-based answer generation using existing results
-                    st.subheader("Generated Answer")
+                    st.subheader("Response")
                     with st.spinner("Generating answer based on retrieved context..."):
                         try:
                             rag = RAG()
@@ -188,10 +188,9 @@ if txt_file:
                                 query, existing_context=results
                             )
 
-                            st.write("### Answer")
                             st.write(answer["response"])
 
-                            st.write("### Generation Details")
+                            st.write("### Details")
                             st.write(
                                 f"Execution Time: {answer['execution_time_seconds']:.2f} seconds"
                             )
