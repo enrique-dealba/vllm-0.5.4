@@ -23,10 +23,18 @@ class RAG:
             logger.error(f"Error retrieving relevant context: {e}")
             raise e
 
-    def generate_answer(self, question: str) -> Dict[str, Any]:
-        """Generate an answer based on the retrieved context."""
+    def generate_answer(
+        self, question: str, existing_context: pd.DataFrame = None
+    ) -> Dict[str, Any]:
+        """Generate an answer based on the retrieved or provided context."""
         try:
-            context = self.get_relevant_context(question)
+            # Use provided context if available, otherwise fetch new context
+            context = (
+                existing_context
+                if existing_context is not None
+                else self.get_relevant_context(question)
+            )
+
             # Convert DataFrame context to string representation
             context_str = context.to_string(index=False)
 
@@ -36,9 +44,7 @@ Please respond to the following question:
 {question}
 Provide a clear and concise answer based only on the context provided above. Keep your writing under 100 words."""
 
-            response, execution_time = generate_vanilla(
-                query
-            )  # Using vanilla generate here
+            response, execution_time = generate_vanilla(query)
             return {
                 "response": response,
                 "execution_time_seconds": execution_time,

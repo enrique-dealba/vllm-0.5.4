@@ -11,6 +11,7 @@ import streamlit as st
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from llm_logic import generate_response
 
+from app.backend.rag import RAG
 from app.backend.vector_store import VectorStore
 from app.config import settings
 
@@ -153,7 +154,6 @@ if txt_file:
             try:
                 with st.spinner("Searching..."):
                     results = vec_store.search(query, limit=limit)
-
                 if results.empty:
                     st.info("No matching results found")
                 else:
@@ -173,11 +173,33 @@ if txt_file:
                             "Created At": row["created_at"],
                             "Distance": row["similarity"],
                         }
-
                         with st.expander(
                             f"Result (Similarity: {result_data['Distance']:.4f}, Priority: {result_data['Priority Level']})"
                         ):
                             st.json(result_data)
+
+                    # Add RAG-based answer generation using existing results
+                    st.subheader("Generated Answer")
+                    with st.spinner("Generating answer based on retrieved context..."):
+                        try:
+                            rag = RAG()
+                            # Pass the existing results to avoid duplicate search
+                            answer = rag.generate_answer(
+                                query, existing_context=results
+                            )
+
+                            st.write("### Answer")
+                            st.write(answer["response"])
+
+                            st.write("### Generation Details")
+                            st.write(
+                                f"Execution Time: {answer['execution_time_seconds']:.2f} seconds"
+                            )
+
+                        except Exception as e:
+                            st.error(f"Failed to generate answer: {e}")
+                            logger.error("Answer generation error", exc_info=True)
+
             except Exception as e:
                 st.error(f"Search failed: {e}")
                 logger.error("Search error", exc_info=True)
