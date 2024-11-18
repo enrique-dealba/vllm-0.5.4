@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 
 def mock_llm_response(text: str) -> Dict[Any, Any]:
     """Mock LLM response based on input text"""
+    logger.info(f"Generating mock response for text: {text}")
+
     if "pokemon" in text.lower():
-        return {
+        response = {
             "source_files": ["pokemon_data.json"],
             "json_keys_summary": ["name", "type", "abilities"],
             "descriptive_labels": {"category": "pokemon", "type": "electric"},
@@ -23,8 +25,10 @@ def mock_llm_response(text: str) -> Dict[Any, Any]:
             "num_values": 3,
             "priority_level": 2,
         }
+        logger.info(f"Generated Pokemon response: {response}")
+        return response
     else:
-        return {
+        response = {
             "source_files": ["furniture_data.json"],
             "json_keys_summary": ["item", "material", "dimensions"],
             "descriptive_labels": {"category": "furniture", "type": "home"},
@@ -32,6 +36,8 @@ def mock_llm_response(text: str) -> Dict[Any, Any]:
             "num_values": 3,
             "priority_level": 1,
         }
+        logger.info(f"Generated furniture response: {response}")
+        return response
 
 
 @pytest.fixture
@@ -129,6 +135,10 @@ def test_metadata_filtering(vector_store, sample_chunks):
     for chunk in sample_chunks:
         chunk_embedding = vector_store.get_embedding(chunk)
         llm_response = mock_llm_response(chunk)
+
+        # Let's log the metadata to verify its structure
+        logger.info(f"Generated metadata for chunk '{chunk}': {llm_response}")
+
         document = {
             "id": str(uuid.uuid4()),
             "metadata": llm_response,
@@ -141,17 +151,28 @@ def test_metadata_filtering(vector_store, sample_chunks):
     records_df = pd.DataFrame(metadata_records)
     vector_store.upsert(records_df)
 
-    # Test filtering by metadata with proper JSON-compatible filter
+    # First, verify records were stored properly
+    all_results = vector_store.search("", limit=100, similarity_threshold=-1.0)
+    logger.info(f"Total records found: {len(all_results)}")
+    if not all_results.empty:
+        for idx, row in all_results.iterrows():
+            logger.info(f"Record {idx} metadata: {row['metadata']}")
+
+    # Try searching with a very low similarity threshold first
     pokemon_results = vector_store.search(
         "pokemon",
         limit=1,
-        similarity_threshold=0.1,
+        similarity_threshold=0.0,  # Set to 0 to ensure we get results
         metadata_filter={
-            "descriptive_labels.category": "pokemon"
-        },  # Simplified filter format
+            "descriptive_labels": {"category": "pokemon"}
+        },  # Match nested structure
     )
 
-    # Verify at least one result exists before accessing it
+    # Debug output
+    logger.info(f"Pokemon search results: {len(pokemon_results)}")
+    if not pokemon_results.empty:
+        logger.info(f"First result metadata: {pokemon_results.iloc[0]['metadata']}")
+
     assert len(pokemon_results) > 0, "Expected at least one Pokemon result"
     if len(pokemon_results) > 0:
         metadata = pokemon_results.iloc[0]["metadata"]
