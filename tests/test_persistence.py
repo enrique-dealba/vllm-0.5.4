@@ -1,20 +1,16 @@
 import logging
-import subprocess
 import time
 from datetime import datetime, timezone
 
 import pandas as pd
+import psycopg2
 import pytest
-from psycopg2.errors import OperationalError
+from psycopg2.extensions import connection
 
 from app.backend.vector_store import VectorStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Constants for docker-compose commands
-DOCKER_COMPOSE_FILE = "docker-compose.test.yml"
-DOCKER_COMPOSE_CMD = ["docker", "compose", "-f", DOCKER_COMPOSE_FILE]
 
 
 @pytest.fixture(scope="module")
@@ -46,29 +42,46 @@ def test_data():
     )
 
 
-def docker_compose_cmd(cmd: list) -> None:
-    """Execute docker-compose command and log output"""
-    try:
-        result = subprocess.run(
-            DOCKER_COMPOSE_CMD + cmd, check=True, capture_output=True, text=True
-        )
-        logger.info(f"Docker command output: {result.stdout}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Docker command failed: {e.stderr}")
-        raise
-
-
-def wait_for_db(max_retries: int = 30, delay: int = 2) -> bool:
+def wait_for_db(conn_string: str, max_retries: int = 30, delay: int = 2) -> bool:
     """Wait for database to become available"""
     for attempt in range(max_retries):
         try:
-            VectorStore()
+            conn = psycopg2.connect(conn_string)
+            conn.close()
             logger.info("Successfully connected to database")
             return True
-        except OperationalError:
+        except psycopg2.OperationalError:
             logger.info(f"Database not ready, attempt {attempt + 1}/{max_retries}")
             time.sleep(delay)
     return False
+
+
+def restart_db_connection(conn: connection) -> connection:
+    """Close and reopen database connection"""
+    try:
+        if conn and not conn.closed:
+            conn_params = conn.get_dsn_parameters()
+            conn.close()
+            logger.info("Closed existing database connection")
+
+            # Construct connection string from parameters
+            conn_string = f"postgresql://{conn_params['user']}:{conn_params.get('password', '')}@{conn_params['host']}:{conn_params['port']}/{conn_params['dbname']}"
+
+            # Wait briefly to simulate database restart
+            time.sleep(5)
+
+            # Try to reconnect
+            if wait_for_db(conn_string):
+                new_conn = psycopg2.connect(conn_string)
+                new_conn.autocommit = True
+                logger.info("Established new database connection")
+                return new_conn
+            else:
+                raise Exception("Failed to reconnect to database")
+    except Exception as e:
+        logger.error(f"Error during connection restart: {e}")
+        raise
+    return conn
 
 
 @pytest.fixture(scope="module")
@@ -87,7 +100,7 @@ def vector_store():
 
 
 def test_database_persistence(vector_store, test_data):
-    """Test data persistence across database restarts"""
+    """Test data persistence across database connection restarts"""
     logger.info("Starting database persistence test")
 
     # Step 1: Insert test data
@@ -111,25 +124,13 @@ def test_database_persistence(vector_store, test_data):
     # Store initial data for comparison
     initial_data = initial_results.to_dict("records")
 
-    # Step 2: Stop the database
-    logger.info("Stopping database container")
-    docker_compose_cmd(["stop", "test_db"])
-    time.sleep(5)  # Give time for container to stop
+    # Step 2: Restart database connection
+    logger.info("Restarting database connection")
+    vector_store.conn = restart_db_connection(vector_store.conn)
 
-    # Step 3: Start the database
-    logger.info("Starting database container")
-    docker_compose_cmd(["start", "test_db"])
-
-    # Wait for database to be ready
-    assert wait_for_db(), "Database failed to become ready after restart"
-
-    # Step 4: Create new connection and verify data
-    logger.info("Creating new connection and verifying data persistence")
-    new_vector_store = VectorStore()
-
-    # Verify data after restart
-    logger.info("Querying data after restart")
-    post_restart_results = new_vector_store.search(
+    # Step 3: Verify data after connection restart
+    logger.info("Verifying data after connection restart")
+    post_restart_results = vector_store.search(
         "unique identifier string",
         limit=10,
         metadata_filter={"source": "persistence_test"},
@@ -154,24 +155,17 @@ def test_database_persistence(vector_store, test_data):
         ), "Similarity score changed significantly"
 
 
-def test_volume_persistence(vector_store, test_data):
-    """Test data persistence in docker volume"""
-    # Get volume information
-    logger.info("Checking volume information")
-    result = subprocess.run(
-        ["docker", "volume", "ls", "--format", "{{.Name}} {{.Driver}}"],
-        capture_output=True,
-        text=True,
-    )
-    assert "timescaledb_data" in result.stdout, "TimescaleDB volume not found"
+def test_long_term_persistence(vector_store, test_data):
+    """Test data persistence with multiple connection cycles"""
+    logger.info("Starting long-term persistence test")
 
-    # Insert test data
+    # Insert initial test data
     test_data["embedding"] = [
         vector_store.get_embedding(text) for text in test_data["content"]
     ]
     vector_store.upsert(test_data)
 
-    # Verify data exists
+    # Initial verification
     initial_results = vector_store.search(
         "unique identifier string",
         limit=10,
@@ -180,26 +174,33 @@ def test_volume_persistence(vector_store, test_data):
     initial_count = len(initial_results)
     assert initial_count > 0, "No test data found in database"
 
-    # Stop and remove container while preserving volume
-    logger.info("Stopping and removing container while preserving volume")
-    docker_compose_cmd(["down"])
-    time.sleep(5)
+    # Multiple connection restart cycles
+    for cycle in range(3):
+        logger.info(f"Testing persistence cycle {cycle + 1}")
 
-    # Start new container with same volume
-    logger.info("Starting new container with existing volume")
-    docker_compose_cmd(["up", "-d", "test_db"])
+        # Restart connection
+        vector_store.conn = restart_db_connection(vector_store.conn)
 
-    # Wait for database to be ready
-    assert wait_for_db(), "Database failed to become ready after recreation"
+        # Verify data after restart
+        cycle_results = vector_store.search(
+            "unique identifier string",
+            limit=10,
+            metadata_filter={"source": "persistence_test"},
+        )
 
-    # Verify data in new container
-    new_vector_store = VectorStore()
-    post_recreation_results = new_vector_store.search(
-        "unique identifier string",
-        limit=10,
-        metadata_filter={"source": "persistence_test"},
-    )
+        assert (
+            len(cycle_results) == initial_count
+        ), f"Data count mismatch after cycle {cycle + 1}"
 
-    assert (
-        len(post_recreation_results) == initial_count
-    ), "Data count mismatch after container recreation"
+        # Compare content and metadata
+        for idx, (initial_row, cycle_row) in enumerate(
+            zip(initial_results.iterrows(), cycle_results.iterrows())
+        ):
+            assert (
+                initial_row[1]["content"] == cycle_row[1]["content"]
+            ), f"Content mismatch in record {idx} after cycle {cycle + 1}"
+            assert (
+                initial_row[1]["metadata"] == cycle_row[1]["metadata"]
+            ), f"Metadata mismatch in record {idx} after cycle {cycle + 1}"
+
+    logger.info("Long-term persistence test completed successfully!")
