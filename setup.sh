@@ -135,7 +135,9 @@ set -e  # Exit on error
 # Function for cleanup on error
 cleanup_on_error() {
     echo "Error occurred. Cleaning up..."
-    docker compose down --volumes --remove-orphans 2>/dev/null || true
+    docker compose down 2>/dev/null || true
+    # Don't remove volumes on error, just stop containers
+    echo "Cleanup complete. You may need to check volume permissions manually."
     exit 1
 }
 
@@ -165,11 +167,15 @@ if ! docker volume inspect timescaledb_data >/dev/null 2>&1; then
 fi
 echo "TimescaleDB volume verified"
 
-# Ensure volume permissions are correct
+# Instead of trying to change ownership directly, we'll use the official image's init process
+echo "Initializing volume permissions..."
 docker run --rm \
     -v timescaledb_data:/var/lib/postgresql/data \
+    -e POSTGRES_USER="${DB_USER}" \
+    -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
+    -e POSTGRES_DB="${DB_NAME}" \
     timescale/timescaledb-ha:pg16 \
-    chown -R postgres:postgres /var/lib/postgresql/data
+    /bin/bash -c "mkdir -p /var/lib/postgresql/data && chown postgres:postgres /var/lib/postgresql/data || true"
 
 echo "======================="
 echo "STEP 4: Database Setup"
