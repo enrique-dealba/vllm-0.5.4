@@ -55,7 +55,7 @@ services:
 volumes:
   timescaledb_data:
     name: timescaledb_data
-    external: false  # Creates volume if it doesn't exist
+    external: true  # We're creating it manually
 
 networks:
   app_network:

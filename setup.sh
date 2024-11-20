@@ -91,13 +91,17 @@ echo "Performing $CLEANUP_TYPE cleanup..."
 
 if [ "$CLEANUP_TYPE" = "full" ]; then
     echo "WARNING: Performing full cleanup including volumes..."
-    docker compose down -v --remove-orphans
-    docker rm -f timescaledb
+    docker compose down --volumes --remove-orphans
     docker volume rm timescaledb_data 2>/dev/null || true
+    echo "Recreating volume..."
+    docker volume create \
+        --driver local \
+        --label app=timescaledb \
+        --label environment=production \
+        timescaledb_data
 else
     echo "Performing soft cleanup (preserving volumes)..."
     docker compose down --remove-orphans
-    docker rm -f timescaledb 2>/dev/null || true
 fi
 
 echo "======================="
@@ -126,6 +130,18 @@ echo "======================="
 chmod +x scripts/init-db.sh
 chmod +x scripts/verify_*.sh
 
+set -e  # Exit on error
+
+# Function for cleanup on error
+cleanup_on_error() {
+    echo "Error occurred. Cleaning up..."
+    docker compose down --volumes --remove-orphans 2>/dev/null || true
+    exit 1
+}
+
+# Set error trap
+trap cleanup_on_error ERR
+
 echo "======================="
 echo "STEP 3: Volume Check"
 echo "======================="
@@ -134,8 +150,26 @@ if docker volume inspect timescaledb_data >/dev/null 2>&1; then
     echo "TimescaleDB volume exists, preserving data"
 else
     echo "Creating new TimescaleDB volume"
-    docker volume create timescaledb_data
+    # Create volume with specific driver and options
+    docker volume create \
+        --driver local \
+        --label app=timescaledb \
+        --label environment=production \
+        timescaledb_data
 fi
+
+# Verify volume creation
+if ! docker volume inspect timescaledb_data >/dev/null 2>&1; then
+    echo "ERROR: Failed to create or verify TimescaleDB volume"
+    exit 1
+fi
+echo "TimescaleDB volume verified"
+
+# Ensure volume permissions are correct
+docker run --rm \
+    -v timescaledb_data:/var/lib/postgresql/data \
+    timescale/timescaledb-ha:pg16 \
+    chown -R postgres:postgres /var/lib/postgresql/data
 
 echo "======================="
 echo "STEP 4: Database Setup"
