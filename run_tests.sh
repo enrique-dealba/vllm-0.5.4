@@ -166,7 +166,14 @@ echo "======================="
 echo "STEP 7: Running Tests"
 echo "======================="
 echo "Executing pytest..."
-docker compose -f docker-compose.test.yml run tests pytest tests/ -v --log-cli-level=INFO --markers "persistence: marks persistence tests"
+docker compose -f docker-compose.test.yml run tests bash -c "
+    pytest tests/test_persistence.py -v --log-cli-level=INFO
+"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Pytest execution failed!"
+    exit 1
+fi
 
 echo "======================="
 echo "STEP 8: Testing Volume Persistence"

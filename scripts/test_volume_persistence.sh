@@ -30,18 +30,6 @@ wait_for_db() {
     return 1
 }
 
-# Create test data JSON
-create_test_data() {
-    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    cat << EOF
-{
-    "source": "persistence_test",
-    "timestamp": "$timestamp",
-    "test_type": "shell_test"
-}
-EOF
-}
-
 echo "1. Ensuring clean state..."
 docker compose -f docker-compose.test.yml down --remove-orphans >/dev/null 2>&1
 docker volume rm test_timescaledb_data >/dev/null 2>&1 || true
@@ -65,12 +53,12 @@ execute_sql "
 "
 
 echo "4. Inserting test data..."
-TEST_DATA=$(create_test_data)
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 execute_sql "
     INSERT INTO embeddings (id, metadata, content, embedding, created_at)
     VALUES (
         '123e4567-e89b-12d3-a456-426614174000'::uuid,
-        '\$$(echo $TEST_DATA)'::jsonb,
+        '{\"source\": \"persistence_test\", \"timestamp\": \"$TIMESTAMP\", \"test_type\": \"shell_test\"}'::jsonb,
         'Persistence test content',
         array_fill(0.1, ARRAY[384])::vector,
         CURRENT_TIMESTAMP
@@ -78,10 +66,10 @@ execute_sql "
 "
 
 echo "5. Verifying initial insertion..."
-INITIAL_COUNT=$(execute_sql "SELECT COUNT(*) FROM embeddings;" | sed -n 3p | tr -d ' ')
+INITIAL_COUNT=$(execute_sql "SELECT COUNT(*) FROM embeddings;" | grep -oE '[0-9]+')
 echo "Initial record count: $INITIAL_COUNT"
 
-if [ "$INITIAL_COUNT" -ne 1 ]; then
+if [ "$INITIAL_COUNT" -ne "1" ]; then
     echo "ERROR: Expected 1 record, found $INITIAL_COUNT"
     exit 1
 fi
@@ -94,12 +82,26 @@ docker compose -f docker-compose.test.yml start test_db
 wait_for_db
 
 echo "8. Verifying data persistence..."
-FINAL_COUNT=$(execute_sql "SELECT COUNT(*) FROM embeddings;" | sed -n 3p | tr -d ' ')
+FINAL_COUNT=$(execute_sql "SELECT COUNT(*) FROM embeddings;" | grep -oE '[0-9]+')
 echo "Final record count: $FINAL_COUNT"
 
 if [ "$FINAL_COUNT" -ne "$INITIAL_COUNT" ]; then
     echo "ERROR: Data persistence failed. Expected $INITIAL_COUNT record(s), found $FINAL_COUNT"
     exit 1
 fi
+
+# Additional verification of data integrity
+echo "9. Verifying data integrity..."
+DATA_VERIFICATION=$(execute_sql "
+    SELECT 
+        id::text,
+        metadata->>'source' as source,
+        content
+    FROM embeddings
+    WHERE id = '123e4567-e89b-12d3-a456-426614174000'::uuid;
+")
+
+echo "Data verification result:"
+echo "$DATA_VERIFICATION"
 
 echo "SUCCESS: Data persistence verified!"
