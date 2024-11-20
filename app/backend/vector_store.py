@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -278,3 +279,31 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Error verifying record: {e}")
             raise
+
+    def ensure_connection(self) -> None:
+        """Ensure database connection is active, reconnect if needed."""
+        try:
+            # Try a simple query to test connection
+            if not self.conn or self.conn.closed:
+                logger.info("Reconnecting to database...")
+                self.conn = psycopg2.connect(settings.TIMESCALE_SERVICE_URL)
+                self.conn.autocommit = True
+        except (psycopg2.Error, Exception) as e:
+            logger.error(f"Database connection error: {e}")
+            raise
+
+    def safe_execute(self, operation):
+        """Execute database operation with automatic reconnection."""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.ensure_connection()
+                return operation()
+            except psycopg2.Error as e:
+                logger.warning(
+                    f"Database operation failed (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(2)  # Wait before retry
+                    continue
+                raise
