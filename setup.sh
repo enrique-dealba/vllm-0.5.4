@@ -64,10 +64,41 @@ LANGCHAIN_TOKEN=${LANGCHAIN_TOKEN:-$DEFAULT_LANGCHAIN_TOKEN}
 echo "======================="
 echo "STEP 1: Cleanup"
 echo "======================="
-echo "Cleaning up existing Docker resources..."
-docker compose down -v --remove-orphans 2>/dev/null || true
-docker rm -f timescaledb 2>/dev/null || true
-docker volume rm timescaledb_data 2>/dev/null || true
+
+# Function to show cleanup usage
+cleanup_usage() {
+    echo "Cleanup options:"
+    echo "  --full     : Complete cleanup including volumes (WARNING: Deletes all data)"
+    echo "  --soft     : Stop containers but preserve volumes (Default)"
+}
+
+# Parse cleanup type from arguments
+CLEANUP_TYPE="soft"
+for arg in "$@"; do
+    case $arg in
+        --full-cleanup)
+        CLEANUP_TYPE="full"
+        shift
+        ;;
+        --cleanup-help)
+        cleanup_usage
+        exit 0
+        ;;
+    esac
+done
+
+echo "Performing $CLEANUP_TYPE cleanup..."
+
+if [ "$CLEANUP_TYPE" = "full" ]; then
+    echo "WARNING: Performing full cleanup including volumes..."
+    docker compose down -v --remove-orphans
+    docker rm -f timescaledb
+    docker volume rm timescaledb_data 2>/dev/null || true
+else
+    echo "Performing soft cleanup (preserving volumes)..."
+    docker compose down --remove-orphans
+    docker rm -f timescaledb 2>/dev/null || true
+fi
 
 echo "======================="
 echo "STEP 2: Environment Setup"
@@ -96,7 +127,18 @@ chmod +x scripts/init-db.sh
 chmod +x scripts/verify_*.sh
 
 echo "======================="
-echo "STEP 3: Database Setup"
+echo "STEP 3: Volume Check"
+echo "======================="
+echo "Checking Docker volume..."
+if docker volume inspect timescaledb_data >/dev/null 2>&1; then
+    echo "TimescaleDB volume exists, preserving data"
+else
+    echo "Creating new TimescaleDB volume"
+    docker volume create timescaledb_data
+fi
+
+echo "======================="
+echo "STEP 4: Database Setup"
 echo "======================="
 echo "Starting database service..."
 docker compose up --build -d timescaledb
@@ -104,13 +146,13 @@ echo "Waiting for database initialization..."
 sleep 10  # Give some time for init-db.sh to complete
 
 echo "======================="
-echo "STEP 4: Build"
+echo "STEP 5: Build"
 echo "======================="
 echo "Building application environment..."
 docker compose build
 
 echo "======================="
-echo "STEP 5: Service Startup"
+echo "STEP 6: Service Startup"
 echo "======================="
 echo "Starting services..."
 docker compose up -d

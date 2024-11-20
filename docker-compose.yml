@@ -12,7 +12,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
+      - type: volume
+        source: timescaledb_data
+        target: /var/lib/postgresql/data
+        volume:
+          nocopy: true  # Prevents copying data when volume exists
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
@@ -20,6 +24,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - app_network
 
   app:
     build:
@@ -36,11 +42,21 @@ services:
       - TIMESCALE_SERVICE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-postgres}
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
+      - ./app:/app/app  # Add app directory mounting
+    working_dir: /app
     depends_on:
       timescaledb:
         condition: service_healthy
     ports:
       - "8888:8888"
+    networks:
+      - app_network
 
 volumes:
   timescaledb_data:
+    name: timescaledb_data
+    external: false  # Creates volume if it doesn't exist
+
+networks:
+  app_network:
+    name: app_network
