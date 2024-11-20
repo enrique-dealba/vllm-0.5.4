@@ -1,7 +1,7 @@
 # PostgreSQL RAG
 Testing vLLM + RAG system
 
-To build Docker image:
+To build Docker image, run the following:
 
 ```sh
 docker build -t vllm:cuda11.8 .
