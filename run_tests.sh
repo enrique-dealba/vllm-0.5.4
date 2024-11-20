@@ -166,7 +166,7 @@ echo "======================="
 echo "STEP 7: Running Tests"
 echo "======================="
 echo "Executing pytest..."
-docker compose -f docker-compose.test.yml run tests
+docker compose -f docker-compose.test.yml run tests pytest tests/ -v --log-cli-level=INFO --markers "persistence: marks persistence tests"
 
 echo "======================="
 echo "STEP 8: Testing Volume Persistence"

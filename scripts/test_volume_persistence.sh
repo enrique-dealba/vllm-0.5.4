@@ -24,24 +24,38 @@ wait_for_db() {
     return 1
 }
 
-# Function to check record count
-check_count() {
-    PGPASSWORD=$DB_PASSWORD psql -h localhost -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM embeddings;"
+# Function to create tables if they don't exist
+create_tables() {
+    PGPASSWORD=$DB_PASSWORD psql -h localhost -p $DB_PORT -U $DB_USER -d $DB_NAME << EOF
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    
+    CREATE TABLE IF NOT EXISTS embeddings (
+        id UUID PRIMARY KEY,
+        metadata JSONB,
+        content TEXT,
+        embedding vector(384),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+EOF
 }
 
 echo "1. Ensuring clean state..."
-docker compose -f docker-compose.test.yml down -v >/dev/null 2>&1
+docker compose -f docker-compose.test.yml down --remove-orphans >/dev/null 2>&1
 docker volume rm test_timescaledb_data >/dev/null 2>&1 || true
 
 echo "2. Starting fresh database..."
 docker compose -f docker-compose.test.yml up -d test_db
 wait_for_db
 
-echo "3. Inserting test data..."
+echo "3. Creating tables..."
+create_tables
+
+echo "4. Inserting test data..."
 PGPASSWORD=$DB_PASSWORD psql -h localhost -p $DB_PORT -U $DB_USER -d $DB_NAME << EOF
 INSERT INTO embeddings (id, metadata, content, embedding, created_at)
 VALUES (
-    '123e4567-e89b-12d3-a456-426614174000',
+    '123e4567-e89b-12d3-a456-426614174000'::uuid,
     '{"source": "persistence_test", "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}',
     'Persistence test content',
     array_fill(0.1, ARRAY[384])::vector,
@@ -49,24 +63,28 @@ VALUES (
 );
 EOF
 
-echo "4. Verifying initial insertion..."
-initial_count=$(check_count)
+echo "5. Verifying initial insertion..."
+initial_count=$(PGPASSWORD=$DB_PASSWORD psql -h localhost -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM embeddings;")
+initial_count=$(echo $initial_count | tr -d '[:space:]')
 echo "Initial record count: $initial_count"
+
 if [ "$initial_count" -ne 1 ]; then
     echo "ERROR: Expected 1 record, found $initial_count"
     exit 1
 fi
 
-echo "5. Stopping containers..."
+echo "6. Stopping containers..."
 docker compose -f docker-compose.test.yml stop test_db
 
-echo "6. Starting containers..."
+echo "7. Starting containers..."
 docker compose -f docker-compose.test.yml start test_db
 wait_for_db
 
-echo "7. Verifying data persistence..."
-final_count=$(check_count)
+echo "8. Verifying data persistence..."
+final_count=$(PGPASSWORD=$DB_PASSWORD psql -h localhost -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM embeddings;")
+final_count=$(echo $final_count | tr -d '[:space:]')
 echo "Final record count: $final_count"
+
 if [ "$final_count" -ne "$initial_count" ]; then
     echo "ERROR: Data persistence failed. Expected $initial_count record(s), found $final_count"
     exit 1
