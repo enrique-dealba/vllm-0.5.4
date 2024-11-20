@@ -178,7 +178,7 @@ docker compose -f docker-compose.test.yml run \
             --log-cli-level=INFO \
             --capture=no \
             -v \
-            tests/test_persistence.py
+            tests/
     "
 
 TEST_EXIT_CODE=$?
