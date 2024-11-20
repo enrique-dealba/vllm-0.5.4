@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -163,3 +164,49 @@ class TestVectorStore:
                 assert initial_row[1]["metadata"] == cycle_row[1]["metadata"]
 
         logger.info("Long-term persistence test completed successfully")
+
+    @pytest.mark.persistence
+    def test_db_persistence():
+        """Test database persistence across container restarts"""
+        # Initial setup
+        vs = VectorStore()
+
+        # Create test record
+        test_id = str(uuid.uuid4())
+        test_content = f"Persistence test content {test_id}"
+
+        # Insert test data
+        embedding = vs.get_embedding(test_content)
+        test_data = [
+            {
+                "id": test_id,
+                "metadata": {"test_type": "persistence"},
+                "content": test_content,
+                "embedding": embedding,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+
+        vs.upsert(pd.DataFrame(test_data))
+
+        # Verify insertion
+        results = vs.search(test_content, limit=1)
+        assert len(results) == 1, "Failed to insert test data"
+        assert results.iloc[0]["id"] == test_id, "Retrieved wrong record"
+
+        # Record connection parameters for reconnection
+        conn_params = vs.conn.get_dsn_parameters()
+
+        # Close connection
+        vs.conn.close()
+
+        # Wait briefly
+        time.sleep(5)
+
+        # Reconnect and verify data
+        new_vs = VectorStore()
+        results = new_vs.search(test_content, limit=1)
+        assert len(results) == 1, "Data not persisted after reconnection"
+        assert (
+            results.iloc[0]["id"] == test_id
+        ), "Retrieved wrong record after reconnection"

@@ -65,8 +65,39 @@ LANGCHAIN_TOKEN=${LANGCHAIN_TOKEN:-$DEFAULT_LANGCHAIN_TOKEN}
 echo "======================="
 echo "STEP 1: Cleanup"
 echo "======================="
-echo "Cleaning up existing containers..."
-docker compose -f docker-compose.test.yml down -v --remove-orphans
+
+# Function to show cleanup usage
+cleanup_usage() {
+    echo "Cleanup options:"
+    echo "  --full     : Complete cleanup including volumes (WARNING: Deletes all data)"
+    echo "  --soft     : Stop containers but preserve volumes (Default)"
+}
+
+# Parse cleanup type from arguments
+CLEANUP_TYPE="soft"
+for arg in "$@"; do
+    case $arg in
+        --full-cleanup)
+        CLEANUP_TYPE="full"
+        shift
+        ;;
+        --cleanup-help)
+        cleanup_usage
+        exit 0
+        ;;
+    esac
+done
+
+echo "Performing $CLEANUP_TYPE cleanup..."
+
+if [ "$CLEANUP_TYPE" = "full" ]; then
+    echo "WARNING: Performing full cleanup including volumes..."
+    docker compose -f docker-compose.test.yml down -v --remove-orphans
+    docker volume rm test_timescaledb_data 2>/dev/null || true
+else
+    echo "Performing soft cleanup (preserving volumes)..."
+    docker compose -f docker-compose.test.yml down --remove-orphans
+fi
 
 # Generate .env file
 echo "======================="
@@ -138,7 +169,20 @@ echo "Executing pytest..."
 docker compose -f docker-compose.test.yml run tests
 
 echo "======================="
-echo "STEP 8: Cleanup"
+echo "STEP 8: Testing Volume Persistence"
+echo "======================="
+echo "Running volume persistence tests..."
+chmod +x scripts/test_volume_persistence.sh
+./scripts/test_volume_persistence.sh
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Volume persistence test failed!"
+    exit 1
+fi
+
+echo "======================="
+echo "STEP 9: Final Cleanup"
 echo "======================="
 echo "Cleaning up containers..."
-docker compose -f docker-compose.test.yml down -v
+# Only add -v if you want to remove the test volume
+docker compose -f docker-compose.test.yml down
