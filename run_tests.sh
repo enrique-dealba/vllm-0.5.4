@@ -167,13 +167,24 @@ echo "STEP 7: Running Tests"
 echo "======================="
 echo "Executing pytest..."
 
-# Return to the original working version with explicit environment
+# Use explicit test discovery
 docker compose -f docker-compose.test.yml run \
-    -e LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/local/lib:$LD_LIBRARY_PATH" \
-    tests /bin/bash -c "./scripts/run_in_env.sh && PYTHONPATH=/app \$(conda run -n vllm which python) -m pytest /app/tests/test_persistence.py -v --log-cli-level=INFO"
+    -e PYTHONPATH=/app \
+    tests bash -c "
+        source /root/miniconda3/bin/activate vllm && \
+        cd /app && \
+        python -m pytest \
+            --verbose \
+            --log-cli-level=INFO \
+            --capture=no \
+            -v \
+            tests/test_persistence.py
+    "
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Pytest execution failed!"
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo "ERROR: Pytest execution failed with code $TEST_EXIT_CODE"
     exit 1
 fi
 

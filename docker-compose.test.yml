@@ -17,6 +17,8 @@ services:
     volumes:
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
       - test_timescaledb_data:/var/lib/postgresql/data
+    networks:
+      - test_network
 
   verify:
     build:
@@ -28,6 +30,11 @@ services:
       - PYTHONPATH=/app
     entrypoint: []
     command: ["./scripts/run_in_env.sh", "./scripts/verify_libs.sh"]
+    networks:
+      - test_network
+    depends_on:
+      test_db:
+        condition: service_healthy
 
   tests:
     build:
@@ -42,12 +49,25 @@ services:
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
       - ./tests:/app/tests
+      - ./app:/app/app  # Add app directory mounting
+    working_dir: /app
+    entrypoint: []
+    command: [
+      "./scripts/run_in_env.sh",
+      "bash",
+      "-c",
+      "./scripts/verify_env.sh && PYTHONPATH=/app $(conda run -n vllm which python) -m pytest /app/tests -v --log-cli-level=INFO"
+    ]
+    networks:
+      - test_network
     depends_on:
       test_db:
         condition: service_healthy
-    entrypoint: []
-    command: ["./scripts/run_in_env.sh", "bash", "-c", "./scripts/verify_env.sh && PYTHONPATH=/app $(conda run -n vllm which python) -m pytest /app/tests -v --log-cli-level=INFO"]
 
 volumes:
   test_timescaledb_data:
     name: test_timescaledb_data
+
+networks:
+  test_network:
+    name: test_network
