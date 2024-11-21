@@ -167,15 +167,8 @@ if ! docker volume inspect timescaledb_data >/dev/null 2>&1; then
 fi
 echo "TimescaleDB volume verified"
 
-# Instead of trying to change ownership directly, we'll use the official image's init process
+# Let the Docker entrypoint handle permissions
 echo "Initializing volume permissions..."
-docker run --rm \
-    -v timescaledb_data:/var/lib/postgresql/data \
-    -e POSTGRES_USER="${DB_USER}" \
-    -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
-    -e POSTGRES_DB="${DB_NAME}" \
-    timescale/timescaledb-ha:pg16 \
-    /bin/bash -c "mkdir -p /var/lib/postgresql/data && chown postgres:postgres /var/lib/postgresql/data || true"
 
 echo "======================="
 echo "STEP 4: Database Setup"
