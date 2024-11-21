@@ -52,10 +52,7 @@ services:
 
 volumes:
   timescaledb_data:
-    # Ensure Docker Compose manages the volume
-    # Remove 'name' to let Docker Compose handle it internally
-    # Alternatively, set 'external: false' explicitly
-    # external: false
+    # Removed 'name: timescaledb_data' to let Docker Compose manage it internally
 
 networks:
   app_network:
