@@ -132,6 +132,7 @@ cat .env
 echo "======================="
 
 chmod +x scripts/init-db.sh
+chmod +x scripts/test_db.sh
 chmod +x scripts/verify_*.sh
 
 set -e  # Exit on error
@@ -213,3 +214,15 @@ else
     echo "Error: Failed to start services"
     exit 1
 fi
+
+echo "======================="
+echo "STEP 7: Database Initialization Verification"
+echo "======================="
+# Run the test_db.sh script
+./scripts/test_db.sh
+
+echo "Database verification completed successfully."
+
+echo "======================="
+echo "Setup Complete"
+echo "======================="
