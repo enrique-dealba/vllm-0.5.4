@@ -38,7 +38,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 384
 
     # PostgreSQL/Timescale Settings
-    TIMESCALE_SERVICE_URL: str = "postgres://postgres:password@localhost:5432/postgres"
+    TIMESCALE_SERVICE_URL: str = (
+        "postgresql://postgres:password@timescaledb:5432/postgres"
+    )
     VECTOR_STORE_TABLE_NAME: str = "embeddings"
     VECTOR_STORE_EMBEDDING_DIMENSIONS: int = 384
     VECTOR_STORE_TIME_PARTITION_INTERVAL: timedelta = timedelta(days=7)
