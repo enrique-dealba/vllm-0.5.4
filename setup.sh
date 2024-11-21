@@ -181,41 +181,40 @@ echo "======================="
 echo "Starting database service..."
 docker compose up --build -d timescaledb
 
-# Wait for container to be healthy
+# Function to check database initialization
+check_db_initialized() {
+    docker exec "$1" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1
+    return $?
+}
+
+# Wait for container to be ready
 echo "Waiting for database to be ready..."
-max_attempts=30
+max_attempts=60  # Increased timeout
 attempt=1
 while [ $attempt -le $max_attempts ]; do
-    container_id=$(docker ps --filter "name=vllm-054-timescaledb-1" --format "{{.ID}}")
+    container_id=$(docker ps --filter "name=vllm-054-timescaledb-1" --filter "status=running" --format "{{.ID}}")
+    
     if [ -n "$container_id" ]; then
-        if docker exec "$container_id" pg_isready -q; then
-            echo "Database is ready!"
-            
-            # Verify table existence
-            if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-                echo "Database initialization verified!"
+        container_status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+        health_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_id")
+        
+        if [ "$container_status" = "running" ] && [ "$health_status" = "healthy" ]; then
+            if check_db_initialized "$container_id"; then
+                echo "Database is ready and initialized!"
                 break
-            fi
-            
-            echo "Running initialization..."
-            docker exec "$container_id" bash /docker-entrypoint-initdb.d/init-db.sh
-            
-            if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-                echo "Database initialization completed successfully!"
-                break
-            else
-                echo "ERROR: Database initialization failed"
-                exit 1
             fi
         fi
     fi
+    
     echo "Waiting for database... Attempt $attempt/$max_attempts"
-    sleep 2
+    echo "Container Status: ${container_status:-unknown}, Health: ${health_status:-unknown}"
+    sleep 5
     attempt=$((attempt + 1))
 done
 
 if [ $attempt -gt $max_attempts ]; then
     echo "ERROR: Database failed to initialize after $max_attempts attempts"
+    docker logs vllm-054-timescaledb-1
     exit 1
 fi
 

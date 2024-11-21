@@ -12,13 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
-      - ./config/postgresql-custom.conf:/etc/postgresql/postgresql-custom.conf:ro
-    command: |
-      bash -c '
-        echo "include = '/etc/postgresql/postgresql-custom.conf'" >> /home/postgres/pgdata/data/postgresql.conf
-        exec docker-entrypoint.sh postgres
-      '
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/z99_init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
