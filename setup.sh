@@ -181,7 +181,26 @@ echo "======================="
 echo "Starting database service..."
 docker compose up --build -d timescaledb
 echo "Waiting for database initialization..."
-sleep 10  # Give some time for init-db.sh to complete
+max_attempts=30
+attempt=1
+while [ $attempt -le $max_attempts ]; do
+    container_id=$(docker compose ps -q timescaledb)
+    if [ -z "$container_id" ]; then
+        echo "ERROR: TimescaleDB container not found"
+        exit 1
+    fi
+    if docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
+        echo "Database initialization verified!"
+        break
+    fi
+    echo "Waiting for database initialization... Attempt $attempt/$max_attempts"
+    sleep 2
+    attempt=$((attempt + 1))
+done
+if [ $attempt -gt $max_attempts ]; then
+    echo "Database initialization failed after $max_attempts attempts"
+    exit 1
+fi
 
 echo "======================="
 echo "STEP 5: Build"
