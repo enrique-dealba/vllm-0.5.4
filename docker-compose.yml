@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   timescaledb:
-    image: timescale/timescaledb-ha:pg16
+    build:
+      context: .
+      dockerfile: Dockerfile.timescaledb
     container_name: timescaledb
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
@@ -50,8 +52,10 @@ services:
 
 volumes:
   timescaledb_data:
-    # Remove external: true to let Docker Compose manage the volume
-    name: timescaledb_data
+    # Ensure Docker Compose manages the volume
+    # Remove 'name' to let Docker Compose handle it internally
+    # Alternatively, set 'external: false' explicitly
+    # external: false
 
 networks:
   app_network:
