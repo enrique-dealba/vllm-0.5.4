@@ -181,24 +181,62 @@ echo "======================="
 echo "Starting database service..."
 docker compose up --build -d timescaledb
 echo "Waiting for database initialization..."
+
+# First wait for container to be running
 max_attempts=30
 attempt=1
 while [ $attempt -le $max_attempts ]; do
-    container_id=$(docker compose ps -q timescaledb)
-    if [ -z "$container_id" ]; then
-        echo "ERROR: TimescaleDB container not found"
-        exit 1
+    container_id=$(docker ps --filter "name=vllm-054-timescaledb-1" --format "{{.ID}}")
+    if [ -n "$container_id" ]; then
+        container_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_id")
+        if [ "$container_status" = "healthy" ]; then
+            echo "Container is up and healthy!"
+            break
+        fi
     fi
-    if docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-        echo "Database initialization verified!"
-        break
-    fi
-    echo "Waiting for database initialization... Attempt $attempt/$max_attempts"
+    echo "Waiting for container to be healthy... Attempt $attempt/$max_attempts"
     sleep 2
     attempt=$((attempt + 1))
 done
+
 if [ $attempt -gt $max_attempts ]; then
-    echo "Database initialization failed after $max_attempts attempts"
+    echo "ERROR: Container failed to become healthy after $max_attempts attempts"
+    exit 1
+fi
+
+# Then wait for PostgreSQL to be ready and initialized
+echo "Container is healthy, waiting for PostgreSQL initialization..."
+max_attempts=30
+attempt=1
+while [ $attempt -le $max_attempts ]; do
+    if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt" >/dev/null 2>&1; then
+        echo "PostgreSQL is accepting connections!"
+        
+        # Check if init-db.sh needs to be run manually
+        if ! docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
+            echo "Running database initialization..."
+            docker exec "$container_id" bash /docker-entrypoint-initdb.d/init-db.sh
+            
+            # Verify initialization worked
+            if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
+                echo "Database initialization verified!"
+                break
+            else
+                echo "ERROR: Database initialization failed"
+                exit 1
+            fi
+        else
+            echo "Database already initialized!"
+            break
+        fi
+    fi
+    echo "Waiting for PostgreSQL to be ready... Attempt $attempt/$max_attempts"
+    sleep 2
+    attempt=$((attempt + 1))
+done
+
+if [ $attempt -gt $max_attempts ]; then
+    echo "ERROR: PostgreSQL initialization failed after $max_attempts attempts"
     exit 1
 fi
 
