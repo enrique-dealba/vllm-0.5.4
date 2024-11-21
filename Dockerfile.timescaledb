@@ -3,6 +3,9 @@ FROM timescale/timescaledb-ha:pg16
 # Switch to root to install packages
 USER root
 
+# Ensure apt lists partial directory exists and has correct permissions
+RUN mkdir -p /var/lib/apt/lists/partial && chmod 755 /var/lib/apt/lists/partial
+
 # Install dependencies for building pgvector
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
