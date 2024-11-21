@@ -1,21 +1,17 @@
 #!/bin/bash
 set -e
 
-# Use proper connection parameters inside container
-POSTGRES_HOST=${POSTGRES_HOST:-localhost}
-
-# Function to check if postgres is ready
-wait_for_postgres() {
-    until pg_isready -h "$POSTGRES_HOST" -U "$POSTGRES_USER"; do
-        echo "Waiting for database to be ready..."
-        sleep 2
-    done
-}
+# Wait for PostgreSQL to be ready
+until pg_isready -q; do
+    echo "Waiting for PostgreSQL to be ready..."
+    sleep 1
+done
 
 # Function to run initialization
 initialize_db() {
-    echo "Creating extensions and tables..."
-    psql -v ON_ERROR_STOP=1 -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
+    echo "Running database initialization..."
+    # Use socket connection by default
+    psql -v ON_ERROR_STOP=1 <<-EOSQL
         -- Install required extensions
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE EXTENSION IF NOT EXISTS timescaledb;
@@ -40,13 +36,8 @@ EOSQL
     echo "Database initialization complete"
 }
 
-# Wait for PostgreSQL to be ready
-wait_for_postgres
-
 # Check if initialization is needed
-echo "Checking if initialization is needed..."
-if ! psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-    echo "Initializing database..."
+if ! psql -q -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
     initialize_db
 else
     echo "Database already initialized"
