@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "========================================"
-echo "STEP 7: Database Initialization Verification"
-echo "========================================"
-
 # Database connection details from environment variables
 DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5432}
