@@ -182,7 +182,8 @@ echo "Starting database service..."
 docker compose up --build -d timescaledb
 echo "Waiting for database initialization..."
 
-# First wait for container to be running
+# Wait for container to be healthy
+echo "Waiting for container to be healthy..."
 max_attempts=30
 attempt=1
 while [ $attempt -le $max_attempts ]; do
@@ -204,39 +205,19 @@ if [ $attempt -gt $max_attempts ]; then
     exit 1
 fi
 
-# Then wait for PostgreSQL to be ready and initialized
-echo "Container is healthy, waiting for PostgreSQL initialization..."
-max_attempts=30
-attempt=1
-while [ $attempt -le $max_attempts ]; do
-    if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt" >/dev/null 2>&1; then
-        echo "PostgreSQL is accepting connections!"
-        
-        # Check if init-db.sh needs to be run manually
-        if ! docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-            echo "Running database initialization..."
-            docker exec "$container_id" bash /docker-entrypoint-initdb.d/init-db.sh
-            
-            # Verify initialization worked
-            if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1" >/dev/null 2>&1; then
-                echo "Database initialization verified!"
-                break
-            else
-                echo "ERROR: Database initialization failed"
-                exit 1
-            fi
-        else
-            echo "Database already initialized!"
-            break
-        fi
-    fi
-    echo "Waiting for PostgreSQL to be ready... Attempt $attempt/$max_attempts"
-    sleep 2
-    attempt=$((attempt + 1))
-done
+# Run initialization inside container
+echo "Running database initialization..."
+docker exec -e POSTGRES_HOST=localhost \
+           -e POSTGRES_USER="$POSTGRES_USER" \
+           -e POSTGRES_DB="$POSTGRES_DB" \
+           "$container_id" bash /docker-entrypoint-initdb.d/init-db.sh
 
-if [ $attempt -gt $max_attempts ]; then
-    echo "ERROR: PostgreSQL initialization failed after $max_attempts attempts"
+# Verify initialization
+echo "Verifying database initialization..."
+if docker exec "$container_id" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM embeddings LIMIT 1;" >/dev/null 2>&1; then
+    echo "Database initialization verified successfully!"
+else
+    echo "ERROR: Database initialization failed - embeddings table not found"
     exit 1
 fi
 
