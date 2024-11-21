@@ -44,6 +44,10 @@ while [[ $# -gt 0 ]]; do
             LANGCHAIN_TOKEN="$2"
             shift 2
             ;;
+        --full|--full-cleanup)
+            CLEANUP_TYPE="full"
+            shift
+            ;;
         --help)
             usage
             ;;
@@ -73,19 +77,19 @@ cleanup_usage() {
 }
 
 # Parse cleanup type from arguments
-CLEANUP_TYPE="soft"
-for arg in "$@"; do
-    case $arg in
-        --full-cleanup)
-        CLEANUP_TYPE="full"
-        shift
-        ;;
-        --cleanup-help)
-        cleanup_usage
-        exit 0
-        ;;
-    esac
-done
+# CLEANUP_TYPE="soft"
+# for arg in "$@"; do
+#     case $arg in
+#         --full-cleanup)
+#         CLEANUP_TYPE="full"
+#         shift
+#         ;;
+#         --cleanup-help)
+#         cleanup_usage
+#         exit 0
+#         ;;
+#     esac
+# done
 
 echo "Performing $CLEANUP_TYPE cleanup..."
 
