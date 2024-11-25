@@ -134,29 +134,59 @@ echo "======================="
 echo "STEP 3: Volume Check"
 echo "======================="
 echo "Checking Docker bind mount directory..."
-if [ -d "../db_data" ]; then
-    echo "db_data directory exists, checking contents..."
-    if [ "$(ls -A ../db_data)" ]; then
-        echo "db_data directory contains data, preserving..."
+
+# Function to safely check directory
+check_directory() {
+    local dir="$1"
+    if sudo test -d "$dir"; then
+        echo "$dir directory exists, checking contents..."
+        if sudo test "$(sudo ls -A $dir)"; then
+            echo "$dir directory contains data, preserving..."
+        else
+            echo "$dir directory is empty, preparing for initialization..."
+        fi
     else
-        echo "db_data directory is empty, preparing for initialization..."
+        echo "Creating $dir directory"
+        sudo mkdir -p "$dir"
     fi
-else
-    echo "Creating db_data directory"
-    mkdir -p ../db_data
-fi
+}
 
-# Set ownership and permissions
-sudo chown -R 1000:1000 ../db_data
-sudo chmod -R 700 ../db_data
+# Function to set permissions
+set_permissions() {
+    local dir="$1"
+    echo "Setting correct permissions for $dir..."
+    sudo chown -R 1000:1000 "$dir"
+    sudo chmod -R 700 "$dir"
+    
+    # Verify permissions
+    if sudo test -w "$dir"; then
+        echo "Permissions set successfully"
+    else
+        echo "ERROR: Failed to set proper permissions on $dir"
+        exit 1
+    fi
+}
 
-# Verify volume permissions
-if [ ! -w "../db_data" ]; then
-    echo "ERROR: db_data directory is not writable"
+# Main execution
+DB_DATA_DIR="../db_data"
+
+# Check and create directory if needed
+check_directory "$DB_DATA_DIR"
+
+# Set proper permissions
+set_permissions "$DB_DATA_DIR"
+
+# Final verification
+if ! sudo test -w "$DB_DATA_DIR"; then
+    echo "ERROR: $DB_DATA_DIR directory is not writable"
+    echo "Current permissions:"
+    ls -la "$DB_DATA_DIR"
+    echo "Current owner:"
+    stat -c "%U:%G" "$DB_DATA_DIR"
     exit 1
 fi
 
-echo "db_data directory prepared"
+echo "$DB_DATA_DIR directory prepared successfully"
 
 echo "======================="
 echo "STEP 4: Database Setup"
