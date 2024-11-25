@@ -10,8 +10,8 @@ import pytest
 DB_NAME = os.getenv("POSTGRES_DB", "postgres")
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-DB_HOST = os.getenv("DB_HOST", "test_db")
-DB_PORT = os.getenv("DB_PORT", "5432")
+DB_HOST = os.getenv("DB_HOST", "timescaledb")  # Match service name
+DB_PORT = os.getenv("DB_PORT", "5432")  # Match port
 
 
 @pytest.fixture(scope="session")

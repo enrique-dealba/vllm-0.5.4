@@ -201,8 +201,18 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "======================="
-echo "STEP 9: Final Cleanup"
+echo "STEP 9: Final Verification"
 echo "======================="
-echo "Cleaning up containers..."
-# Only add -v if you want to remove the test volume
-docker compose -f docker-compose.test.yml down
+echo "Verifying data persistence..."
+docker exec vllm-054-timescaledb-1 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT COUNT(*) FROM embeddings WHERE content LIKE 'Test persistence%';"
+
+echo "======================="
+echo "STEP 10: Final Cleanup"
+echo "======================="
+if [ "$CLEANUP_TYPE" = "full" ]; then
+    echo "Performing full cleanup including volumes..."
+    docker compose -f docker-compose.test.yml down -v --remove-orphans
+else
+    echo "Performing soft cleanup (preserving volumes)..."
+    docker compose -f docker-compose.test.yml down --remove-orphans
+fi
