@@ -50,12 +50,10 @@ services:
     networks:
       - app_network
 
-# Remove or comment out the Docker-managed volume if no longer needed
-# volumes:
-#   timescaledb_data:
-#     # Existing Docker-managed volume
-# Removed 'name: timescaledb_data' to let Docker Compose manage it internally
-
 networks:
   app_network:
     name: app_network
+
+# volumes:
+#   timescaledb_data:
+#     # Existing Docker-managed volume
