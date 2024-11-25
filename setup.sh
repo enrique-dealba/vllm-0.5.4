@@ -72,12 +72,19 @@ echo "======================="
 
 if [ "$CLEANUP_TYPE" = "full" ]; then
     echo "WARNING: Performing full cleanup including volumes..."
-    docker compose down --remove-orphans
-    sudo rm -rf ../db_data
-    echo "db_data directory removed"
-    mkdir ../db_data
-    sudo chown -R 1000:1000 ../db_data
-    sudo chmod -R 700 ../db_data
+    read -p "This will delete all data. Are you sure? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        docker compose down --remove-orphans
+        sudo rm -rf ../db_data
+        echo "db_data directory removed"
+        mkdir ../db_data
+        sudo chown -R 1000:1000 ../db_data
+        sudo chmod -R 700 ../db_data
+    else
+        echo "Aborted full cleanup"
+        exit 1
+    fi
 else
     echo "Performing soft cleanup (preserving volumes)..."
     docker compose down --remove-orphans
@@ -128,7 +135,12 @@ echo "STEP 3: Volume Check"
 echo "======================="
 echo "Checking Docker bind mount directory..."
 if [ -d "../db_data" ]; then
-    echo "db_data directory exists, preserving data"
+    echo "db_data directory exists, checking contents..."
+    if [ "$(ls -A ../db_data)" ]; then
+        echo "db_data directory contains data, preserving..."
+    else
+        echo "db_data directory is empty, preparing for initialization..."
+    fi
 else
     echo "Creating db_data directory"
     mkdir -p ../db_data
@@ -137,6 +149,12 @@ fi
 # Set ownership and permissions
 sudo chown -R 1000:1000 ../db_data
 sudo chmod -R 700 ../db_data
+
+# Verify volume permissions
+if [ ! -w "../db_data" ]; then
+    echo "ERROR: db_data directory is not writable"
+    exit 1
+fi
 
 echo "db_data directory prepared"
 
@@ -225,6 +243,13 @@ echo "======================="
 ./scripts/test_db.sh
 
 echo "Database verification completed successfully."
+
+echo "======================="
+echo "STEP 8: Data Verification"
+echo "======================="
+echo "Verifying data persistence..."
+container_id=$(docker compose ps -q timescaledb)
+docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT COUNT(*) FROM embeddings;"
 
 echo "======================="
 echo "Setup Complete"
