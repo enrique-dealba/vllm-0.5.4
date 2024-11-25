@@ -8,13 +8,13 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - TIMESCALEDB_TELEMETRY=off
-      - PGUSER=${POSTGRES_USER:-postgres}
-      - PGDATABASE=${POSTGRES_DB:-postgres}
       - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256"
     ports:
       - "5432:5432"
     volumes:
-      - ../db_data:/var/lib/postgresql/data:rw  # Bind mount to host's db_data directory
+      - ../db_data:/var/lib/postgresql/data:rw
+      - ./config/postgresql-custom.conf:/etc/postgresql/postgresql.conf:ro
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/z99_init-db.sh:ro
     user: "${POSTGRES_USER:-postgres}"
     healthcheck:

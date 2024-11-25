@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+INIT_MARKER="/var/lib/postgresql/data/pgdata/.initialized"
+
+# Check if already initialized
+if [ -f "$INIT_MARKER" ]; then
+    echo "Database already initialized, skipping..."
+    exit 0
+fi
+
 echo "Starting database initialization..."
 
 # Function to execute SQL with error handling
@@ -63,3 +71,5 @@ main() {
 
 # Execute main logic
 main
+
+touch "$INIT_MARKER"

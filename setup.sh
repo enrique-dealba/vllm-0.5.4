@@ -136,20 +136,24 @@ echo "STEP 3: Volume Check"
 echo "======================="
 echo "Checking Docker bind mount directory..."
 
-# Function to safely check directory
+DB_DATA_DIR="../db_data"
+PGDATA_DIR="$DB_DATA_DIR/pgdata"
+
 check_directory() {
     local dir="$1"
     if sudo test -d "$dir"; then
-        echo "$dir directory exists, checking contents..."
-        if sudo test "$(sudo ls -A $dir)"; then
-            echo "$dir directory contains data, preserving..."
-        else
-            echo "$dir directory is empty, preparing for initialization..."
+        if sudo test -f "$dir/pgdata/PG_VERSION"; then
+            echo "Existing database found, preserving..."
+            return 0
         fi
-    else
-        echo "Creating $dir directory"
-        sudo mkdir -p "$dir"
     fi
+    
+    echo "Creating fresh database directory..."
+    sudo rm -rf "$dir"  # Clean slate
+    sudo mkdir -p "$dir/pgdata"
+    sudo chown -R 999:999 "$dir"  # postgres:postgres
+    sudo chmod -R 700 "$dir"
+    return 0
 }
 
 # Function to set permissions

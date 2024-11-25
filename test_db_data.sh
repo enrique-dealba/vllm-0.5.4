@@ -120,8 +120,15 @@ check_volume_persistence() {
         return 1
     fi
     
-    if [ ! -s "../db_data/PG_VERSION" ]; then
+    PGDATA_PATH="../db_data/pgdata"
+    
+    if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
         echo -e "${RED}Error: Database files not properly persisted${NC}"
+        return 1
+    fi
+    
+    if [ ! -f "$PGDATA_PATH/.initialized" ]; then
+        echo -e "${RED}Error: Database not properly initialized${NC}"
         return 1
     fi
     
