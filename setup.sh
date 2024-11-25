@@ -148,6 +148,8 @@ else
     exit 1
 fi
 
+chmod +x /scripts/test_db.sh
+
 echo "======================="
 echo "STEP 7: Database Initialization Verification"
 echo "======================="
