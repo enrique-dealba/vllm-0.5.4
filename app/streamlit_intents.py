@@ -5,7 +5,6 @@ import sys
 import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import settings
 from llm_logic import generate_response
 from utils import (
     format_summary_collects,
@@ -13,6 +12,8 @@ from utils import (
     parse_collect_requests,
     parse_intents,
 )
+
+from config import settings
 
 st.title("Belief State Chat")
 

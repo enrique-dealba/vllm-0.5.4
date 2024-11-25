@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
+      - ../db_data:/var/lib/postgresql/data  # Bind mount to host's db_data directory
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/z99_init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} && psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} -c 'SELECT 1 FROM embeddings LIMIT 1'"]
@@ -50,9 +50,11 @@ services:
     networks:
       - app_network
 
-volumes:
-  timescaledb_data:
-    # Removed 'name: timescaledb_data' to let Docker Compose manage it internally
+# Remove or comment out the Docker-managed volume if no longer needed
+# volumes:
+#   timescaledb_data:
+#     # Existing Docker-managed volume
+# Removed 'name: timescaledb_data' to let Docker Compose manage it internally
 
 networks:
   app_network:

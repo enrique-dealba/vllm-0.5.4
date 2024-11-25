@@ -4,8 +4,9 @@ import sys
 import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import settings
 from llm_logic import generate_response
+
+from config import settings
 
 st.title("LLM")
 

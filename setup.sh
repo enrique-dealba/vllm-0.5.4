@@ -17,6 +17,7 @@ usage() {
     echo "  -d, --database          Database name (default: postgres)"
     echo "  -h, --hf-token          Hugging Face token"
     echo "  -l, --langchain-token   LangChain token"
+    echo "  --full                  Perform a full cleanup including volumes"
     echo "  --help                  Display this help message"
     exit 1
 }
@@ -44,7 +45,7 @@ while [[ $# -gt 0 ]]; do
             LANGCHAIN_TOKEN="$2"
             shift 2
             ;;
-        --full|--full-cleanup)
+        --full)
             CLEANUP_TYPE="full"
             shift
             ;;
@@ -69,40 +70,11 @@ echo "======================="
 echo "STEP 1: Cleanup"
 echo "======================="
 
-# Function to show cleanup usage
-cleanup_usage() {
-    echo "Cleanup options:"
-    echo "  --full     : Complete cleanup including volumes (WARNING: Deletes all data)"
-    echo "  --soft     : Stop containers but preserve volumes (Default)"
-}
-
-# Parse cleanup type from arguments
-# CLEANUP_TYPE="soft"
-# for arg in "$@"; do
-#     case $arg in
-#         --full-cleanup)
-#         CLEANUP_TYPE="full"
-#         shift
-#         ;;
-#         --cleanup-help)
-#         cleanup_usage
-#         exit 0
-#         ;;
-#     esac
-# done
-
-echo "Performing $CLEANUP_TYPE cleanup..."
-
 if [ "$CLEANUP_TYPE" = "full" ]; then
     echo "WARNING: Performing full cleanup including volumes..."
-    docker compose down --volumes --remove-orphans
-    docker volume rm timescaledb_data 2>/dev/null || true
-    echo "Recreating volume..."
-    docker volume create \
-        --driver local \
-        --label app=timescaledb \
-        --label environment=production \
-        timescaledb_data
+    docker compose down --remove-orphans
+    sudo rm -rf ../db_data
+    echo "db_data directory removed"
 else
     echo "Performing soft cleanup (preserving volumes)..."
     docker compose down --remove-orphans
@@ -141,7 +113,6 @@ set -e  # Exit on error
 cleanup_on_error() {
     echo "Error occurred. Cleaning up..."
     docker compose down 2>/dev/null || true
-    # Don't remove volumes on error, just stop containers
     echo "Cleanup complete. You may need to check volume permissions manually."
     exit 1
 }
@@ -152,28 +123,21 @@ trap cleanup_on_error ERR
 echo "======================="
 echo "STEP 3: Volume Check"
 echo "======================="
-echo "Checking Docker volume..."
-if docker volume inspect timescaledb_data >/dev/null 2>&1; then
-    echo "TimescaleDB volume exists, preserving data"
+echo "Checking Docker bind mount directory..."
+if [ -d "../db_data" ]; then
+    echo "db_data directory exists, preserving data"
 else
-    echo "Creating new TimescaleDB volume"
-    # Create volume with specific driver and options
-    docker volume create \
-        --driver local \
-        --label app=timescaledb \
-        --label environment=production \
-        timescaledb_data
+    echo "Creating db_data directory"
+    mkdir -p ../db_data
 fi
 
-# Verify volume creation
-if ! docker volume inspect timescaledb_data >/dev/null 2>&1; then
-    echo "ERROR: Failed to create or verify TimescaleDB volume"
-    exit 1
-fi
-echo "TimescaleDB volume verified"
+# Set ownership
+sudo chown -R 999:999 ../db_data
 
-# Let the Docker entrypoint handle permissions
-echo "Initializing volume permissions..."
+# Set permissions
+sudo chmod -R 700 ../db_data
+
+echo "db_data directory prepared"
 
 echo "======================="
 echo "STEP 4: Database Setup"
@@ -185,7 +149,7 @@ docker compose up --build -d timescaledb
 max_attempts=15
 attempt=1
 while [ $attempt -le $max_attempts ]; do
-    container_id=$(docker ps --filter "name=vllm-054-timescaledb-1" --format "{{.ID}}")
+    container_id=$(docker ps --filter "name=vllm-0.5.4-timescaledb-1" --format "{{.ID}}")
     
     if [ -n "$container_id" ]; then
         health_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_id")
@@ -202,7 +166,7 @@ while [ $attempt -le $max_attempts ]; do
         echo "Container Health: $health_status"
         
         # Show logs if there's an issue
-        if [ $attempt -eq $((max_attempts/2)) ]; then
+        if [ $attempt -eq $((max_attempts / 2)) ]; then
             echo "Database logs:"
             docker logs "$container_id"
         fi
@@ -216,7 +180,7 @@ done
 
 if [ $attempt -gt $max_attempts ]; then
     echo "ERROR: Database initialization failed"
-    docker logs vllm-054-timescaledb-1
+    docker logs vllm-0.5.4-timescaledb-1
     exit 1
 fi
 
