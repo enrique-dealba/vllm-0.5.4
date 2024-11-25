@@ -87,7 +87,6 @@ if [ "$CLEANUP_TYPE" = "full" ]; then
     fi
 else
     echo "Performing soft cleanup (preserving volumes)..."
-    # Only stop containers, don't remove volumes
     docker compose stop
 fi
 

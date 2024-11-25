@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-INIT_MARKER="/var/lib/postgresql/data/pgdata/.initialized"
+# Make sure this aligns with the PGDATA mapping
+INIT_MARKER="/var/lib/postgresql/data/.initialized"
 
 # Check if already initialized
 if [ -f "$INIT_MARKER" ]; then
