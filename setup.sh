@@ -75,6 +75,9 @@ if [ "$CLEANUP_TYPE" = "full" ]; then
     docker compose down --remove-orphans
     sudo rm -rf ../db_data
     echo "db_data directory removed"
+    mkdir ../db_data
+    sudo chown -R 1000:1000 ../db_data
+    sudo chmod -R 700 ../db_data
 else
     echo "Performing soft cleanup (preserving volumes)..."
     docker compose down --remove-orphans
@@ -131,10 +134,8 @@ else
     mkdir -p ../db_data
 fi
 
-# Set ownership
-sudo chown -R 999:999 ../db_data
-
-# Set permissions
+# Set ownership and permissions
+sudo chown -R 1000:1000 ../db_data
 sudo chmod -R 700 ../db_data
 
 echo "db_data directory prepared"
@@ -149,10 +150,11 @@ docker compose up --build -d timescaledb
 max_attempts=15
 attempt=1
 while [ $attempt -le $max_attempts ]; do
-    container_id=$(docker ps --filter "name=vllm-0.5.4-timescaledb-1" --format "{{.ID}}")
-    
+    # Get container ID using docker compose
+    container_id=$(docker compose ps -q timescaledb)
+
     if [ -n "$container_id" ]; then
-        health_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_id")
+        health_status=$(docker inspect -f '{{.State.Health.Status}}' "$container_id" 2>/dev/null || echo "unhealthy")
         
         if [ "$health_status" = "healthy" ]; then
             # Verify table exists and is accessible
@@ -165,7 +167,7 @@ while [ $attempt -le $max_attempts ]; do
         echo "Waiting for database... Attempt $attempt/$max_attempts"
         echo "Container Health: $health_status"
         
-        # Show logs if there's an issue
+        # Show logs if halfway through attempts
         if [ $attempt -eq $((max_attempts / 2)) ]; then
             echo "Database logs:"
             docker logs "$container_id"
@@ -180,7 +182,7 @@ done
 
 if [ $attempt -gt $max_attempts ]; then
     echo "ERROR: Database initialization failed"
-    docker logs vllm-0.5.4-timescaledb-1
+    docker ps -a  # List all containers to find the failed one
     exit 1
 fi
 
