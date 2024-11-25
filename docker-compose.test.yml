@@ -46,6 +46,11 @@ services:
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
       - PYTHONPATH=/app
       - TIMESCALE_SERVICE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@test_db:5432/${POSTGRES_DB}
+      - DB_HOST=test_db
+      - DB_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
       - ./tests:/app/tests
