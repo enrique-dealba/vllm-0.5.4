@@ -16,6 +16,16 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Debug mode
+DEBUG=true
+
+# Debug function
+debug() {
+    if [ "$DEBUG" = true ]; then
+        echo -e "${YELLOW}DEBUG: $1${NC}"
+    fi
+}
+
 usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
@@ -52,32 +62,9 @@ if [ -z "$HF_TOKEN" ] || [ -z "$LANGCHAIN_TOKEN" ]; then
     usage
 fi
 
-# Function to check if container is ready
-wait_for_container() {
-    local start_time=$(date +%s)
-    local timeout_time=$((start_time + TIMEOUT))
-    
-    while true; do
-        if [ $(date +%s) -gt $timeout_time ]; then
-            echo -e "${RED}Timeout waiting for container${NC}"
-            return 1
-        fi
-        
-        if docker ps | grep -q $CONTAINER_NAME; then
-            local health=$(docker inspect -f '{{.State.Health.Status}}' $CONTAINER_NAME 2>/dev/null)
-            if [ "$health" = "healthy" ]; then
-                echo -e "${GREEN}Container is healthy${NC}"
-                return 0
-            fi
-        fi
-        
-        echo -e "${YELLOW}Waiting for container to be ready...${NC}"
-        sleep $RETRY_INTERVAL
-    done
-}
-
 # Function to check data
 check_data() {
+    debug "Checking data in database..."
     local result
     result=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -t -c \
         "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
@@ -88,21 +75,40 @@ check_data() {
     echo $result | tr -d ' '
 }
 
-# Function to run setup.sh with timeout
+# Function to run setup.sh with debugging
 run_setup() {
+    local setup_output_file=$(mktemp)
     echo "Running setup.sh..."
-    timeout $TIMEOUT ./setup.sh --hf-token "$HF_TOKEN" --langchain-token "$LANGCHAIN_TOKEN" > /dev/null 2>&1
-    if [ $? -eq 124 ]; then
-        echo -e "${RED}Setup timed out after ${TIMEOUT} seconds${NC}"
+    debug "Running setup.sh with tokens..."
+    debug "Command: ./setup.sh --hf-token \"$HF_TOKEN\" --langchain-token \"$LANGCHAIN_TOKEN\""
+    
+    if ! ./setup.sh --hf-token "$HF_TOKEN" --langchain-token "$LANGCHAIN_TOKEN" > "$setup_output_file" 2>&1; then
+        echo -e "${RED}Setup failed. Output:${NC}"
+        cat "$setup_output_file"
+        rm "$setup_output_file"
         return 1
     fi
-    echo -e "${GREEN}Setup completed${NC}"
     
-    # Wait for container to be ready
-    wait_for_container
+    debug "Setup.sh output:"
+    cat "$setup_output_file"
+    rm "$setup_output_file"
+    
+    # Verify container is running
+    if ! docker ps | grep -q $CONTAINER_NAME; then
+        echo -e "${RED}Container $CONTAINER_NAME not found after setup${NC}"
+        return 1
+    fi
+    
+    debug "Container status after setup:"
+    docker ps | grep vllm-054
+    
+    debug "Container logs:"
+    docker logs $CONTAINER_NAME | tail -n 20
+    
+    return 0
 }
 
-# Main test sequence with error handling
+# Main test sequence with debugging
 echo "Starting database persistence test..."
 
 # Step 1: Initial setup
@@ -123,6 +129,7 @@ echo "Initial record count: $initial_count"
 
 # Step 3: Insert test data
 echo "Step 3: Inserting test data..."
+debug "Executing INSERT query..."
 if ! docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
     "INSERT INTO embeddings (id, metadata, content, embedding) VALUES (gen_random_uuid(), '{\"source\": \"test\"}', 'Test persistence', array_fill(0.1, ARRAY[384]));" > /dev/null 2>&1; then
     echo -e "${RED}Failed to insert test data${NC}"
@@ -140,6 +147,7 @@ echo "Record count after insertion: $after_insert_count"
 
 # Step 5: Rerun setup
 echo "Step 5: Running setup again..."
+debug "Running setup.sh second time..."
 if ! run_setup; then
     echo -e "${RED}Second setup run failed${NC}"
     exit 1
@@ -164,5 +172,9 @@ if [ "$final_count" -eq "1" ]; then
 else
     echo -e "${RED}FAILURE: Data did not persist after setup rerun${NC}"
     echo "Expected 1 record, found $final_count"
+    # Show database state
+    debug "Current database state:"
+    docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) FROM embeddings;"
+    docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT * FROM embeddings LIMIT 5;"
     exit 1
 fi
