@@ -66,7 +66,9 @@ fi
 
 # Function to check data
 check_data() {
-    debug "Checking data in database..."
+    if [ "$DEBUG" = true ]; then
+        debug "Checking data in database..."
+    fi
     local result
     result=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -t -c \
         "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
@@ -74,7 +76,7 @@ check_data() {
         echo -e "${RED}Error executing database query${NC}"
         return 1
     fi
-    echo $result | tr -d ' '
+    echo $result | tr -d ' \n'  # Remove both spaces and newlines
 }
 
 # Function to run setup.sh with debugging
@@ -110,6 +112,23 @@ run_setup() {
     return 0
 }
 
+check_volume_persistence() {
+    debug "Checking volume persistence..."
+    
+    if [ ! -d "../db_data" ]; then
+        echo -e "${RED}Error: db_data directory not found${NC}"
+        return 1
+    fi
+    
+    if [ ! -s "../db_data/PG_VERSION" ]; then
+        echo -e "${RED}Error: Database files not properly persisted${NC}"
+        return 1
+    fi
+    
+    debug "Volume appears to be properly persisted"
+    return 0
+}
+
 # Main test sequence with debugging
 echo "Starting database persistence test..."
 
@@ -117,6 +136,11 @@ echo "Starting database persistence test..."
 echo "Step 1: Running initial setup..."
 if ! run_setup; then
     echo -e "${RED}Initial setup failed${NC}"
+    exit 1
+fi
+
+if ! check_volume_persistence; then
+    echo -e "${RED}Volume persistence check failed${NC}"
     exit 1
 fi
 
@@ -155,28 +179,30 @@ if ! run_setup; then
     exit 1
 fi
 
+if ! check_volume_persistence; then
+    echo -e "${RED}Volume persistence check failed${NC}"
+    exit 1
+fi
+
 # Step 6: Final verification
 echo "Step 6: Final verification..."
 final_count=$(check_data)
-if [ $? -ne 0 ]; then
+debug "Final count: $final_count"
+if [ "$final_count" = "ERROR" ]; then
     echo -e "${RED}Final verification failed${NC}"
     exit 1
 fi
-echo "Final record count: $final_count"
 
-# Check results
+# Check results (use explicit -eq for integer comparison)
 if [ "$final_count" -eq "1" ]; then
     echo -e "${GREEN}SUCCESS: Data persisted after setup rerun${NC}"
     echo "Test record details:"
     docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
         "SELECT id, metadata, content, created_at FROM embeddings WHERE content = 'Test persistence';"
-    exit 0
 else
     echo -e "${RED}FAILURE: Data did not persist after setup rerun${NC}"
     echo "Expected 1 record, found $final_count"
-    # Show database state
     debug "Current database state:"
     docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) FROM embeddings;"
     docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT * FROM embeddings LIMIT 5;"
-    exit 1
 fi

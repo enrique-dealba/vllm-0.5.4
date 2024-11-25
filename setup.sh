@@ -75,7 +75,7 @@ if [ "$CLEANUP_TYPE" = "full" ]; then
     read -p "This will delete all data. Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        docker compose down --remove-orphans
+        docker compose down --remove-orphans -v
         sudo rm -rf ../db_data
         echo "db_data directory removed"
         mkdir ../db_data
@@ -87,7 +87,8 @@ if [ "$CLEANUP_TYPE" = "full" ]; then
     fi
 else
     echo "Performing soft cleanup (preserving volumes)..."
-    docker compose down --remove-orphans
+    # Only stop containers, don't remove volumes
+    docker compose stop
 fi
 
 echo "======================="
