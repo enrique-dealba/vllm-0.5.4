@@ -19,6 +19,8 @@ NC='\033[0m' # No Color
 # Debug mode
 DEBUG=true
 
+chmod +x setup.sh
+
 # Debug function
 debug() {
     if [ "$DEBUG" = true ]; then
