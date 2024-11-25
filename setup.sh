@@ -151,7 +151,7 @@ check_directory() {
     echo "Creating fresh database directory..."
     sudo rm -rf "$dir"  # Clean slate
     sudo mkdir -p "$dir/pgdata"
-    sudo chown -R 999:999 "$dir"  # postgres:postgres
+    sudo chown -R 1000:1000 "$dir"  # postgres:postgres
     sudo chmod -R 700 "$dir"
     return 0
 }
