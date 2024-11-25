@@ -85,53 +85,53 @@ run_setup() {
     echo "Running setup.sh..."
     debug "Running setup.sh with tokens..."
     debug "Command: ./setup.sh --hf-token \"$HF_TOKEN\" --langchain-token \"$LANGCHAIN_TOKEN\""
-    
+
     if ! ./setup.sh --hf-token "$HF_TOKEN" --langchain-token "$LANGCHAIN_TOKEN" > "$setup_output_file" 2>&1; then
         echo -e "${RED}Setup failed. Output:${NC}"
         cat "$setup_output_file"
         rm "$setup_output_file"
         return 1
     fi
-    
+
     debug "Setup.sh output:"
     cat "$setup_output_file"
     rm "$setup_output_file"
-    
+
     # Verify container is running
     if ! docker ps | grep -q $CONTAINER_NAME; then
         echo -e "${RED}Container $CONTAINER_NAME not found after setup${NC}"
         return 1
     fi
-    
+
     debug "Container status after setup:"
     docker ps | grep vllm-054
-    
+
     debug "Container logs:"
     docker logs $CONTAINER_NAME | tail -n 20
-    
+
     return 0
 }
 
 check_volume_persistence() {
     debug "Checking volume persistence..."
-    
+
     if [ ! -d "../db_data" ]; then
         echo -e "${RED}Error: db_data directory not found${NC}"
         return 1
     fi
-    
+
     PGDATA_PATH="../db_data/pgdata"
-    
+
     if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
         echo -e "${RED}Error: Database files not properly persisted${NC}"
         return 1
     fi
-    
+
     if [ ! -f "$PGDATA_PATH/.initialized" ]; then
         echo -e "${RED}Error: Database not properly initialized${NC}"
         return 1
     fi
-    
+
     debug "Volume appears to be properly persisted"
     return 0
 }
@@ -169,7 +169,7 @@ if ! docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
     exit 1
 fi
 
-# Step 4: Verify insertion
+# Step 4: Verifying insertion
 echo "Step 4: Verifying insertion..."
 after_insert_count=$(check_data)
 if [ $? -ne 0 ] || [ "$after_insert_count" -ne "1" ]; then
