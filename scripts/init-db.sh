@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e
 
-# Make sure this aligns with the PGDATA mapping
-INIT_MARKER="/var/lib/postgresql/data/.initialized"
+INIT_MARKER="/home/postgres/pgdata/data/.initialized"  # Updated path
 
 # Check if already initialized
 if [ -f "$INIT_MARKER" ]; then
