@@ -6,6 +6,13 @@ DEFAULT_HF_TOKEN=""
 DEFAULT_LANGCHAIN_TOKEN=""
 CLEANUP_TYPE="soft"  # Default to soft cleanup
 
+# Define colors
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Define path at the start
+PGDATA_PATH="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -113,15 +120,12 @@ if [ $attempt -gt $max_attempts ]; then
 fi
 
 fix_permissions() {
-    local data_dir="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
-    
     echo "Setting correct permissions..."
-    sudo chmod 750 "$data_dir"
-    sudo chmod -R g+rx "$data_dir"
+    sudo chmod 750 "$PGDATA_PATH"
+    sudo chmod -R g+rx "$PGDATA_PATH"
     
-    # Verify permissions were set
     echo "Verifying permissions..."
-    local perms=$(stat -c "%a" "$data_dir")
+    local perms=$(stat -c "%a" "$PGDATA_PATH")
     if [ "$perms" != "750" ]; then
         echo "Failed to set permissions. Current: $perms, Expected: 750"
         return 1
@@ -130,34 +134,19 @@ fix_permissions() {
     return 0
 }
 
-# Step 4: Volume Check
 echo "======================="
 echo "STEP 4: Volume Check"
 echo "======================="
 echo "Checking bind-mounted data directory..."
 
-# Run permission fix
-echo "Running permission fix"
-if ! fix_permissions; then
-    echo "Error: Failed to set correct permissions"
-    exit 1
-fi
-
-echo "Verifying permission fix"
-# Verify access
-if [ ! -x "$PGDATA_PATH" ]; then
-    echo "Error: Directory is not accessible. Current permissions:"
-    ls -ld "$PGDATA_PATH"
-    exit 1
-fi
-
-PGDATA_PATH="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
-
+# Check if directory exists first
 if [ ! -d "$PGDATA_PATH" ]; then
     echo -e "${RED}Error: db_data directory not found at $PGDATA_PATH${NC}"
     exit 1
 fi
 
+# Debug info before permission fix
+echo "DEBUG: Initial state:"
 echo "DEBUG: Current user info:"
 whoami
 echo "DEBUG: Current UID/GID:"
@@ -168,37 +157,24 @@ echo "DEBUG: Parent directory permissions:"
 ls -ld "$(dirname $PGDATA_PATH)"
 echo "DEBUG: Target directory permissions:"
 ls -ld "$PGDATA_PATH"
-echo "DEBUG: Trying with sudo:"
-sudo ls -la "$PGDATA_PATH"
-echo "DEBUG: File ownership of PGDATA:"
-stat -c "%U:%G" "$PGDATA_PATH"
-echo "DEBUG: Full stat of PGDATA:"
-stat "$PGDATA_PATH"
 
-# Direct access test
-echo "DEBUG: Testing directory access:"
-if [ -x "$PGDATA_PATH" ]; then
-    echo "Directory is executable"
-else
-    echo "Directory is not executable"
+# Run permission fix
+echo "Running permission fix..."
+if ! fix_permissions; then
+    echo -e "${RED}Error: Failed to set correct permissions${NC}"
+    exit 1
 fi
 
-echo "DEBUG: Testing PG_VERSION access directly:"
-cat "$PGDATA_PATH/PG_VERSION" 2>&1
-
-echo "DEBUG: Contents of $PGDATA_PATH:"
-ls -la "$PGDATA_PATH"
-echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
-
-echo "DEBUG: Testing direct file access:"
-if [ -r "$PGDATA_PATH/PG_VERSION" ]; then
-    echo "PG_VERSION is readable"
-else
-    echo "PG_VERSION is not readable"
+# Verify directory access
+echo "Verifying directory access..."
+if [ ! -x "$PGDATA_PATH" ]; then
+    echo -e "${RED}Error: Directory is not accessible. Current permissions:${NC}"
+    ls -ld "$PGDATA_PATH"
+    exit 1
 fi
-echo "DEBUG: Effective permissions:"
-namei -l "$PGDATA_PATH/PG_VERSION"
 
+# Check for required files
+echo "Checking required files..."
 if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
     echo -e "${RED}Error: Database files not properly persisted (PG_VERSION missing)${NC}"
     exit 1
@@ -208,6 +184,15 @@ if [ ! -f "$PGDATA_PATH/.initialized" ]; then
     echo -e "${RED}Error: Database not properly initialized (.initialized marker missing)${NC}"
     exit 1
 fi
+
+# Final verification with detailed debug info
+echo "DEBUG: Final state after fixes:"
+echo "DEBUG: Directory contents:"
+ls -la "$PGDATA_PATH"
+echo "DEBUG: PG_VERSION contents:"
+cat "$PGDATA_PATH/PG_VERSION" 2>&1
+echo "DEBUG: File permissions:"
+stat -c "%A %U:%G" "$PGDATA_PATH/PG_VERSION"
 
 echo "Bind-mounted data directory is properly set up."
 echo "======================="
