@@ -82,3 +82,30 @@ ssh -L 8888:localhost:8888 <your-username>@<machine>
 2. Open your web browser and navigate to:
 [http://localhost:8888](http://localhost:8888)
 You should see the Streamlit UI where you can input queries and interact with the model.
+
+## Database Permissions Setup
+
+Before running tests, ensure proper permissions are set for the PostgreSQL data directory:
+
+1. Add your user to the required group:
+```bash
+sudo usermod -aG kbradmin $USER   # Replace $USER with your username
+```
+
+2. Set correct permissions on the data directory:
+```bash
+sudo chmod -R 750 db_data
+sudo chmod -R g+rx db_data
+```
+
+3. Verify permissions:
+```bash
+ls -ld db_data/  # Should show: drwxr-x--- owned by kbradmin:kbradmin
+```
+
+These steps ensure PostgreSQL can access its data directory while maintaining security. You may need to log out and back in for group changes to take effect.
+
+Now you can run:
+```bash
+./test_db_data.sh --hf-token "your_token" --langchain-token "your_token"
+```
