@@ -69,24 +69,26 @@ wait_for_container() {
     local max_attempts=10
     local wait_time=3
     
-    debug "Waiting for container $container_id to be ready..."
+    >&2 echo -e "${YELLOW}DEBUG: Waiting for container $container_id to be ready...${NC}"
     
     for ((i=1; i<=max_attempts; i++)); do
-        debug "Checking container status (attempt $i/$max_attempts)"
+        >&2 echo -e "${YELLOW}DEBUG: Checking container status (attempt $i/$max_attempts)${NC}"
         
-        # More robust container status check
-        if docker ps --filter "id=$container_id" --format "{{.Status}}" | grep -q "Up"; then
-            if docker ps --filter "id=$container_id" --format "{{.Status}}" | grep -q "healthy"; then
-                debug "Container is running and healthy"
-                return 0
-            elif [ "$(docker inspect -f '{{.State.Health}}' "$container_id" 2>/dev/null)" = "<nil>" ]; then
-                debug "Container is running (no health check defined)"
+        # Get status directly, avoiding pipe to grep
+        local status
+        status=$(docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null)
+        local health
+        health=$(docker inspect --format '{{.State.Health.Status}}' "$container_id" 2>/dev/null)
+        
+        >&2 echo -e "${YELLOW}DEBUG: Status: '$status', Health: '$health'${NC}"
+        
+        if [ "$status" = "running" ]; then
+            if [ "$health" = "healthy" ] || [ "$health" = "<nil>" ]; then
+                >&2 echo -e "${YELLOW}DEBUG: Container is running and healthy${NC}"
                 return 0
             fi
         fi
         
-        debug "Container status: $(docker ps --filter "id=$container_id" --format "{{.Status}}")"
-        debug "Waiting ${wait_time}s before next check..."
         sleep $wait_time
     done
     
@@ -97,20 +99,22 @@ wait_for_container() {
 get_container_id() {
     local retries=5
     local wait_time=2
-    local container_id=""
     
     for ((i=1; i<=retries; i++)); do
-        debug "Attempting to get container ID (attempt $i/$retries)"
-        # Use more specific formatting to avoid debug message mixing
-        container_id=$(docker ps --filter "name=$CONTAINER_NAME" --format "{{.ID}}" | head -n1)
+        # Redirect debug message to stderr
+        >&2 echo -e "${YELLOW}DEBUG: Attempting to get container ID (attempt $i/$retries)${NC}"
+        
+        # Capture only the container ID, ensuring clean output
+        local container_id
+        container_id=$(docker ps --quiet --filter "name=$CONTAINER_NAME" --no-trunc | head -n1)
         
         if [ ! -z "$container_id" ]; then
-            debug "Container ID found: $container_id"
+            >&2 echo -e "${YELLOW}DEBUG: Container ID found: $container_id${NC}"
             echo "$container_id"
             return 0
         fi
         
-        debug "Container not found, waiting ${wait_time}s..."
+        >&2 echo -e "${YELLOW}DEBUG: Container not found, waiting ${wait_time}s...${NC}"
         sleep $wait_time
     done
     
@@ -146,9 +150,9 @@ check_data() {
 
 # Function to run setup.sh with debugging
 run_setup() {
-    local setup_output_file=$(mktemp)
+    local setup_output_file
+    setup_output_file=$(mktemp)
     echo "Running setup.sh..."
-    debug "Running setup.sh with tokens..."
     
     if ! ./setup.sh --hf-token "$HF_TOKEN" --langchain-token "$LANGCHAIN_TOKEN" > "$setup_output_file" 2>&1; then
         echo -e "${RED}Setup failed. Output:${NC}"
@@ -157,14 +161,14 @@ run_setup() {
         return 1
     fi
     
-    debug "Setup.sh output:"
+    >&2 echo -e "${YELLOW}DEBUG: Setup.sh output:${NC}"
     cat "$setup_output_file"
     rm "$setup_output_file"
     
-    debug "Waiting for container initialization..."
-    sleep 5  # Initial wait for container creation
+    >&2 echo -e "${YELLOW}DEBUG: Waiting for container initialization...${NC}"
+    sleep 5
     
-    # Get container ID
+    # Get container ID with clean output
     local container_id
     container_id=$(get_container_id)
     if [ -z "$container_id" ]; then
@@ -172,33 +176,28 @@ run_setup() {
         return 1
     fi
     
-    debug "Found container ID: $container_id"
+    # Store container ID for later use
+    export CURRENT_CONTAINER_ID="$container_id"
     
-    # Wait for container to be ready
     if ! wait_for_container "$container_id"; then
         echo -e "${RED}Container failed to start properly${NC}"
-        docker inspect "$container_id"
-        docker logs "$container_id"
+        docker inspect "$container_id" || true
+        docker logs "$container_id" || true
         return 1
     fi
     
-    debug "Container is ready"
-    debug "Container details:"
-    docker ps --filter "id=$container_id" --format "table {{.ID}}\t{{.Status}}\t{{.Names}}"
-    
-    # Verify database is accepting connections
-    debug "Verifying database connection..."
+    # Use stored container ID for database checks
     local max_db_attempts=5
     for ((i=1; i<=max_db_attempts; i++)); do
-        if docker exec "$container_id" pg_isready -U "$DB_USER" >/dev/null 2>&1; then
-            debug "Database is accepting connections"
+        if docker exec "$CURRENT_CONTAINER_ID" pg_isready -U "$DB_USER" >/dev/null 2>&1; then
+            >&2 echo -e "${YELLOW}DEBUG: Database is accepting connections${NC}"
             break
         fi
         if [ $i -eq $max_db_attempts ]; then
             echo -e "${RED}Database failed to accept connections${NC}"
             return 1
         fi
-        debug "Waiting for database to accept connections (attempt $i/$max_db_attempts)..."
+        >&2 echo -e "${YELLOW}DEBUG: Waiting for database (attempt $i/$max_db_attempts)...${NC}"
         sleep 3
     done
     
@@ -255,8 +254,7 @@ echo "Initial record count: $initial_count"
 
 # Step 3: Insert test data
 echo "Step 3: Inserting test data..."
-debug "Executing INSERT query..."
-if ! docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
+if ! docker exec "$CURRENT_CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
     "INSERT INTO embeddings (id, metadata, content, embedding) VALUES (gen_random_uuid(), '{\"source\": \"test\"}', 'Test persistence', array_fill(0.1, ARRAY[384]));" > /dev/null 2>&1; then
     echo -e "${RED}Failed to insert test data${NC}"
     exit 1
