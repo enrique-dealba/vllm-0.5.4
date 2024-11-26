@@ -125,9 +125,35 @@ if [ ! -d "$PGDATA_PATH" ]; then
     exit 1
 fi
 
+echo "DEBUG: Current user info:"
+whoami
+echo "DEBUG: Current UID/GID:"
+id
+echo "DEBUG: Current groups:"
+groups
+echo "DEBUG: Parent directory permissions:"
+ls -ld "$(dirname $PGDATA_PATH)"
+echo "DEBUG: Target directory permissions:"
+ls -ld "$PGDATA_PATH"
+echo "DEBUG: Trying with sudo:"
+sudo ls -la "$PGDATA_PATH"
+echo "DEBUG: File ownership of PGDATA:"
+stat -c "%U:%G" "$PGDATA_PATH"
+echo "DEBUG: Full stat of PGDATA:"
+stat "$PGDATA_PATH"
+
 echo "DEBUG: Contents of $PGDATA_PATH:"
 ls -la "$PGDATA_PATH"
 echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
+
+echo "DEBUG: Testing direct file access:"
+if [ -r "$PGDATA_PATH/PG_VERSION" ]; then
+    echo "PG_VERSION is readable"
+else
+    echo "PG_VERSION is not readable"
+fi
+echo "DEBUG: Effective permissions:"
+namei -l "$PGDATA_PATH/PG_VERSION"
 
 if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
     echo -e "${RED}Error: Database files not properly persisted (PG_VERSION missing)${NC}"
