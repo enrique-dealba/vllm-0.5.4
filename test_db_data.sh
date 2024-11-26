@@ -65,7 +65,7 @@ if [ -z "$HF_TOKEN" ] || [ -z "$LANGCHAIN_TOKEN" ]; then
 fi
 
 wait_for_container() {
-    local container_id=$1
+    local container_id="$1"
     local max_attempts=10
     local wait_time=3
     
@@ -74,19 +74,18 @@ wait_for_container() {
     for ((i=1; i<=max_attempts; i++)); do
         debug "Checking container status (attempt $i/$max_attempts)"
         
-        # Check if container exists and is running
-        local status=$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)
-        local health=$(docker inspect -f '{{.State.Health.Status}}' "$container_id" 2>/dev/null)
-        
-        debug "Status: '$status', Health: '$health'"
-        
-        if [ "$status" = "running" ]; then
-            if [ "$health" = "healthy" ] || [ "$health" = "<nil>" ]; then
+        # More robust container status check
+        if docker ps --filter "id=$container_id" --format "{{.Status}}" | grep -q "Up"; then
+            if docker ps --filter "id=$container_id" --format "{{.Status}}" | grep -q "healthy"; then
                 debug "Container is running and healthy"
+                return 0
+            elif [ "$(docker inspect -f '{{.State.Health}}' "$container_id" 2>/dev/null)" = "<nil>" ]; then
+                debug "Container is running (no health check defined)"
                 return 0
             fi
         fi
         
+        debug "Container status: $(docker ps --filter "id=$container_id" --format "{{.Status}}")"
         debug "Waiting ${wait_time}s before next check..."
         sleep $wait_time
     done
@@ -102,7 +101,8 @@ get_container_id() {
     
     for ((i=1; i<=retries; i++)); do
         debug "Attempting to get container ID (attempt $i/$retries)"
-        container_id=$(docker ps -qf "name=$CONTAINER_NAME")
+        # Use more specific formatting to avoid debug message mixing
+        container_id=$(docker ps --filter "name=$CONTAINER_NAME" --format "{{.ID}}" | head -n1)
         
         if [ ! -z "$container_id" ]; then
             debug "Container ID found: $container_id"
@@ -172,9 +172,12 @@ run_setup() {
         return 1
     fi
     
+    debug "Found container ID: $container_id"
+    
     # Wait for container to be ready
     if ! wait_for_container "$container_id"; then
         echo -e "${RED}Container failed to start properly${NC}"
+        docker inspect "$container_id"
         docker logs "$container_id"
         return 1
     fi
@@ -198,9 +201,6 @@ run_setup() {
         debug "Waiting for database to accept connections (attempt $i/$max_db_attempts)..."
         sleep 3
     done
-    
-    debug "Container logs:"
-    docker logs "$container_id" | tail -n 20
     
     return 0
 }
