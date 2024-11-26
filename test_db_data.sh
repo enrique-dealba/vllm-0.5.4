@@ -64,6 +64,37 @@ if [ -z "$HF_TOKEN" ] || [ -z "$LANGCHAIN_TOKEN" ]; then
     usage
 fi
 
+wait_for_container() {
+    local container_id=$1
+    local max_attempts=10
+    local wait_time=3
+    
+    debug "Waiting for container $container_id to be ready..."
+    
+    for ((i=1; i<=max_attempts; i++)); do
+        debug "Checking container status (attempt $i/$max_attempts)"
+        
+        # Check if container exists and is running
+        local status=$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)
+        local health=$(docker inspect -f '{{.State.Health.Status}}' "$container_id" 2>/dev/null)
+        
+        debug "Status: '$status', Health: '$health'"
+        
+        if [ "$status" = "running" ]; then
+            if [ "$health" = "healthy" ] || [ "$health" = "<nil>" ]; then
+                debug "Container is running and healthy"
+                return 0
+            fi
+        fi
+        
+        debug "Waiting ${wait_time}s before next check..."
+        sleep $wait_time
+    done
+    
+    echo -e "${RED}Container failed to reach running state within timeout${NC}"
+    return 1
+}
+
 get_container_id() {
     local retries=5
     local wait_time=2
@@ -130,33 +161,43 @@ run_setup() {
     cat "$setup_output_file"
     rm "$setup_output_file"
     
-    # Wait for container to be ready
-    debug "Waiting for container to be ready..."
-    sleep 5  # Give time for container to start
+    debug "Waiting for container initialization..."
+    sleep 5  # Initial wait for container creation
     
-    # Get container status directly without grep
+    # Get container ID
     local container_id
-    local container_status
-    
     container_id=$(get_container_id)
     if [ -z "$container_id" ]; then
         echo -e "${RED}Container $CONTAINER_NAME not found after setup${NC}"
         return 1
     fi
     
-    # Check container status using docker inspect instead of grep
-    container_status=$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)
-    if [ "$container_status" != "running" ]; then
-        echo -e "${RED}Container $container_id status is '$container_status', expected 'running'${NC}"
+    # Wait for container to be ready
+    if ! wait_for_container "$container_id"; then
+        echo -e "${RED}Container failed to start properly${NC}"
+        docker logs "$container_id"
         return 1
     fi
     
-    debug "Container ID: $container_id"
-    debug "Container Status: $container_status"
-    
-    # Show container details without using grep
+    debug "Container is ready"
     debug "Container details:"
     docker ps --filter "id=$container_id" --format "table {{.ID}}\t{{.Status}}\t{{.Names}}"
+    
+    # Verify database is accepting connections
+    debug "Verifying database connection..."
+    local max_db_attempts=5
+    for ((i=1; i<=max_db_attempts; i++)); do
+        if docker exec "$container_id" pg_isready -U "$DB_USER" >/dev/null 2>&1; then
+            debug "Database is accepting connections"
+            break
+        fi
+        if [ $i -eq $max_db_attempts ]; then
+            echo -e "${RED}Database failed to accept connections${NC}"
+            return 1
+        fi
+        debug "Waiting for database to accept connections (attempt $i/$max_db_attempts)..."
+        sleep 3
+    done
     
     debug "Container logs:"
     docker logs "$container_id" | tail -n 20
