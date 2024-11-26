@@ -125,6 +125,10 @@ if [ ! -d "$PGDATA_PATH" ]; then
     exit 1
 fi
 
+echo "DEBUG: Contents of $PGDATA_PATH:"
+ls -la "$PGDATA_PATH"
+echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
+
 if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
     echo -e "${RED}Error: Database files not properly persisted (PG_VERSION missing)${NC}"
     exit 1
