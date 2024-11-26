@@ -146,6 +146,16 @@ echo "DEBUG: Contents of $PGDATA_PATH:"
 ls -la "$PGDATA_PATH"
 echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
 
+echo "DEBUG: Testing directory access:"
+if [ -x "$PGDATA_PATH" ]; then
+    echo "Directory is executable"
+else
+    echo "Directory is not executable"
+fi
+
+echo "DEBUG: Testing PG_VERSION access directly:"
+cat "$PGDATA_PATH/PG_VERSION" 2>&1
+
 echo "DEBUG: Testing direct file access:"
 if [ -r "$PGDATA_PATH/PG_VERSION" ]; then
     echo "PG_VERSION is readable"
