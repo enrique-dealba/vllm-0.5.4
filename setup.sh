@@ -38,12 +38,12 @@ echo "======================="
 echo "STEP 1: Cleanup"
 echo "======================="
 if [ "$CLEANUP_TYPE" = "full" ]; then
-    echo "WARNING: Performing full cleanup including volumes..."
-    read -p "This will delete all data. Are you sure? (y/N) " -n 1 -r
+    echo "WARNING: Performing full cleanup including containers and networks, but preserving bind-mounted data..."
+    read -p "This will stop and remove containers and networks. Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         docker compose down --remove-orphans
-        # No need to remove named volumes as we're using bind mounts
+        # Do not remove volumes since we're using bind mounts
         echo "Full cleanup completed without removing bind-mounted data."
     else
         echo "Aborted full cleanup"
@@ -74,16 +74,47 @@ LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
 EOF
 
 # Source the .env file to export variables
-export $(grep -v '^#' .env | xargs)
+set -a
+source .env
+set +a
 
 echo "Contents of .env file:"
 echo "======================="
 cat .env
 echo "======================="
 
-# Step 3: Volume Check
+# Step 3: Database Setup
 echo "======================="
-echo "STEP 3: Volume Check"
+echo "STEP 3: Database Setup"
+echo "======================="
+echo "Starting database service..."
+docker compose up -d timescaledb
+
+# Wait for the database to become healthy
+attempt=1
+max_attempts=15
+while [ $attempt -le $max_attempts ]; do
+    CONTAINER_ID=$(docker compose ps -q timescaledb)
+    health_status=$(docker inspect --format='{{json .State.Health.Status}}' "$CONTAINER_ID" 2>/dev/null || echo "unhealthy")
+    if [ "$health_status" = "\"healthy\"" ]; then
+        echo "Database is healthy."
+        break
+    fi
+    echo "Waiting for database... Attempt $attempt/$max_attempts"
+    echo "Container Health: $health_status"
+    sleep 5
+    attempt=$((attempt + 1))
+done
+
+if [ $attempt -gt $max_attempts ]; then
+    echo "ERROR: Database initialization failed"
+    docker ps -a  # List all containers to find the failed one
+    exit 1
+fi
+
+# Step 4: Volume Check
+echo "======================="
+echo "STEP 4: Volume Check"
 echo "======================="
 echo "Checking bind-mounted data directory..."
 
@@ -107,40 +138,14 @@ fi
 echo "Bind-mounted data directory is properly set up."
 echo "======================="
 
-# Step 4: Database Setup
-echo "======================="
-echo "STEP 4: Database Setup"
-echo "======================="
-echo "Starting database service..."
-docker compose up -d timescaledb
-
-# Wait for the database to become healthy
-attempt=1
-max_attempts=15
-while [ $attempt -le $max_attempts ]; do
-    health_status=$(docker inspect --format='{{json .State.Health.Status}}' vllm-054-timescaledb-1 2>/dev/null || echo "unhealthy")
-    if [ "$health_status" = "\"healthy\"" ]; then
-        echo "Database is healthy."
-        break
-    fi
-    echo "Waiting for database... Attempt $attempt/$max_attempts"
-    echo "Container Health: $health_status"
-    sleep 5
-    attempt=$((attempt + 1))
-done
-
-if [ $attempt -gt $max_attempts ]; then
-    echo "ERROR: Database initialization failed"
-    docker ps -a  # List all containers to find the failed one
-    exit 1
-fi
-
+# Step 5: Build
 echo "======================="
 echo "STEP 5: Build"
 echo "======================="
 echo "Building application environment..."
 docker compose build
 
+# Step 6: Service Startup
 echo "======================="
 echo "STEP 6: Service Startup"
 echo "======================="
