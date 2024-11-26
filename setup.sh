@@ -73,6 +73,9 @@ LANGCHAIN_TRACING_V2=true
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib
 EOF
 
+# Source the .env file to export variables
+export $(grep -v '^#' .env | xargs)
+
 echo "Contents of .env file:"
 echo "======================="
 cat .env
@@ -82,9 +85,26 @@ echo "======================="
 echo "======================="
 echo "STEP 3: Volume Check"
 echo "======================="
-echo "Checking Docker named volume..."
-# Docker named volumes are handled by Docker; no host directory permissions to set
-echo "timescaledb_data volume is set to be managed by Docker."
+echo "Checking bind-mounted data directory..."
+
+PGDATA_PATH="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
+
+if [ ! -d "$PGDATA_PATH" ]; then
+    echo -e "${RED}Error: db_data directory not found at $PGDATA_PATH${NC}"
+    exit 1
+fi
+
+if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
+    echo -e "${RED}Error: Database files not properly persisted (PG_VERSION missing)${NC}"
+    exit 1
+fi
+
+if [ ! -f "$PGDATA_PATH/.initialized" ]; then
+    echo -e "${RED}Error: Database not properly initialized (.initialized marker missing)${NC}"
+    exit 1
+fi
+
+echo "Bind-mounted data directory is properly set up."
 echo "======================="
 
 # Step 4: Database Setup

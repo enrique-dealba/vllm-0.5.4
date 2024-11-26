@@ -4,7 +4,7 @@ set -e
 # Default values and constants
 DEFAULT_HF_TOKEN=""
 DEFAULT_LANGCHAIN_TOKEN=""
-CONTAINER_NAME="timescaledb"  # Use service name or dynamic retrieval
+CONTAINER_NAME="timescaledb"  # Service name
 DB_USER="postgres"
 DB_NAME="postgres"
 TIMEOUT=300  # 5 minutes timeout
@@ -70,7 +70,8 @@ check_data() {
         debug "Checking data in database..."
     fi
     local result
-    result=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -t -c \
+    CONTAINER_ID=$(docker compose ps -q timescaledb)
+    result=$(docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
         "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
     if [ "$result" = "ERROR" ]; then
         echo -e "${RED}Error executing database query${NC}"
@@ -170,7 +171,7 @@ echo "Initial record count: $initial_count"
 # Step 3: Insert test data
 echo "Step 3: Inserting test data..."
 debug "Executing INSERT query..."
-if ! docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
+if ! docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
     "INSERT INTO embeddings (id, metadata, content, embedding) VALUES (gen_random_uuid(), '{\"source\": \"test\"}', 'Test persistence', array_fill(0.1, ARRAY[384]));" > /dev/null 2>&1; then
     echo -e "${RED}Failed to insert test data${NC}"
     exit 1
@@ -211,12 +212,12 @@ fi
 if [ "$final_count" -eq "1" ]; then
     echo -e "${GREEN}SUCCESS: Data persisted after setup rerun${NC}"
     echo "Test record details:"
-    docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
+    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
         "SELECT id, metadata, content, created_at FROM embeddings WHERE content = 'Test persistence';"
 else
     echo -e "${RED}FAILURE: Data did not persist after setup rerun${NC}"
     echo "Expected 1 record, found $final_count"
     debug "Current database state:"
-    docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) FROM embeddings;"
-    docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT * FROM embeddings LIMIT 5;"
+    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT COUNT(*) FROM embeddings;"
+    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT * FROM embeddings LIMIT 5;"
 fi
