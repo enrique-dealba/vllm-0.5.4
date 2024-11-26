@@ -22,6 +22,31 @@ def initialize_db():
         return None
 
 
+def export_database_data(vector_store):
+    """Export all data from the vector store to a pandas DataFrame"""
+    try:
+        query = f"""
+            SELECT 
+                id,
+                content,
+                metadata,
+                created_at,
+                embedding
+            FROM {settings.VECTOR_STORE_TABLE_NAME}
+            ORDER BY created_at DESC
+        """
+
+        with vector_store.conn.cursor() as cur:
+            cur.execute(query)
+            columns = ["id", "content", "metadata", "created_at", "embedding"]
+            data = cur.fetchall()
+
+        return pd.DataFrame(data, columns=columns)
+    except Exception as e:
+        logger.error(f"Error exporting database data: {e}", exc_info=True)
+        return None
+
+
 def get_db_stats(vector_store):
     """Get basic database statistics"""
     try:
@@ -77,6 +102,32 @@ def main():
             st.metric("Entries (Last 24h)", f"{stats['recent_entries']:,}")
         with col3:
             st.metric("Avg Similarity Score", f"{stats['avg_similarity']:.4f}")
+
+    st.header("Database Export")
+    if st.button("Download Database", key="download_button"):
+        with st.spinner("Preparing download..."):
+            try:
+                # Export data
+                df = export_database_data(vector_store)
+
+                if df is not None:
+                    # Convert DataFrame to CSV
+                    csv = df.to_csv(index=False)
+
+                    # Create download button
+                    st.download_button(
+                        label="📥 Download CSV",
+                        data=csv,
+                        file_name="vector_store_data.csv",
+                        mime="text/csv",
+                        key="download_csv",
+                    )
+                    st.success(f"Prepared {len(df)} records for download")
+                else:
+                    st.error("Failed to export data")
+            except Exception as e:
+                st.error(f"Error preparing download: {e}")
+                logger.error("Download preparation error", exc_info=True)
 
     # Query Section
     st.header("Data Explorer")
