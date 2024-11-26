@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional
+from enum import Enum
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -29,30 +30,69 @@ class EvidenceLLMResponse(BaseModel):
     )
 
 
+# version 1
+# class ChunkMetadata(BaseModel):
+#     source_files: List[str] = Field(
+#         ..., description="List of source JSON files contributing to this chunk"
+#     )
+#     json_keys_summary: List[str] = Field(
+#         ...,
+#         description="List of key names appearing in the chunk, providing a quick summary of the contents",
+#     )
+#     descriptive_labels: Dict[str, str] = Field(
+#         ...,
+#         description="Mapping of JSON keys to more understandable labels within the chunk, if applicable",
+#     )
+#     context_info: str = Field(
+#         None,
+#         description="Additional context or notes that describe the overall content of this chunk",
+#     )
+#     num_values: int = Field(
+#         ..., description="Number of JSON key-value pairs in the chunk"
+#     )
+#     priority_level: int = Field(
+#         1,
+#         ge=1,
+#         le=100,
+#         description="Indicates the priority level of the chunk. 1 is low priority and 100 is highest priority",
+#     )
+
+
+class Category(str, Enum):
+    OBSERVATION_REQUEST = "ObservationRequest"
+    SPACE_OBJECT = "SpaceObject"
+    SENSOR_INFO = "SensorInfo"
+    INSTRUMENT_INFO = "InstrumentInfo"
+    OBSERVATION_CONSTRAINT = "ObservationConstraint"
+    STATUS_UPDATE = "StatusUpdate"
+    OPERATIONAL_STATUS = "OperationalStatus"
+    SCHEDULING_INFO = "SchedulingInfo"
+
+
+# version 2
 class ChunkMetadata(BaseModel):
     source_files: List[str] = Field(
-        ..., description="List of source JSON files contributing to this chunk"
+        ..., description="List of source files contributing to this chunk."
     )
-    json_keys_summary: List[str] = Field(
+    categories: List[Category] = Field(
         ...,
-        description="List of key names appearing in the chunk, providing a quick summary of the contents",
+        description="List of high-level categories or tags applicable to this chunk.",
     )
-    descriptive_labels: Dict[str, str] = Field(
+    summary: str = Field(
         ...,
-        description="Mapping of JSON keys to more understandable labels within the chunk, if applicable",
+        description="A concise summary (2-4 sentences) explaining the chunk's content.",
     )
-    context_info: str = Field(
-        None,
-        description="Additional context or notes that describe the overall content of this chunk",
+    key_points: Optional[List[str]] = Field(
+        None, description="List of key points or highlights from the chunk."
     )
-    num_values: int = Field(
-        ..., description="Number of JSON key-value pairs in the chunk"
+    context_info: Optional[str] = Field(
+        None, description="Additional context or notes about the chunk."
     )
     priority_level: int = Field(
         1,
         ge=1,
         le=100,
-        description="Indicates the priority level of the chunk. 1 is low priority and 100 is highest priority",
+        description="Priority level of the chunk (1=lowest priority, 100=highest priority).",
     )
 
 
