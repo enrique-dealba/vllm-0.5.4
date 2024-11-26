@@ -4,7 +4,7 @@ set -e
 # Default values and constants
 DEFAULT_HF_TOKEN=""
 DEFAULT_LANGCHAIN_TOKEN=""
-CONTAINER_NAME="vllm-054-timescaledb-1"
+CONTAINER_NAME="timescaledb"  # Use service name or dynamic retrieval
 DB_USER="postgres"
 DB_NAME="postgres"
 TIMEOUT=300  # 5 minutes timeout
@@ -97,17 +97,24 @@ run_setup() {
     cat "$setup_output_file"
     rm "$setup_output_file"
 
+    # Dynamically retrieve the container ID
+    CONTAINER_ID=$(docker compose ps -q timescaledb)
+    if [ -z "$CONTAINER_ID" ]; then
+        echo -e "${RED}Container timescaledb not found after setup${NC}"
+        return 1
+    fi
+
     # Verify container is running
-    if ! docker ps | grep -q $CONTAINER_NAME; then
-        echo -e "${RED}Container $CONTAINER_NAME not found after setup${NC}"
+    if ! docker ps | grep -q "$CONTAINER_ID"; then
+        echo -e "${RED}Container $CONTAINER_ID not found after setup${NC}"
         return 1
     fi
 
     debug "Container status after setup:"
-    docker ps | grep vllm-054
+    docker ps | grep "$CONTAINER_ID"
 
     debug "Container logs:"
-    docker logs $CONTAINER_NAME | tail -n 20
+    docker logs "$CONTAINER_ID" | tail -n 20
 
     return 0
 }
@@ -115,24 +122,24 @@ run_setup() {
 check_volume_persistence() {
     debug "Checking volume persistence..."
 
-    if [ ! -d "../db_data" ]; then
-        echo -e "${RED}Error: db_data directory not found${NC}"
+    PGDATA_PATH="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
+
+    if [ ! -d "$PGDATA_PATH" ]; then
+        echo -e "${RED}Error: db_data directory not found at $PGDATA_PATH${NC}"
         return 1
     fi
 
-    PGDATA_PATH="../db_data/pgdata"
-
     if [ ! -f "$PGDATA_PATH/PG_VERSION" ]; then
-        echo -e "${RED}Error: Database files not properly persisted${NC}"
+        echo -e "${RED}Error: Database files not properly persisted (PG_VERSION missing)${NC}"
         return 1
     fi
 
     if [ ! -f "$PGDATA_PATH/.initialized" ]; then
-        echo -e "${RED}Error: Database not properly initialized${NC}"
+        echo -e "${RED}Error: Database not properly initialized (.initialized marker missing)${NC}"
         return 1
     fi
 
-    debug "Volume appears to be properly persisted"
+    debug "Volume appears to be properly persisted at $PGDATA_PATH"
     return 0
 }
 

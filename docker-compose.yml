@@ -8,15 +8,14 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - TIMESCALEDB_TELEMETRY=off
-      - PGDATA=/home/postgres/pgdata/data  # Correct PGDATA path
+      - PGDATA=/home/postgres/pgdata/data
     ports:
       - "5432:5432"
     volumes:
-      - timescaledb_data:/home/postgres/pgdata/data:rw  # Use named volume
+      - /home/edealba/Testing/TestingLLMs/postgres-vllm/db_data:/home/postgres/pgdata/data:rw
       - ./config/postgresql-custom.conf:/etc/postgresql/postgresql.conf:ro
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/z99_init-db.sh:ro
-    # Removed or commented out the user directive
-    # user: "1000:1000"  # Optionally set to UID:GID if necessary
+    user: "1000:1000"  # UID:GID for Postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -56,6 +55,4 @@ networks:
   app_network:
     name: app_network
 
-volumes:
-  timescaledb_data:
-    name: timescaledb_data  # Define the named volume
+# Removed the volumes section defining named volumes

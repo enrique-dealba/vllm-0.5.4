@@ -42,16 +42,15 @@ if [ "$CLEANUP_TYPE" = "full" ]; then
     read -p "This will delete all data. Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        docker compose down --remove-orphans -v
-        # Remove the named volume
-        docker volume rm timescaledb_data >/dev/null 2>&1 || true
-        echo "timescaledb_data volume removed"
+        docker compose down --remove-orphans
+        # No need to remove named volumes as we're using bind mounts
+        echo "Full cleanup completed without removing bind-mounted data."
     else
         echo "Aborted full cleanup"
         exit 1
     fi
 else
-    echo "Performing soft cleanup (preserving volumes)..."
+    echo "Performing soft cleanup (preserving bind-mounted data)..."
     docker compose stop
 fi
 
