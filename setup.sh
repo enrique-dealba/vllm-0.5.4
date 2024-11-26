@@ -112,11 +112,42 @@ if [ $attempt -gt $max_attempts ]; then
     exit 1
 fi
 
+fix_permissions() {
+    local data_dir="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
+    
+    echo "Setting correct permissions..."
+    sudo chmod 750 "$data_dir"
+    sudo chmod -R g+rx "$data_dir"
+    
+    # Verify permissions were set
+    echo "Verifying permissions..."
+    local perms=$(stat -c "%a" "$data_dir")
+    if [ "$perms" != "750" ]; then
+        echo "Failed to set permissions. Current: $perms, Expected: 750"
+        return 1
+    fi
+    
+    return 0
+}
+
 # Step 4: Volume Check
 echo "======================="
 echo "STEP 4: Volume Check"
 echo "======================="
 echo "Checking bind-mounted data directory..."
+
+# Run permission fix
+if ! fix_permissions; then
+    echo "Error: Failed to set correct permissions"
+    exit 1
+fi
+
+# Verify access
+if [ ! -x "$PGDATA_PATH" ]; then
+    echo "Error: Directory is not accessible. Current permissions:"
+    ls -ld "$PGDATA_PATH"
+    exit 1
+fi
 
 PGDATA_PATH="/home/edealba/Testing/TestingLLMs/postgres-vllm/db_data"
 
