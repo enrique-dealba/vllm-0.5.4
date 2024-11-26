@@ -4,7 +4,7 @@ set -e
 # Default values and constants
 DEFAULT_HF_TOKEN=""
 DEFAULT_LANGCHAIN_TOKEN=""
-CONTAINER_NAME="timescaledb"  # Service name
+CONTAINER_NAME="vllm-054-timescaledb-1"
 DB_USER="postgres"
 DB_NAME="postgres"
 TIMEOUT=300  # 5 minutes timeout
@@ -64,20 +64,45 @@ if [ -z "$HF_TOKEN" ] || [ -z "$LANGCHAIN_TOKEN" ]; then
     usage
 fi
 
+get_container_id() {
+    local retries=5
+    local wait_time=2
+    local container_id=""
+    
+    for ((i=1; i<=retries; i++)); do
+        debug "Attempting to get container ID (attempt $i/$retries)"
+        container_id=$(docker ps -qf "name=$CONTAINER_NAME")
+        
+        if [ ! -z "$container_id" ]; then
+            debug "Container ID found: $container_id"
+            echo "$container_id"
+            return 0
+        fi
+        
+        debug "Container not found, waiting ${wait_time}s..."
+        sleep $wait_time
+    done
+    
+    return 1
+}
+
 # Function to check data
 check_data() {
-    if [ "$DEBUG" = true ]; then
-        debug "Checking data in database..."
-    fi
+    debug "Checking data in database..."
     local result
-    CONTAINER_ID=$(docker compose ps -q timescaledb)
-    result=$(docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
-        "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
+    local container_id
+    container_id=$(get_container_id)
+    if [ -z "$container_id" ]; then
+        echo -e "${RED}Error: Could not find container${NC}"
+        return 1
+    fi
+    result=$(docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
+    "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
     if [ "$result" = "ERROR" ]; then
         echo -e "${RED}Error executing database query${NC}"
         return 1
     fi
-    echo $result | tr -d ' \n'  # Remove both spaces and newlines
+    echo $result | tr -d ' \n'
 }
 
 # Function to run setup.sh with debugging
@@ -85,38 +110,41 @@ run_setup() {
     local setup_output_file=$(mktemp)
     echo "Running setup.sh..."
     debug "Running setup.sh with tokens..."
-    debug "Command: ./setup.sh --hf-token \"$HF_TOKEN\" --langchain-token \"$LANGCHAIN_TOKEN\""
-
+    
     if ! ./setup.sh --hf-token "$HF_TOKEN" --langchain-token "$LANGCHAIN_TOKEN" > "$setup_output_file" 2>&1; then
         echo -e "${RED}Setup failed. Output:${NC}"
         cat "$setup_output_file"
         rm "$setup_output_file"
         return 1
     fi
-
+    
     debug "Setup.sh output:"
     cat "$setup_output_file"
     rm "$setup_output_file"
-
-    # Dynamically retrieve the container ID
-    CONTAINER_ID=$(docker compose ps -q timescaledb)
-    if [ -z "$CONTAINER_ID" ]; then
-        echo -e "${RED}Container timescaledb not found after setup${NC}"
+    
+    # Wait for container to be ready
+    local container_id
+    debug "Waiting for container to be ready..."
+    sleep 5  # Give time for container to start
+    
+    container_id=$(get_container_id)
+    if [ -z "$container_id" ]; then
+        echo -e "${RED}Container $CONTAINER_NAME not found after setup${NC}"
         return 1
     fi
-
+    
     # Verify container is running
-    if ! docker ps | grep -q "$CONTAINER_ID"; then
-        echo -e "${RED}Container $CONTAINER_ID not found after setup${NC}"
+    if ! docker ps | grep -q "$container_id"; then
+        echo -e "${RED}Container $container_id not running after setup${NC}"
         return 1
     fi
-
+    
     debug "Container status after setup:"
-    docker ps | grep "$CONTAINER_ID"
-
+    docker ps | grep "$container_id"
+    
     debug "Container logs:"
-    docker logs "$CONTAINER_ID" | tail -n 20
-
+    docker logs "$container_id" | tail -n 20
+    
     return 0
 }
 
