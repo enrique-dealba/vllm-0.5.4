@@ -123,28 +123,28 @@ get_container_id() {
 
 # Function to check data
 check_data() {
-    debug "Checking data in database..."
+    >&2 echo -e "${YELLOW}DEBUG: Checking data in database...${NC}"
     local result
     local container_id
     
     container_id=$(get_container_id)
     if [ -z "$container_id" ]; then
-        echo -e "${RED}Error: Could not find container${NC}"
+        >&2 echo -e "${RED}Error: Could not find container${NC}"
         return 1
     fi
     
-    debug "Using container ID: $container_id"
+    >&2 echo -e "${YELLOW}DEBUG: Using container ID: $container_id${NC}"
     
     result=$(docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
         "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
     
     if [ "$result" = "ERROR" ]; then
-        echo -e "${RED}Error executing database query${NC}"
+        >&2 echo -e "${RED}Error executing database query${NC}"
         docker logs "$container_id" | tail -n 20
         return 1
     fi
     
-    debug "Query result: '$result'"
+    >&2 echo -e "${YELLOW}DEBUG: Query result: '$result'${NC}"
     echo "$result" | tr -d ' \n'
 }
 
@@ -285,22 +285,30 @@ fi
 # Step 6: Final verification
 echo "Step 6: Final verification..."
 final_count=$(check_data)
-debug "Final count: $final_count"
-if [ "$final_count" = "ERROR" ]; then
+if [ "$?" -ne 0 ]; then
     echo -e "${RED}Final verification failed${NC}"
     exit 1
 fi
 
-# Check results (use explicit -eq for integer comparison)
-if [ "$final_count" -eq "1" ]; then
+# Store the clean numeric value
+cleaned_count=$(echo "$final_count" | tr -d ' \n')
+
+# Do the comparison with the cleaned value
+if [ "$cleaned_count" -eq "1" ]; then
     echo -e "${GREEN}SUCCESS: Data persisted after setup rerun${NC}"
     echo "Test record details:"
-    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
+    docker exec "$CURRENT_CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
         "SELECT id, metadata, content, created_at FROM embeddings WHERE content = 'Test persistence';"
 else
     echo -e "${RED}FAILURE: Data did not persist after setup rerun${NC}"
-    echo "Expected 1 record, found $final_count"
-    debug "Current database state:"
-    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT COUNT(*) FROM embeddings;"
-    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT * FROM embeddings LIMIT 5;"
+    echo "Expected 1 record, found $cleaned_count"
+    if [ ! -z "$CURRENT_CONTAINER_ID" ]; then
+        echo "Current database state:"
+        docker exec "$CURRENT_CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
+            "SELECT COUNT(*) FROM embeddings;"
+        docker exec "$CURRENT_CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" -c \
+            "SELECT * FROM embeddings LIMIT 5;"
+    else
+        echo "ERROR: Container ID not available"
+    fi
 fi
