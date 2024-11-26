@@ -111,10 +111,13 @@ def main():
                             f"Entry: {row['id'][:8]}... (Similarity: {row['similarity']:.4f})"
                         ):
                             col1, col2 = st.columns([2, 1])
-
                             with col1:
                                 st.text_area(
-                                    "Content", row["content"], height=100, disabled=True
+                                    "Content",
+                                    row["content"],
+                                    height=100,
+                                    disabled=True,
+                                    key=f"content_{row['id']}",  # Add unique key using the row ID
                                 )
 
                             with col2:
