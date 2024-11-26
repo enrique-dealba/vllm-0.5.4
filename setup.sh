@@ -137,11 +137,13 @@ echo "======================="
 echo "Checking bind-mounted data directory..."
 
 # Run permission fix
+echo "Running permission fix"
 if ! fix_permissions; then
     echo "Error: Failed to set correct permissions"
     exit 1
 fi
 
+echo "Verifying permission fix"
 # Verify access
 if [ ! -x "$PGDATA_PATH" ]; then
     echo "Error: Directory is not accessible. Current permissions:"
