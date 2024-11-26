@@ -91,18 +91,26 @@ check_data() {
     debug "Checking data in database..."
     local result
     local container_id
+    
     container_id=$(get_container_id)
     if [ -z "$container_id" ]; then
         echo -e "${RED}Error: Could not find container${NC}"
         return 1
     fi
+    
+    debug "Using container ID: $container_id"
+    
     result=$(docker exec "$container_id" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
-    "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
+        "SELECT COUNT(*) FROM embeddings WHERE content = 'Test persistence';" 2>/dev/null || echo "ERROR")
+    
     if [ "$result" = "ERROR" ]; then
         echo -e "${RED}Error executing database query${NC}"
+        docker logs "$container_id" | tail -n 20
         return 1
     fi
-    echo $result | tr -d ' \n'
+    
+    debug "Query result: '$result'"
+    echo "$result" | tr -d ' \n'
 }
 
 # Function to run setup.sh with debugging
@@ -123,9 +131,12 @@ run_setup() {
     rm "$setup_output_file"
     
     # Wait for container to be ready
-    local container_id
     debug "Waiting for container to be ready..."
     sleep 5  # Give time for container to start
+    
+    # Get container status directly without grep
+    local container_id
+    local container_status
     
     container_id=$(get_container_id)
     if [ -z "$container_id" ]; then
@@ -133,14 +144,19 @@ run_setup() {
         return 1
     fi
     
-    # Verify container is running
-    if ! docker ps | grep -q "$container_id"; then
-        echo -e "${RED}Container $container_id not running after setup${NC}"
+    # Check container status using docker inspect instead of grep
+    container_status=$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)
+    if [ "$container_status" != "running" ]; then
+        echo -e "${RED}Container $container_id status is '$container_status', expected 'running'${NC}"
         return 1
     fi
     
-    debug "Container status after setup:"
-    docker ps | grep "$container_id"
+    debug "Container ID: $container_id"
+    debug "Container Status: $container_status"
+    
+    # Show container details without using grep
+    debug "Container details:"
+    docker ps --filter "id=$container_id" --format "table {{.ID}}\t{{.Status}}\t{{.Names}}"
     
     debug "Container logs:"
     docker logs "$container_id" | tail -n 20
