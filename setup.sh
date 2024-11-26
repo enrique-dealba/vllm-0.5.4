@@ -142,10 +142,7 @@ stat -c "%U:%G" "$PGDATA_PATH"
 echo "DEBUG: Full stat of PGDATA:"
 stat "$PGDATA_PATH"
 
-echo "DEBUG: Contents of $PGDATA_PATH:"
-ls -la "$PGDATA_PATH"
-echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
-
+# Direct access test
 echo "DEBUG: Testing directory access:"
 if [ -x "$PGDATA_PATH" ]; then
     echo "Directory is executable"
@@ -155,6 +152,10 @@ fi
 
 echo "DEBUG: Testing PG_VERSION access directly:"
 cat "$PGDATA_PATH/PG_VERSION" 2>&1
+
+echo "DEBUG: Contents of $PGDATA_PATH:"
+ls -la "$PGDATA_PATH"
+echo "DEBUG: Looking for PG_VERSION at: $PGDATA_PATH/PG_VERSION"
 
 echo "DEBUG: Testing direct file access:"
 if [ -r "$PGDATA_PATH/PG_VERSION" ]; then
