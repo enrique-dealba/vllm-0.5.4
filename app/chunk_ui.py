@@ -112,16 +112,33 @@ if txt_file:
                         metadata = row.get("metadata", {})
                         created_at = row.get("created_at", "N/A")
 
+                        # version 1
+                        # formatted_data = {
+                        #     "ID": row.get("id", "N/A"),
+                        #     "Chunk": row.get("content", ""),
+                        #     "Source Files": metadata.get("source_files", []),
+                        #     "JSON Keys": metadata.get("json_keys_summary", []),
+                        #     "Descriptive Labels": metadata.get(
+                        #         "descriptive_labels", {}
+                        #     ),
+                        #     "Context": metadata.get("context_info", ""),
+                        #     "Number of Values": metadata.get("num_values", 0),
+                        #     "Priority Level": metadata.get("priority_level", 1),
+                        #     "Created At": created_at,
+                        # }
+
+                        # version 2
                         formatted_data = {
                             "ID": row.get("id", "N/A"),
                             "Chunk": row.get("content", ""),
                             "Source Files": metadata.get("source_files", []),
-                            "JSON Keys": metadata.get("json_keys_summary", []),
-                            "Descriptive Labels": metadata.get(
-                                "descriptive_labels", {}
-                            ),
+                            "Categories": [
+                                category.value
+                                for category in metadata.get("categories", [])
+                            ],
+                            "Summary": metadata.get("summary", ""),
+                            "Key Points": metadata.get("key_points", []),
                             "Context": metadata.get("context_info", ""),
-                            "Number of Values": metadata.get("num_values", 0),
                             "Priority Level": metadata.get("priority_level", 1),
                             "Created At": created_at,
                         }
@@ -159,19 +176,37 @@ if txt_file:
                 else:
                     st.subheader("Search Results")
                     for _, row in results.iterrows():
+                        # version 1
+                        # result_data = {
+                        #     "ID": row["id"],
+                        #     "Chunk": row["content"],
+                        #     "Source Files": row["metadata"].get("source_files", []),
+                        #     "JSON Keys": row["metadata"].get("json_keys_summary", []),
+                        #     "Descriptive Labels": row["metadata"].get(
+                        #         "descriptive_labels", {}
+                        #     ),
+                        #     "Context": row["metadata"].get("context_info", ""),
+                        #     "Number of Values": row["metadata"].get("num_values", 0),
+                        #     "Priority Level": row["metadata"].get("priority_level", 1),
+                        #     "Created At": row["created_at"],
+                        #     "Distance": row["similarity"],
+                        # }
+
+                        # version 2
                         result_data = {
                             "ID": row["id"],
                             "Chunk": row["content"],
                             "Source Files": row["metadata"].get("source_files", []),
-                            "JSON Keys": row["metadata"].get("json_keys_summary", []),
-                            "Descriptive Labels": row["metadata"].get(
-                                "descriptive_labels", {}
-                            ),
+                            "Categories": [
+                                category.value
+                                for category in row["metadata"].get("categories", [])
+                            ],
+                            "Summary": row["metadata"].get("summary", ""),
+                            "Key Points": row["metadata"].get("key_points", []),
                             "Context": row["metadata"].get("context_info", ""),
-                            "Number of Values": row["metadata"].get("num_values", 0),
                             "Priority Level": row["metadata"].get("priority_level", 1),
                             "Created At": row["created_at"],
-                            "Distance": row["similarity"],
+                            "Distance": row.get("similarity", 0),
                         }
                         with st.expander(
                             f"Result (Similarity: {result_data['Distance']:.4f}, Priority: {result_data['Priority Level']})"
