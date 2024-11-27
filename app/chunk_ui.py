@@ -111,6 +111,8 @@ if txt_file:
                         logger.debug(f"Processing chunk at index {index}.")
                         metadata = row.get("metadata", {})
                         created_at = row.get("created_at", "N/A")
+                        if isinstance(created_at, pd.Timestamp):
+                            created_at = created_at.strftime("%Y-%m-%d %H:%M:%S %Z")
 
                         # version 1
                         # formatted_data = {
