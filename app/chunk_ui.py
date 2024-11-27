@@ -132,10 +132,9 @@ if txt_file:
                             "ID": row.get("id", "N/A"),
                             "Chunk": row.get("content", ""),
                             "Source Files": metadata.get("source_files", []),
-                            "Categories": [
-                                category.value
-                                for category in metadata.get("categories", [])
-                            ],
+                            "Categories": metadata.get(
+                                "categories", []
+                            ),  # Removed .value
                             "Summary": metadata.get("summary", ""),
                             "Key Points": metadata.get("key_points", []),
                             "Context": metadata.get("context_info", ""),
@@ -197,10 +196,9 @@ if txt_file:
                             "ID": row["id"],
                             "Chunk": row["content"],
                             "Source Files": row["metadata"].get("source_files", []),
-                            "Categories": [
-                                category.value
-                                for category in row["metadata"].get("categories", [])
-                            ],
+                            "Categories": row["metadata"].get(
+                                "categories", []
+                            ),  # Removed .value
                             "Summary": row["metadata"].get("summary", ""),
                             "Key Points": row["metadata"].get("key_points", []),
                             "Context": row["metadata"].get("context_info", ""),
@@ -208,6 +206,7 @@ if txt_file:
                             "Created At": row["created_at"],
                             "Distance": row.get("similarity", 0),
                         }
+
                         with st.expander(
                             f"Result (Similarity: {result_data['Distance']:.4f}, Priority: {result_data['Priority Level']})"
                         ):
