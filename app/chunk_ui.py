@@ -142,7 +142,7 @@ if txt_file:
                             "Categories": metadata.get("categories", []),
                             "Summary": metadata.get("summary", ""),
                             "Key Points": metadata.get("key_points", []),
-                            "Context": metadata.get("context_info", ""),
+                            # "Context": metadata.get("context_info", ""),
                             "Priority Level": metadata.get("priority_level", 1),
                             "Created At": created_at,
                         }
@@ -187,7 +187,7 @@ if txt_file:
                             "Categories": row["metadata"].get("categories", []),
                             "Summary": row["metadata"].get("summary", ""),
                             "Key Points": row["metadata"].get("key_points", []),
-                            "Context": row["metadata"].get("context_info", ""),
+                            # "Context": row["metadata"].get("context_info", ""),
                             "Priority Level": row["metadata"].get("priority_level", 1),
                             "Created At": row["created_at"],
                             "Distance": row.get("similarity", 0),
