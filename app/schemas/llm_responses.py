@@ -60,6 +60,7 @@ class EvidenceLLMResponse(BaseModel):
 
 class Category(str, Enum):
     OBSERVATION_REQUEST = "ObservationRequest"
+    RESIDENT_SPACE_OBJECT = "ResidentSpaceObject (RSO)"
     SPACE_OBJECT = "SpaceObject"
     SENSOR_INFO = "SensorInfo"
     INSTRUMENT_INFO = "InstrumentInfo"
@@ -80,10 +81,11 @@ class ChunkMetadata(BaseModel):
     )
     summary: str = Field(
         ...,
-        description="A concise summary (2-4 sentences) explaining the chunk's content.",
+        description="An in-depth summary (2-4 sentences) explaining the chunk's content. Be specific.",
     )
     key_points: Optional[List[str]] = Field(
-        None, description="List of key points or highlights from the chunk."
+        None,
+        description="List of key points, highlights, and most important info from the chunk.",
     )
     context_info: Optional[str] = Field(
         None, description="Additional context or notes about the chunk."
