@@ -68,6 +68,8 @@ class Category(str, Enum):
     STATUS_UPDATE = "StatusUpdate"
     OPERATIONAL_STATUS = "OperationalStatus"
     SCHEDULING_INFO = "SchedulingInfo"
+    INTENT_UPDATE = "IntentUpdate"
+    OTHER = "Other"  # Fallback category
 
 
 # version 2

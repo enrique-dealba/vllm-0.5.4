@@ -7,17 +7,53 @@ from datetime import datetime, timezone
 import pandas as pd
 import streamlit as st
 
-# Import custom backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from llm_logic import generate_response
 
 from app.backend.rag import RAG
 from app.backend.vector_store import VectorStore
 from app.config import settings
+from app.schemas.llm_responses import ChunkMetadata
+from app.utils import handle_chunk_processing_errors
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def process_chunk(chunk: str, vec_store: VectorStore) -> dict:
+    @handle_chunk_processing_errors
+    def _process_single_chunk():
+        query = f"""Analyze this text chunk: {chunk}
+        Generate structured metadata based on the given schema."""
+
+        try:
+            llm_response, _ = generate_response(query)
+        except Exception as e:
+            logger.warning(f"LLM response generation failed: {e}")
+            # Create fallback metadata
+            llm_response = ChunkMetadata(
+                source_files=[],
+                categories=["Other"],
+                summary=f"Failed to process chunk: {str(e)}",
+                priority_level=1,
+            )
+
+        try:
+            metadata_embedding = vec_store.get_embedding(str(llm_response.model_dump()))
+        except Exception as e:
+            logger.warning(f"Embedding generation failed: {e}")
+            return None
+
+        return {
+            "id": str(uuid.uuid4()),
+            "metadata": llm_response.model_dump(),
+            "content": chunk,
+            "embedding": metadata_embedding,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    return _process_single_chunk()
 
 
 st.title("PostgreSQL RAG")
@@ -40,8 +76,8 @@ if txt_file:
 
     if st.button("Analyze and Store Chunks"):
         st.subheader("Processing and Storing Chunks")
-        inserted_count = 0
-        metadata_records = []
+        processed_chunks = []
+        failed_chunks = []
 
         # Create tables and index if they don't exist
         with st.spinner("Setting up database tables and indexes..."):
@@ -55,41 +91,26 @@ if txt_file:
 
         progress_bar = st.progress(0)
         for i, chunk in enumerate(chunks):
+            result = process_chunk(chunk, vec_store)
+            if result:
+                processed_chunks.append(result)
+            else:
+                failed_chunks.append(i)
+            progress_bar.progress((i + 1) / len(chunks))
+
+        if processed_chunks:
             try:
-                query = f"""Analyze this text chunk: {chunk}
-                Generate structured metadata based on the given schema."""
-                llm_response, execution_time = generate_response(query)
-
-                # chunk_embedding = vec_store.get_embedding(chunk)  # TODO: Check how we can use this
-                metadata_embedding = vec_store.get_embedding(
-                    str(llm_response.model_dump())
-                )
-                chunk_id = str(uuid.uuid4())
-
-                document = {
-                    "id": chunk_id,
-                    "metadata": llm_response.model_dump(),
-                    "content": chunk,
-                    "embedding": metadata_embedding,  # Using metadata_embedding as main embedding
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-                metadata_records.append(document)
-                inserted_count += 1
-                progress_bar.progress((i + 1) / len(chunks))
-
-            except Exception as e:
-                st.error(f"Error processing chunk {i+1}: {e}")
-                logger.error(f"Chunk processing error: {e}", exc_info=True)
-
-        if metadata_records:
-            try:
-                records_df = pd.DataFrame(metadata_records)
+                records_df = pd.DataFrame(processed_chunks)
                 vec_store.upsert(records_df)
-                st.success(f"Successfully stored {inserted_count} chunks")
+                st.success(f"Successfully stored {len(processed_chunks)} chunks")
             except Exception as e:
                 st.error(f"Failed to store chunks: {e}")
                 logger.error("Chunk storage error", exc_info=True)
+
+        if failed_chunks:
+            st.warning(
+                f"Failed to process {len(failed_chunks)} chunks at indices: {failed_chunks}"
+            )
 
     if st.button("View Stored Chunks"):
         st.subheader("Stored Chunks and Metadata")
@@ -114,29 +135,11 @@ if txt_file:
                         if isinstance(created_at, pd.Timestamp):
                             created_at = created_at.strftime("%Y-%m-%d %H:%M:%S %Z")
 
-                        # version 1
-                        # formatted_data = {
-                        #     "ID": row.get("id", "N/A"),
-                        #     "Chunk": row.get("content", ""),
-                        #     "Source Files": metadata.get("source_files", []),
-                        #     "JSON Keys": metadata.get("json_keys_summary", []),
-                        #     "Descriptive Labels": metadata.get(
-                        #         "descriptive_labels", {}
-                        #     ),
-                        #     "Context": metadata.get("context_info", ""),
-                        #     "Number of Values": metadata.get("num_values", 0),
-                        #     "Priority Level": metadata.get("priority_level", 1),
-                        #     "Created At": created_at,
-                        # }
-
-                        # version 2
                         formatted_data = {
                             "ID": row.get("id", "N/A"),
                             "Chunk": row.get("content", ""),
                             "Source Files": metadata.get("source_files", []),
-                            "Categories": metadata.get(
-                                "categories", []
-                            ),  # Removed .value
+                            "Categories": metadata.get("categories", []),
                             "Summary": metadata.get("summary", ""),
                             "Key Points": metadata.get("key_points", []),
                             "Context": metadata.get("context_info", ""),
@@ -177,30 +180,11 @@ if txt_file:
                 else:
                     st.subheader("Search Results")
                     for _, row in results.iterrows():
-                        # version 1
-                        # result_data = {
-                        #     "ID": row["id"],
-                        #     "Chunk": row["content"],
-                        #     "Source Files": row["metadata"].get("source_files", []),
-                        #     "JSON Keys": row["metadata"].get("json_keys_summary", []),
-                        #     "Descriptive Labels": row["metadata"].get(
-                        #         "descriptive_labels", {}
-                        #     ),
-                        #     "Context": row["metadata"].get("context_info", ""),
-                        #     "Number of Values": row["metadata"].get("num_values", 0),
-                        #     "Priority Level": row["metadata"].get("priority_level", 1),
-                        #     "Created At": row["created_at"],
-                        #     "Distance": row["similarity"],
-                        # }
-
-                        # version 2
                         result_data = {
                             "ID": row["id"],
                             "Chunk": row["content"],
                             "Source Files": row["metadata"].get("source_files", []),
-                            "Categories": row["metadata"].get(
-                                "categories", []
-                            ),  # Removed .value
+                            "Categories": row["metadata"].get("categories", []),
                             "Summary": row["metadata"].get("summary", ""),
                             "Key Points": row["metadata"].get("key_points", []),
                             "Context": row["metadata"].get("context_info", ""),

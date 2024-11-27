@@ -1,11 +1,13 @@
 import importlib
 import json
+import logging
 import time
 from collections import defaultdict
 from datetime import datetime
+from functools import wraps
 from io import BytesIO
 from statistics import mean
-from typing import Any, Dict, Type
+from typing import Any, Callable, Dict, Type
 from uuid import uuid4
 
 import requests
@@ -16,6 +18,20 @@ from pydantic import BaseModel
 from app.config import settings
 
 tracer = LangChainTracer(project_name=settings.LANGCHAIN_PROJECT)
+
+logger = logging.getLogger(__name__)
+
+
+def handle_chunk_processing_errors(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in {func.__name__}: {str(e)}", exc_info=True)
+            return None
+
+    return wrapper
 
 
 def load_image(url: str = settings.FIXED_IMAGE_URL) -> Image.Image:
