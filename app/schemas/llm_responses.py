@@ -60,7 +60,7 @@ class EvidenceLLMResponse(BaseModel):
 
 class Category(str, Enum):
     OBSERVATION_REQUEST = "ObservationRequest"
-    RESIDENT_SPACE_OBJECT = "ResidentSpaceObject (RSO)"
+    RESIDENT_SPACE_OBJECT = "ResidentSpaceObject"
     SPACE_OBJECT = "SpaceObject"
     SENSOR_INFO = "SensorInfo"
     INSTRUMENT_INFO = "InstrumentInfo"
@@ -69,14 +69,14 @@ class Category(str, Enum):
     OPERATIONAL_STATUS = "OperationalStatus"
     SCHEDULING_INFO = "SchedulingInfo"
     INTENT_UPDATE = "IntentUpdate"
-    OTHER = "Other"  # Fallback category
+    OTHER = "Other"
 
 
 # version 2
 class ChunkMetadata(BaseModel):
     categories: List[Category] = Field(
         ...,
-        description="List of high-level categories or tags applicable to this chunk.",
+        description="List of high-level categories or tags applicable to this chunk. Choose from: ObservationRequest, ResidentSpaceObject, SpaceObject, SensorInfo, InstrumentInfo, ObservationConstraint, StatusUpdate, OperationalStatus, SchedulingInfo, IntentUpdate, Other",
     )
     summary: str = Field(
         ...,
