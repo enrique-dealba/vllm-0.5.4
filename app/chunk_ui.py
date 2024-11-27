@@ -33,7 +33,7 @@ def process_chunk(chunk: str, vec_store: VectorStore) -> dict:
             logger.warning(f"LLM response generation failed: {e}")
             # Create fallback metadata
             llm_response = ChunkMetadata(
-                source_files=[],
+                # source_files=[],
                 categories=["Other"],
                 summary=f"Failed to process chunk: {str(e)}",
                 priority_level=1,
@@ -138,7 +138,7 @@ if txt_file:
                         formatted_data = {
                             "ID": row.get("id", "N/A"),
                             "Chunk": row.get("content", ""),
-                            "Source Files": metadata.get("source_files", []),
+                            # "Source Files": metadata.get("source_files", []),
                             "Categories": metadata.get("categories", []),
                             "Summary": metadata.get("summary", ""),
                             "Key Points": metadata.get("key_points", []),
@@ -183,7 +183,7 @@ if txt_file:
                         result_data = {
                             "ID": row["id"],
                             "Chunk": row["content"],
-                            "Source Files": row["metadata"].get("source_files", []),
+                            # "Source Files": row["metadata"].get("source_files", []),
                             "Categories": row["metadata"].get("categories", []),
                             "Summary": row["metadata"].get("summary", ""),
                             "Key Points": row["metadata"].get("key_points", []),

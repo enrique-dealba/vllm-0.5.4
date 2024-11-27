@@ -74,9 +74,6 @@ class Category(str, Enum):
 
 # version 2
 class ChunkMetadata(BaseModel):
-    source_files: List[str] = Field(
-        ..., description="List of source files contributing to this chunk."
-    )
     categories: List[Category] = Field(
         ...,
         description="List of high-level categories or tags applicable to this chunk.",
@@ -89,15 +86,16 @@ class ChunkMetadata(BaseModel):
         None,
         description="List of key points, highlights, and most important info from the chunk.",
     )
-    context_info: Optional[str] = Field(
-        None, description="Additional context or notes about the chunk."
-    )
     priority_level: int = Field(
         1,
         ge=1,
         le=100,
         description="Priority level of the chunk (1=lowest priority, 100=highest priority).",
     )
+
+    class Config:
+        use_enum_values = True
+        arbitrary_types_allowed = True
 
 
 class IntentStatusSummary(BaseModel):
