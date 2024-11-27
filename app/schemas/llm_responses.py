@@ -58,6 +58,7 @@ class EvidenceLLMResponse(BaseModel):
 #     )
 
 
+# Note: Do NOT use Enum for LLM schema parsing
 class Category(str, Enum):
     OBSERVATION_REQUEST = "ObservationRequest"
     RESIDENT_SPACE_OBJECT = "ResidentSpaceObject"
@@ -74,7 +75,7 @@ class Category(str, Enum):
 
 # version 2
 class ChunkMetadata(BaseModel):
-    categories: List[Category] = Field(
+    categories: List[str] = Field(
         ...,
         description="List of high-level categories or tags applicable to this chunk. Choose from: ObservationRequest, ResidentSpaceObject, SpaceObject, SensorInfo, InstrumentInfo, ObservationConstraint, StatusUpdate, OperationalStatus, SchedulingInfo, IntentUpdate, Other",
     )
@@ -92,10 +93,6 @@ class ChunkMetadata(BaseModel):
         le=100,
         description="Priority level of the chunk (1=lowest priority, 100=highest priority).",
     )
-
-    class Config:
-        use_enum_values = True
-        arbitrary_types_allowed = True
 
 
 class IntentStatusSummary(BaseModel):
