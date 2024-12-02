@@ -90,23 +90,27 @@ if txt_file:
                 st.stop()
 
         progress_bar = st.progress(0)
+
         for i, chunk in enumerate(chunks):
             result = process_chunk(chunk, vec_store)
             if result:
-                processed_chunks.append(result)
+                # Create df with single result and insert to db
+                try:
+                    record_df = pd.DataFrame([result])
+                    vec_store.upsert(record_df)
+                    processed_chunks.append(result)
+                    st.success(f"Successfully stored chunk {i+1}/{len(chunks)}")
+                except Exception as e:
+                    st.error(f"Failed to store chunk {i}: {e}")
+                    logger.error(f"Chunk storage error for chunk {i}", exc_info=True)
+                    failed_chunks.append(i)
             else:
                 failed_chunks.append(i)
             progress_bar.progress((i + 1) / len(chunks))
 
-        if processed_chunks:
-            try:
-                records_df = pd.DataFrame(processed_chunks)
-                vec_store.upsert(records_df)
-                st.success(f"Successfully stored {len(processed_chunks)} chunks")
-            except Exception as e:
-                st.error(f"Failed to store chunks: {e}")
-                logger.error("Chunk storage error", exc_info=True)
-
+        st.write(
+            f"Processing complete. Successfully processed {len(processed_chunks)} chunks."
+        )
         if failed_chunks:
             st.warning(
                 f"Failed to process {len(failed_chunks)} chunks at indices: {failed_chunks}"
