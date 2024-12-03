@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 import pandas as pd
 import streamlit as st
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from llm_logic import generate_response
 

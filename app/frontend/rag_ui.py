@@ -64,7 +64,7 @@ def main():
                             st.json(result_data)
 
                     # Generate RAG-based answer
-                    st.subheader("Generated Response")
+                    st.subheader("Response")
                     with st.spinner("Generating answer based on retrieved context..."):
                         try:
                             rag = RAG()
