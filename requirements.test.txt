@@ -1,9 +1,0 @@
-pandas
-pytest
-psycopg2-binary
-sentence-transformers
-timescale-vector==0.0.3
-pytest-timeout
-typing-extensions
-pydantic-settings
-pydantic
