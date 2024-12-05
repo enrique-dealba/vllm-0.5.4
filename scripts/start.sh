@@ -15,7 +15,7 @@ if [ "$RUN_MODE" = "server" ]; then
     exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
 elif [ "$RUN_MODE" = "ui" ]; then
     echo "Starting Streamlit UI..."
-    exec streamlit run /app/app/frontend/rag_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
+    exec streamlit run /app/app/frontend/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
 elif [ "$RUN_MODE" = "test" ]; then
     echo "Running tests..."
     exec pytest tests/ -v --log-cli-level=INFO
