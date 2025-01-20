@@ -7,4 +7,3 @@ pydantic_settings
 pydantic-core
 streamlit
 instructor
-tenacity==9.0.0
