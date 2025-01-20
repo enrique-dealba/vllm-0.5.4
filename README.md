@@ -1,5 +1,5 @@
-# vllm-0.6.6
-vLLM 0.6.6
+# vllm-0.6.1
+vLLM 0.6.1
 
 To build Docker image:
 

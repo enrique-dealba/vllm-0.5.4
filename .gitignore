@@ -65,3 +65,5 @@ Thumbs.db
 # Other files:
 compile_files.py
 compiled_files.txt
+
+vllm-0.6.1+cu118-cp310-cp310-manylinux1_x86_64.whl
