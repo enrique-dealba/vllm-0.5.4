@@ -1,19 +1,6 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
 
-mock_settings = MagicMock()
-mock_settings.USE_STRUCTURED_OUTPUT = True
-mock_generate_response = MagicMock(return_value=("test response", 0.1))
-
-mock_config = MagicMock()
-mock_config.settings = mock_settings
-mock_llm_logic = MagicMock()
-mock_llm_logic.generate_response = mock_generate_response
-
-# Apply mocks before importing the module
-with patch.dict("sys.modules", {"config": mock_config, "llm_logic": mock_llm_logic}):
-    from app.streamlit_ui import FIELD_DISPLAY_CONFIG, display_field, display_response
+from app.utils import FIELD_DISPLAY_CONFIG, display_field, display_response
 
 
 class MockResponse:
@@ -22,71 +9,65 @@ class MockResponse:
             setattr(self, key, value)
 
 
-@pytest.fixture
-def mock_streamlit():
-    with patch("app.streamlit_ui.st") as mock_st:
-        yield mock_st
+class TestDisplayUtils:
+    @pytest.fixture
+    def output_list(self):
+        return []
 
+    @pytest.fixture
+    def mock_writer(self, output_list):
+        def writer(text):
+            output_list.append(str(text))
 
-def test_display_field_simple(mock_streamlit):
-    """Test displaying a simple field"""
-    display_field("response", "Test response")
-    mock_streamlit.subheader.assert_called_once_with("Response")
-    mock_streamlit.write.assert_called_once_with("Test response")
+        return writer
 
+    def test_display_field_simple(self, output_list, mock_writer):
+        display_field("response", "Test response", mock_writer)
+        assert output_list == ["Response", "Test response"]
 
-def test_display_field_list(mock_streamlit):
-    """Test displaying a list field"""
-    display_field("sources", ["source1", "source2"])
-    mock_streamlit.subheader.assert_called_once_with("Sources")
-    assert mock_streamlit.write.call_count == 2
-    mock_streamlit.write.assert_any_call("- source1")
-    mock_streamlit.write.assert_any_call("- source2")
+    def test_display_field_list(self, output_list, mock_writer):
+        display_field("sources", ["source1", "source2"], mock_writer)
+        assert output_list == ["Sources", "- source1", "- source2"]
 
+    def test_display_field_confidence(self, output_list, mock_writer):
+        display_field("confidence", 0.756, mock_writer)
+        assert output_list == ["Confidence", "75.6%"]
 
-def test_display_field_confidence(mock_streamlit):
-    """Test displaying confidence field"""
-    display_field("confidence", 0.756)
-    mock_streamlit.subheader.assert_called_once_with("Confidence")
-    mock_streamlit.write.assert_called_once_with("75.6%")
+    def test_display_field_empty(self, output_list, mock_writer):
+        display_field("sources", [], mock_writer)
+        assert output_list == []
 
+    def test_display_field_unknown(self, output_list, mock_writer):
+        display_field("unknown_field", "test value", mock_writer)
+        assert output_list == ["Unknown Field", "test value"]
 
-def test_display_response(mock_streamlit):
-    """Test displaying full response object"""
-    mock_response = MockResponse(
-        response="Main response",
-        confidence=0.85,
-        sources=["src1", "src2"],
-        evidence=["ev1", "ev2"],
-    )
+    def test_display_response(self, output_list, mock_writer):
+        mock_response = MockResponse(
+            response="Main response",
+            confidence=0.85,
+            sources=["src1", "src2"],
+            evidence=["ev1", "ev2"],
+        )
 
-    display_response(mock_response)
+        display_response(mock_response, mock_writer)
 
-    expected_subheaders = ["Response", "Confidence", "Sources", "Supporting Evidence"]
-    actual_subheader_calls = [
-        call[0][0] for call in mock_streamlit.subheader.call_args_list
-    ]
-    assert actual_subheader_calls == expected_subheaders
+        expected = [
+            "Response",
+            "Main response",
+            "Confidence",
+            "85.0%",
+            "Sources",
+            "- src1",
+            "- src2",
+            "Supporting Evidence",
+            "- ev1",
+            "- ev2",
+        ]
+        assert output_list == expected
 
-
-def test_display_field_empty(mock_streamlit):
-    """Test that empty fields are skipped"""
-    display_field("sources", [])
-    mock_streamlit.subheader.assert_not_called()
-    mock_streamlit.write.assert_not_called()
-
-
-def test_display_field_unknown(mock_streamlit):
-    """Test handling of unknown field types"""
-    display_field("unknown_field", "test value")
-    mock_streamlit.subheader.assert_called_once_with("Unknown Field")
-    mock_streamlit.write.assert_called_once_with("test value")
-
-
-def test_field_display_config_completeness():
-    """Test that all field configurations have required keys"""
-    required_keys = {"title", "display_format", "is_list"}
-    for field, config in FIELD_DISPLAY_CONFIG.items():
-        assert all(
-            key in config for key in required_keys
-        ), f"Field {field} missing required configuration keys"
+    def test_field_display_config_completeness(self):
+        required_keys = {"title", "display_format", "is_list"}
+        for field, config in FIELD_DISPLAY_CONFIG.items():
+            assert all(
+                key in config for key in required_keys
+            ), f"Field {field} missing required configuration keys"
