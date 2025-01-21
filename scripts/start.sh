@@ -28,8 +28,8 @@ case "$RUN_MODE" in
         exec streamlit run /app/app/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
         ;;
     tests)
-        shift
-        pytest /app/tests/ -v --cov=app -s "$@"
+        echo "Running tests..."
+        PYTHONPATH=/app pytest /app/tests/ -v --cov=app -s "$@"
         ;;
     *)
         echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', 'intents', 'rag', or 'tests'."
