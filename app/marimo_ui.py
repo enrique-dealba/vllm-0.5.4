@@ -1,6 +1,6 @@
 import logging
 
-import marimo as mo
+import marimo as marimo_module
 
 from app.config import settings
 from app.llm_logic import generate_response
@@ -10,10 +10,10 @@ from app.utils import get_displayable_fields
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = mo.App()
+app = marimo_module.App()
 
-# Expose logger via mo
-mo.logger = logger
+# Expose logger via marimo_module
+marimo_module.logger = logger
 
 
 @app.cell
@@ -50,5 +50,5 @@ def health_check(mo):
 
 
 if __name__ == "__main__":
-    mo.logger.info(f"Starting marimo app on port {settings.PORT}")
+    logger.info(f"Starting marimo app on port {settings.PORT}")
     app.run(host="0.0.0.0", port=settings.PORT)
