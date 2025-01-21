@@ -8,7 +8,9 @@ source /root/miniconda3/bin/activate vllm
 echo "Installed package versions:"
 while IFS= read -r package; do
     if [ ! -z "$package" ]; then
-        pip freeze | grep -i "^${package}="
+        normalized_package=$(echo "$package" | tr '_' '-')
+        version=$(pip freeze | grep -i "^${normalized_package}=" || echo "Not installed")
+        echo "${version}"
     fi
 done < requirements.txt
 
