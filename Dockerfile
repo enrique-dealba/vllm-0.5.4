@@ -31,9 +31,11 @@ WORKDIR /app
 COPY requirements.txt .
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY tests/ ./tests/
 
 # Install project dependencies
 RUN pip install -r requirements.txt
+RUN pip install pytest pytest-cov
 
 # Make start script executable
 RUN chmod +x /app/scripts/start.sh

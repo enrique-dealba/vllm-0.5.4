@@ -29,6 +29,37 @@ class EvidenceLLMResponse(BaseModel):
     )
 
 
+class CatalogMaintenanceObjective(BaseModel):
+    classification_marking: str = Field(
+        ...,
+        description="Classification level of objective intents. Choose from: U, C, S, TS, U//FOUO",
+    )
+    data_mode: str = Field(
+        ...,
+        description="String type for the Machina Common DataModeType. Choose from: TEST, REAL, SIMULATED, EXERCISE",
+    )
+    collect_request_type: str = Field(
+        "RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+    )
+    orbital_regime: str = Field(
+        ...,
+        description="Orbital regime classification for this catalog maintenance objective. Choose from: LEO, MEO, GEO, XGEO",
+    )
+    patience_minutes: int = Field(
+        30,
+        description="Amount of time in minutes to wait before assuming an intent has failed",
+    )
+    end_time_offset_minutes: int = Field(
+        20,
+        description="Number of minutes into the future to schedule this intent",
+    )
+    priority: int = Field(
+        1000,
+        description="Priority level for scheduling (higher numbers indicate lower priority, defaults to 1000)",
+    )
+
+
 class ChunkMetadata(BaseModel):
     source_files: List[str] = Field(
         ..., description="List of source JSON files contributing to this chunk"
