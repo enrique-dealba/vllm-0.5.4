@@ -29,7 +29,7 @@ case "$RUN_MODE" in
         ;;
     tests)
         shift
-        pytest /app/tests/ -v --cov=app "$@"
+        pytest /app/tests/ -v --cov=app -s "$@"
         ;;
     *)
         echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', 'intents', 'rag', or 'tests'."
