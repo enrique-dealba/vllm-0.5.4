@@ -29,9 +29,7 @@ WORKDIR /app
 
 # Copy project files
 COPY requirements.txt .
-COPY vllm-0.5.4/app/ ./app/
-COPY vllm-0.5.4/scripts/ ./scripts/
-COPY vllm-0.5.4/tests/ ./tests/
+COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
 
