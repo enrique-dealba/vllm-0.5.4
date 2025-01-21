@@ -1,8 +1,19 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.streamlit_ui import FIELD_DISPLAY_CONFIG, display_field, display_response
+mock_settings = MagicMock()
+mock_settings.USE_STRUCTURED_OUTPUT = True
+mock_generate_response = MagicMock(return_value=("test response", 0.1))
+
+with patch.dict(
+    "sys.modules",
+    {
+        "config": MagicMock(settings=mock_settings),
+        "llm_logic": MagicMock(generate_response=mock_generate_response),
+    },
+):
+    from app.streamlit_ui import FIELD_DISPLAY_CONFIG, display_field, display_response
 
 
 class MockResponse:
