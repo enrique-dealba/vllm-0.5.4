@@ -1,5 +1,5 @@
 # vllm-0.6.1
-vLLM 0.6.1
+vLLM 0.6.1 - Marimo
 
 To build Docker image:
 
