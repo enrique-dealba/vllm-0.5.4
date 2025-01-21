@@ -4,6 +4,14 @@ set -e
 # Activate conda environment
 source /root/miniconda3/bin/activate vllm
 
+# Print package versions
+echo "Installed package versions:"
+while IFS= read -r package; do
+    if [ ! -z "$package" ]; then
+        pip freeze | grep -i "^${package}="
+    fi
+done < requirements.txt
+
 # Determine run mode
 RUN_MODE=${RUN_MODE:-server}
 
