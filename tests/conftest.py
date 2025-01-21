@@ -1,19 +1,9 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 
-class MockSettings:
-    USE_STRUCTURED_OUTPUT = True
-
-
-mock_settings = MockSettings()
-
-
 @pytest.fixture(autouse=True)
-def mock_imports(monkeypatch):
-    monkeypatch.setattr("app.streamlit_ui.settings", mock_settings)
-    monkeypatch.setattr(
-        "app.streamlit_ui.generate_response",
-        lambda x: (MagicMock(response="test response"), 0.1),
-    )
+def mock_streamlit():
+    with patch("streamlit.st", MagicMock()) as mock_st:
+        yield mock_st

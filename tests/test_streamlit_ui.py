@@ -6,13 +6,13 @@ mock_settings = MagicMock()
 mock_settings.USE_STRUCTURED_OUTPUT = True
 mock_generate_response = MagicMock(return_value=("test response", 0.1))
 
-with patch.dict(
-    "sys.modules",
-    {
-        "config": MagicMock(settings=mock_settings),
-        "llm_logic": MagicMock(generate_response=mock_generate_response),
-    },
-):
+mock_config = MagicMock()
+mock_config.settings = mock_settings
+mock_llm_logic = MagicMock()
+mock_llm_logic.generate_response = mock_generate_response
+
+# Apply mocks before importing the module
+with patch.dict("sys.modules", {"config": mock_config, "llm_logic": mock_llm_logic}):
     from app.streamlit_ui import FIELD_DISPLAY_CONFIG, display_field, display_response
 
 
@@ -62,7 +62,6 @@ def test_display_response(mock_streamlit):
 
     display_response(mock_response)
 
-    # Verify subheader calls
     expected_subheaders = ["Response", "Confidence", "Sources", "Supporting Evidence"]
     actual_subheader_calls = [
         call[0][0] for call in mock_streamlit.subheader.call_args_list
