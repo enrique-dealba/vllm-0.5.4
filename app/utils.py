@@ -366,6 +366,7 @@ def display_response(llm_response: Any, writer_func=print) -> None:
     # Display all other fields
     for field_name in dir(llm_response):
         if not field_name.startswith("_") and field_name != "response":
+            print("field_name: {field_name}")
             value = getattr(llm_response, field_name)
             if not callable(value):  # Skip methods
                 display_field(field_name, value, writer_func)
