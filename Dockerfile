@@ -27,15 +27,16 @@ RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_V
 # Set working directory
 WORKDIR /app
 
-# Copy project files
 COPY requirements.txt .
+
+# Install ALL pip dependencies
+RUN pip install -r requirements.txt && \
+    pip install pytest pytest-cov
+
+# NOW copy the rest of your application files
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
-
-# Install project dependencies
-RUN pip install -r requirements.txt
-RUN pip install pytest pytest-cov
 
 # Make start script executable
 RUN chmod +x /app/scripts/start.sh

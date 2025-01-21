@@ -357,6 +357,19 @@ def display_field(field_name: str, value: Any, writer_func=print) -> None:
         writer_func(config["display_format"](value))
 
 
+def is_valid_field(field_name) -> bool:
+    invalid_fields = {"response", "model_fields", "model_fields_set"}
+
+    if (
+        field_name.startswith("_")
+        or field_name in invalid_fields
+        or "model_" in field_name
+    ):
+        return False
+
+    return True
+
+
 def display_response(llm_response: Any, writer_func=print) -> None:
     """Display all available fields from the LLM response."""
     # Always display response field first if it exists
@@ -365,8 +378,8 @@ def display_response(llm_response: Any, writer_func=print) -> None:
 
     # Display all other fields
     for field_name in dir(llm_response):
-        if not field_name.startswith("_") and field_name != "response":
-            writer_func(f"verbatim field_name: {field_name}")
+        if is_valid_field(field_name):
+            # writer_func(f"verbatim field_name: {field_name}")
             value = getattr(llm_response, field_name)
             if not callable(value):  # Skip methods
                 display_field(field_name, value, writer_func)
