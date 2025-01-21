@@ -4,11 +4,11 @@ from app.config import settings
 from app.llm_logic import generate_response
 from app.utils import get_displayable_fields
 
-app = mo.App(title="LLM")
+app = mo.App()
 
 
 @app.cell
-def ui():
+def ui(mo):
     mo.md("# LLM")
 
     with mo.form("query_form", submit_label="Generate"):
