@@ -383,3 +383,20 @@ def display_response(llm_response: Any, writer_func=print) -> None:
             value = getattr(llm_response, field_name)
             if not callable(value):  # Skip methods
                 display_field(field_name, value, writer_func)
+
+
+def get_displayable_fields(llm_response: Any) -> Dict:
+    displayable_fields = {}
+
+    # Add response field first if it exists
+    if hasattr(llm_response, "response"):
+        displayable_fields["response"] = llm_response.response
+
+    # Collect all other valid fields
+    for field_name in dir(llm_response):
+        if is_valid_field(field_name):
+            value = getattr(llm_response, field_name)
+            if not callable(value):  # Skip methods
+                displayable_fields[field_name] = value
+
+    return displayable_fields

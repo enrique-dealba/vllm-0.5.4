@@ -1,6 +1,11 @@
 import pytest
 
-from app.utils import FIELD_DISPLAY_CONFIG, display_field, display_response
+from app.utils import (
+    FIELD_DISPLAY_CONFIG,
+    display_field,
+    display_response,
+    get_displayable_fields,
+)
 
 
 class MockResponse:
@@ -81,3 +86,37 @@ class TestDisplayUtils:
             assert all(
                 key in config for key in required_keys
             ), f"Field {field} missing required configuration keys"
+
+    def test_get_displayable_fields(self):
+        mock_response = MockResponse(
+            response="Main response",
+            confidence=0.85,
+            sources=["src1", "src2"],
+            evidence=["ev1", "ev2"],
+            _private="hidden",
+            model_field="hidden",
+            callable_method=lambda x: x,
+        )
+
+        result = get_displayable_fields(mock_response)
+
+        expected = {
+            "response": "Main response",
+            "confidence": 0.85,
+            "sources": ["src1", "src2"],
+            "evidence": ["ev1", "ev2"],
+        }
+
+        # Verify the result matches expected output
+        assert result == expected, "Displayable fields don't match expected output"
+
+        # Verify private and model fields are excluded
+        assert "_private" not in result, "Private field should be excluded"
+        assert "model_field" not in result, "Model field should be excluded"
+        assert "callable_method" not in result, "Callable should be excluded"
+
+        # Verify all values are present and have correct types
+        assert isinstance(result["response"], str)
+        assert isinstance(result["confidence"], float)
+        assert isinstance(result["sources"], list)
+        assert isinstance(result["evidence"], list)

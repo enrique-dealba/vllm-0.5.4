@@ -33,7 +33,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt && \
     pip install pytest pytest-cov
 
-# NOW copy the rest of your application files
+# Copy rest of application files
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY tests/ ./tests/
