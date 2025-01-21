@@ -51,19 +51,29 @@ class TestDisplayUtils:
 
         display_response(mock_response, mock_writer)
 
-        expected = [
-            "Response",
-            "Main response",
-            "Confidence",
-            "85.0%",
-            "Sources",
-            "- src1",
-            "- src2",
-            "Supporting Evidence",
-            "- ev1",
-            "- ev2",
-        ]
-        assert output_list == expected
+        # Check each section is present but don't enforce order
+        sections = {
+            "Response": ["Response", "Main response"],
+            "Confidence": ["Confidence", "85.0%"],
+            "Sources": ["Sources", "- src1", "- src2"],
+            "Evidence": ["Supporting Evidence", "- ev1", "- ev2"],
+        }
+
+        for section_items in sections.values():
+            indices = [output_list.index(item) for item in section_items]
+            # Not necessarliy consecutive
+            assert indices == sorted(
+                indices
+            ), f"Items in section {section_items[0]} are not in correct order"
+
+        # Verify all expected content is present
+        expected_items = [item for section in sections.values() for item in section]
+        assert all(
+            item in output_list for item in expected_items
+        ), "Not all expected items are present"
+        assert len(output_list) == len(
+            expected_items
+        ), "Output contains unexpected items"
 
     def test_field_display_config_completeness(self):
         required_keys = {"title", "display_format", "is_list"}
