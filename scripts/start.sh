@@ -16,23 +16,15 @@ case "$RUN_MODE" in
         exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
         ;;
     ui)
-        echo "Starting Streamlit UI..."
-        exec streamlit run /app/app/streamlit_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
-        ;;
-    intents)
-        echo "Starting Streamlit UI for Intents..."
-        exec streamlit run /app/app/streamlit_intents.py --server.port ${PORT:-8888} --server.address 0.0.0.0
-        ;;
-    rag)
-        echo "Starting Streamlit UI for RAG..."
-        exec streamlit run /app/app/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
+        echo "Starting marimo UI..."
+        exec marimo run /app/app/marimo_ui.py --host 0.0.0.0 --port ${PORT:-8888}
         ;;
     tests)
         echo "Running tests..."
         PYTHONPATH=/app pytest /app/tests/ -v --cov=app "$@"
         ;;
     *)
-        echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', 'intents', 'rag', or 'tests'."
+        echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', or 'tests'."
         exit 1
         ;;
 esac
