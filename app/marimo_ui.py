@@ -1,6 +1,6 @@
 import logging
 
-import marimo as marimo_module
+import marimo
 
 from app.config import settings
 from app.llm_logic import generate_response
@@ -10,43 +10,53 @@ from app.utils import get_displayable_fields
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = marimo_module.App()
+app = marimo.App()
 
-# Expose logger via marimo_module
-marimo_module.logger = logger
+# Expose the logger via marimo
+marimo.logger = logger
 
 
 @app.cell
-def ui(mo):
-    mo.logger.info("Rendering UI")
-    mo.md("# LLM")
+def ui(context):
+    context.logger.info("Rendering UI")
+    context.md("# LLM")
 
-    with mo.form("query_form", submit_label="Generate"):
-        user_input = mo.ui.text_input("Enter your query:")
-        submit = mo.ui.submit_button()
+    with context.form("query_form", submit_label="Generate"):
+        user_input = context.ui.text_input("Enter your query:")
+        submit = context.ui.submit_button()
 
     if submit:
         if not user_input:
-            mo.ui.warning("Please enter a query.")
+            context.ui.warning("Please enter a query.")
         else:
             try:
                 llm_response, execution_time = generate_response(user_input)
                 if settings.USE_STRUCTURED_OUTPUT:
                     fields = get_displayable_fields(llm_response)
-                    mo.ui.json(fields)
-                    mo.ui.info(f"Execution time: {execution_time:.2f} seconds")
+                    context.ui.json(fields)
+                    context.ui.info(f"Execution time: {execution_time:.2f} seconds")
                 else:
-                    mo.ui.write(llm_response)
+                    context.ui.write(llm_response)
             except Exception as e:
-                mo.logger.error(f"An error occurred: {e}")
-                mo.ui.error(f"An error occurred: {e}")
+                context.logger.error(f"An error occurred: {e}")
+                context.ui.error(f"An error occurred: {e}")
 
 
 @app.cell
-def health_check(mo):
-    @mo.route("/health")
+def health_check(context):
+    @context.route("/health")
     def health():
         return {"status": "healthy"}
+
+
+@app.cell
+def diagnostic(context):
+    if context is None:
+        print("Diagnostic: context is None")
+    else:
+        context.logger.info("Diagnostic: context is defined")
+        context.md("# Diagnostic")
+        context.ui.write("Context is properly passed to cell functions.")
 
 
 if __name__ == "__main__":
