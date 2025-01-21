@@ -5,14 +5,14 @@ set -e
 source /root/miniconda3/bin/activate vllm
 
 # Print package versions
-echo "Installed package versions:"
-while IFS= read -r package; do
-    if [ ! -z "$package" ]; then
-        normalized_package=$(echo "$package" | tr '_' '-')
-        version=$(pip freeze | grep -i "^${normalized_package}=" || echo "Not installed")
-        echo "${version}"
-    fi
-done < requirements.txt
+# echo "Installed package versions:"
+# while IFS= read -r package; do
+#     if [ ! -z "$package" ]; then
+#         normalized_package=$(echo "$package" | tr '_' '-')
+#         version=$(pip freeze | grep -i "^${normalized_package}=" || echo "Not installed")
+#         echo "${version}"
+#     fi
+# done < requirements.txt
 
 # Determine run mode
 RUN_MODE=${RUN_MODE:-server}
