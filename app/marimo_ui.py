@@ -1,14 +1,21 @@
+import logging
+
 import marimo as mo
 
 from app.config import settings
 from app.llm_logic import generate_response
 from app.utils import get_displayable_fields
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = mo.App()
 
 
 @app.cell
-def ui(mo):
+def ui(*, mo):
+    logger.info("Rendering UI")
     mo.md("# LLM")
 
     with mo.form("query_form", submit_label="Generate"):
@@ -28,8 +35,17 @@ def ui(mo):
                 else:
                     mo.ui.write(llm_response)
             except Exception as e:
+                logger.error(f"An error occurred: {e}")
                 mo.ui.error(f"An error occurred: {e}")
 
 
+@app.cell
+def health_check(*, mo):
+    @mo.route("/health")
+    def health():
+        return {"status": "healthy"}
+
+
 if __name__ == "__main__":
+    logger.info(f"Starting marimo app on port {settings.PORT}")
     app.run(host="0.0.0.0", port=settings.PORT)

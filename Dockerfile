@@ -43,3 +43,6 @@ RUN chmod +x /app/scripts/start.sh
 
 # Set the entrypoint to our start script
 ENTRYPOINT ["/app/scripts/start.sh"]
+
+# Expose port 8888
+EXPOSE 8888
