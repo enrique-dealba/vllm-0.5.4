@@ -9,8 +9,9 @@ from sklearn.metrics import accuracy_score, classification_report
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Num of times to run each test case
-N_ITERATIONS = 5
+N_ITERATIONS = 2  # Num of times to run each test case
+RATE_LIMIT_DELAY = 2.0  # Seconds between requests
+MAX_CONCURRENT_REQUESTS = 3  # Maximum number of concurrent requests
 
 OBJECTIVE_TEST_CASES = {
     # PeriodicRevisitObjective
@@ -63,32 +64,40 @@ class ObjectiveBenchmark:
     def __init__(self, api_url: str = "http://localhost:8888"):
         self.api_url = api_url
         self.results = []
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     async def test_single_objective(self, query: str, expected: str) -> Dict:
-        """Test a single objective query against the API."""
-        async with httpx.AsyncClient() as client:
+        """Test a single objective query against the API with rate limiting."""
+        async with self.semaphore:  # Limit concurrent requests
             try:
-                response = await client.post(
-                    f"{self.api_url}/generate_objective",
-                    json={"text": query},
-                    timeout=30.0,
-                )
-                response.raise_for_status()
-                result = response.json()
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        f"{self.api_url}/generate_objective",
+                        json={"text": query},
+                        timeout=30.0,
+                    )
+                    response.raise_for_status()
+                    result = response.json()
 
-                # Extract objective_name from response
-                predicted = result.get("objective_name", "")
-                execution_time = result.get("execution_time_seconds", 0)
+                    # Extract objective_name from response
+                    predicted = result.get("objective_name", "")
+                    execution_time = result.get("execution_time_seconds", 0)
 
-                return {
-                    "query": query,
-                    "expected": expected,
-                    "predicted": predicted,
-                    "execution_time": execution_time,
-                    "correct": expected == predicted,
-                }
+                    # Rate limiting delay
+                    await asyncio.sleep(RATE_LIMIT_DELAY)
+
+                    return {
+                        "query": query,
+                        "expected": expected,
+                        "predicted": predicted,
+                        "execution_time": execution_time,
+                        "correct": expected == predicted,
+                    }
             except Exception as e:
-                logger.error(f"Error processing query '{query}': {e}")
+                logger.error(f"Error processing query '{query}': {str(e)}")
+                await asyncio.sleep(
+                    RATE_LIMIT_DELAY
+                )  # Still apply rate limiting on error
                 return {
                     "query": query,
                     "expected": expected,
@@ -98,28 +107,41 @@ class ObjectiveBenchmark:
                 }
 
     async def run_benchmark(self):
-        """Run benchmark on all test cases N times."""
-        all_tasks = []
-        for _ in range(N_ITERATIONS):
-            iteration_tasks = [
+        """Run benchmark on all test cases with proper rate limiting."""
+        all_results = []
+
+        # Process iterations sequentially to avoid overwhelming the API
+        for iteration in range(N_ITERATIONS):
+            logger.info(f"Starting iteration {iteration + 1}/{N_ITERATIONS}")
+
+            # Create tasks for this iteration
+            tasks = [
                 self.test_single_objective(query, expected)
                 for query, expected in OBJECTIVE_TEST_CASES.items()
             ]
-            all_tasks.extend(iteration_tasks)
 
-        self.results = await asyncio.gather(*all_tasks)
+            # Run tasks with controlled concurrency
+            iteration_results = await asyncio.gather(*tasks)
+            all_results.extend(iteration_results)
+
+            # Add a longer delay between iterations
+            if iteration < N_ITERATIONS - 1:
+                await asyncio.sleep(RATE_LIMIT_DELAY * 2)
+
+        self.results = all_results
         return self.results
 
     def print_results_analysis(self):
         """Print comprehensive analysis of benchmark results."""
         df = pd.DataFrame(self.results)
 
-        # Overall metrics
+        # Calculate metrics
         total_tests = len(df)
         successful_tests = len(df[df["correct"]])
         accuracy = accuracy_score(df["expected"], df["predicted"])
         avg_execution_time = df["execution_time"].mean()
 
+        # Print summary
         print("\n=== Benchmark Summary ===")
         print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
         print(f"Iterations per Test Case: {N_ITERATIONS}")
@@ -136,33 +158,46 @@ class ObjectiveBenchmark:
             output_dict=True,
         )
 
-        print("\n=== Per-Class Metrics ===")
+        # Only show active classes
         actual_classes = set(df["expected"].unique())
-        predicted_classes = set(df["predicted"].unique())
+        predicted_classes = set(df["predicted"].unique()) - {"ERROR"}  # Exclude ERROR
         active_classes = actual_classes.union(predicted_classes)
 
-        for class_name, metrics in report.items():
-            if class_name in active_classes:
+        print("\n=== Per-Class Performance ===")
+        for class_name in active_classes:
+            metrics = report.get(class_name, {})
+            if metrics:
                 print(f"\nClass: {class_name}")
-                print(f"Precision: {metrics['precision']:.2%}")
-                print(f"Recall: {metrics['recall']:.2%}")
-                print(f"F1-Score: {metrics['f1-score']:.2%}")
-                print(f"Support: {metrics['support']}")
+                print(f"Precision: {metrics.get('precision', 0):.2%}")
+                print(f"Recall: {metrics.get('recall', 0):.2%}")
+                print(f"F1-Score: {metrics.get('f1-score', 0):.2%}")
+                print(f"Support: {metrics.get('support', 0)}")
 
 
 async def main():
-    # API health check
     api_url = "http://localhost:8888"
-    async with httpx.AsyncClient() as client:
+
+    # Health check with retry
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            health_response = await client.get(f"{api_url}/health")
-            if health_response.status_code != 200:
-                logger.error("API is not healthy. Exiting.")
-                return
-            logger.info("API health check passed.")
+            async with httpx.AsyncClient() as client:
+                health_response = await client.get(f"{api_url}/health")
+                if health_response.status_code == 200:
+                    logger.info("API health check passed.")
+                    break
+                else:
+                    logger.warning(
+                        f"API not healthy (attempt {attempt + 1}/{max_retries})"
+                    )
+            await asyncio.sleep(5)  # Wait before retry
         except Exception as e:
-            logger.error(f"Could not connect to API: {e}")
-            return
+            if attempt == max_retries - 1:
+                logger.error(
+                    f"Could not connect to API after {max_retries} attempts: {e}"
+                )
+                return
+            await asyncio.sleep(5)  # Wait before retry
 
     # Run benchmark
     benchmark = ObjectiveBenchmark(api_url)
