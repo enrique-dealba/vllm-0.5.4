@@ -122,29 +122,29 @@ class ObjectiveBenchmark:
         print(f"Overall Accuracy: {accuracy:.2%}")
         print(f"Average Execution Time: {avg_execution_time:.3f}s")
 
-        # Detailed per-class metrics
+        # Detailed per-class metrics with zero_division handling
         report = classification_report(
-            df["expected"], df["predicted"], output_dict=True
+            df["expected"],
+            df["predicted"],
+            zero_division=0,  # Handle zero division cases
+            output_dict=True,
         )
 
         print("\n=== Per-Class Metrics ===")
+        # Only print metrics for classes that appear in our results
+        actual_classes = set(df["expected"].unique())
+        predicted_classes = set(df["predicted"].unique())
+        active_classes = actual_classes.union(predicted_classes)
+
         for class_name, metrics in report.items():
-            if class_name not in ["accuracy", "macro avg", "weighted avg"]:
+            if (
+                class_name in active_classes
+            ):  # Only show metrics for classes that appear
                 print(f"\nClass: {class_name}")
                 print(f"Precision: {metrics['precision']:.2%}")
                 print(f"Recall: {metrics['recall']:.2%}")
                 print(f"F1-Score: {metrics['f1-score']:.2%}")
                 print(f"Support: {metrics['support']}")
-
-        # Individual test results
-        print("\n=== Individual Test Results ===")
-        for result in self.results:
-            print(f"\nQuery: {result['query']}")
-            print(f"Expected: {result['expected']}")
-            print(f"Predicted: {result['predicted']}")
-            print(f"Correct: {result['correct']}")
-            print(f"Execution Time: {result['execution_time']:.3f}s")
-            print("---")
 
 
 async def main():
