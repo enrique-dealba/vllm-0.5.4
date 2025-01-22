@@ -5,7 +5,7 @@ import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import settings
-from llm_logic import generate_objective
+from llm_logic import generate_objective, generate_response
 from utils import get_displayable_fields
 
 st.title("LLM")
@@ -18,7 +18,9 @@ if st.button("Generate Schema"):
     else:
         try:
             assert settings.USE_STRUCTURED_OUTPUT
-            llm_response, execution_time = generate_objective(user_input)
+            # llm_response, execution_time = generate_objective(user_input)
+            llm_response, execution_time = generate_response(user_input)
+
             fields = get_displayable_fields(llm_response)
 
             # Display as JSON with formatting
