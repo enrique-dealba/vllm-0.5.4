@@ -160,18 +160,43 @@ class ObjectiveBenchmark:
 
         # Only show active classes
         actual_classes = set(df["expected"].unique())
-        predicted_classes = set(df["predicted"].unique()) - {"ERROR"}  # Exclude ERROR
-        active_classes = actual_classes.union(predicted_classes)
+        # predicted_classes = set(df["predicted"].unique()) - {"ERROR"}  # Exclude ERROR
+        # active_classes = actual_classes.union(predicted_classes)
 
         print("\n=== Per-Class Performance ===")
-        for class_name in active_classes:
+        for class_name in actual_classes:
+            class_df = df[df["expected"] == class_name]
+            class_accuracy = (
+                len(class_df[class_df["correct"]]) / len(class_df)
+                if len(class_df) > 0
+                else 0
+            )
+
+            # Calculate misclassifications
+            incorrect_predictions = (
+                class_df[~class_df["correct"]]["predicted"].value_counts().to_dict()
+            )
+
             metrics = report.get(class_name, {})
             if metrics:
                 print(f"\nClass: {class_name}")
+                print(f"Accuracy: {class_accuracy:.2%}")
                 print(f"Precision: {metrics.get('precision', 0):.2%}")
                 print(f"Recall: {metrics.get('recall', 0):.2%}")
                 print(f"F1-Score: {metrics.get('f1-score', 0):.2%}")
-                print(f"Support: {metrics.get('support', 0)}")
+                print(f"Num Cases: {metrics.get('support', 0)}")
+
+                if incorrect_predictions:
+                    print("Misclassifications:")
+                    for wrong_class, count in incorrect_predictions.items():
+                        percentage = (count / len(class_df)) * 100
+                        print(
+                            f"  - {wrong_class}: {count} ({percentage:.1f}% of cases)"
+                        )
+                else:
+                    print("Misclassifications: None")
+
+            print("-" * 20)
 
 
 async def main():
