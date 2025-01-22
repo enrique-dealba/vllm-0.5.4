@@ -6,10 +6,11 @@ import httpx
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Num of times to run each test case
+N_ITERATIONS = 5
 
 OBJECTIVE_TEST_CASES = {
     # PeriodicRevisitObjective
@@ -97,49 +98,51 @@ class ObjectiveBenchmark:
                 }
 
     async def run_benchmark(self):
-        """Run benchmark on all test cases."""
-        tasks = [
-            self.test_single_objective(query, expected)
-            for query, expected in OBJECTIVE_TEST_CASES.items()
-        ]
-        self.results = await asyncio.gather(*tasks)
+        """Run benchmark on all test cases N times."""
+        all_tasks = []
+        for _ in range(N_ITERATIONS):
+            iteration_tasks = [
+                self.test_single_objective(query, expected)
+                for query, expected in OBJECTIVE_TEST_CASES.items()
+            ]
+            all_tasks.extend(iteration_tasks)
+
+        self.results = await asyncio.gather(*all_tasks)
         return self.results
 
     def print_results_analysis(self):
         """Print comprehensive analysis of benchmark results."""
         df = pd.DataFrame(self.results)
 
-        # Basic metrics
+        # Overall metrics
         total_tests = len(df)
         successful_tests = len(df[df["correct"]])
         accuracy = accuracy_score(df["expected"], df["predicted"])
         avg_execution_time = df["execution_time"].mean()
 
-        # Print summary
         print("\n=== Benchmark Summary ===")
+        print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
+        print(f"Iterations per Test Case: {N_ITERATIONS}")
         print(f"Total Tests Run: {total_tests}")
         print(f"Successful Tests: {successful_tests}")
         print(f"Overall Accuracy: {accuracy:.2%}")
         print(f"Average Execution Time: {avg_execution_time:.3f}s")
 
-        # Detailed per-class metrics with zero_division handling
+        # Per-class metrics
         report = classification_report(
             df["expected"],
             df["predicted"],
-            zero_division=0,  # Handle zero division cases
+            zero_division=0,
             output_dict=True,
         )
 
         print("\n=== Per-Class Metrics ===")
-        # Only print metrics for classes that appear in our results
         actual_classes = set(df["expected"].unique())
         predicted_classes = set(df["predicted"].unique())
         active_classes = actual_classes.union(predicted_classes)
 
         for class_name, metrics in report.items():
-            if (
-                class_name in active_classes
-            ):  # Only show metrics for classes that appear
+            if class_name in active_classes:
                 print(f"\nClass: {class_name}")
                 print(f"Precision: {metrics['precision']:.2%}")
                 print(f"Recall: {metrics['recall']:.2%}")
@@ -148,7 +151,7 @@ class ObjectiveBenchmark:
 
 
 async def main():
-    # API health check first
+    # API health check
     api_url = "http://localhost:8888"
     async with httpx.AsyncClient() as client:
         try:
