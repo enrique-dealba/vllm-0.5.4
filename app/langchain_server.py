@@ -53,6 +53,40 @@ async def generate_response_api(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/generate_objective")
+async def generate_objective_api(request: Request):
+    """Generate a spaceplan objective name using the initialized LLM."""
+    try:
+        request_data = await request.json()
+        query = request_data.get("text")
+
+        if not query:
+            raise HTTPException(
+                status_code=400, detail="No text provided for generation."
+            )
+
+        # Ensure structured output is enabled
+        if not settings.USE_STRUCTURED_OUTPUT:
+            raise HTTPException(
+                status_code=400,
+                detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
+            )
+
+        llm_response, execution_time = generate_response(query)
+
+        # Convert response to JSON-serializable format
+        response_dict = llm_response.model_dump()
+        response_dict["execution_time_seconds"] = round(execution_time, 4)
+
+        return JSONResponse(response_dict)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error during objective generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 async def health_check():
     """Check the health status of the model service."""

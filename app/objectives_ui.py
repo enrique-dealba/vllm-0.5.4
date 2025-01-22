@@ -5,7 +5,7 @@ import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import settings
-from llm_logic import generate_objective, generate_response
+from llm_logic import generate_response
 from utils import get_displayable_fields
 
 st.title("LLM")
