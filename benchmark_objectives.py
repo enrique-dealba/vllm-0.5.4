@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, classification_report
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-N_ITERATIONS = 2  # Num of times to run each test case
+N_ITERATIONS = 20  # Num of times to run each test case
 RATE_LIMIT_DELAY = 2.0  # Seconds between requests
 MAX_CONCURRENT_REQUESTS = 3  # Maximum number of concurrent requests
 
