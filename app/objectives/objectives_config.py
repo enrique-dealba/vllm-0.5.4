@@ -143,7 +143,7 @@ sco_info = {
 }
 
 
-objective_prompt = f"""
+objective_prompt_prev = f"""
 Extract the objective definition category that the user prompt is most associated with.
 The 'objective' should be one of:
 'CatalogMaintenanceObjective', 'PeriodicRevisitObjective', 'SearchObjective', 'DataEnrichmentObjective', 'SpectralClearingObjective',
@@ -179,4 +179,14 @@ user_prompt: "{sco_info['prompts'][0]}"
 Result: {{
     "objective": "{sco_info['example']}",
 }}
+"""
+
+objective_prompt = f"""
+Extract the objective definition category that the user prompt is most associated with.
+Here are descriptions for the objectives:
+{cmo_info['example']}: Description: {cmo_info['description']}
+{pro_info['example']}: Description: {pro_info['description']}
+{so_info['example']}: Description: {so_info['description']}
+{deo_info['example']}: Description: {deo_info['description']}
+{sco_info['example']}: Description: {sco_info['description']}
 """
