@@ -19,6 +19,10 @@ case "$RUN_MODE" in
         echo "Starting Streamlit UI..."
         exec streamlit run /app/app/streamlit_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
         ;;
+    objectives)
+        echo "Starting Streamlit UI..."
+        exec streamlit run /app/app/objectives_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
+        ;;
     intents)
         echo "Starting Streamlit UI for Intents..."
         exec streamlit run /app/app/streamlit_intents.py --server.port ${PORT:-8888} --server.address 0.0.0.0

@@ -4,6 +4,7 @@ from typing import Any, Dict, Union
 from vllm import SamplingParams
 
 from app.config import settings
+from app.langchain_structured_outputs import generate_objective_response
 from app.langchain_structured_outputs import generate_structured_response as generate
 from app.model import image, llm, vlm
 from app.utils import log_to_langsmith, time_function
@@ -59,6 +60,22 @@ def generate_response(user_input: str) -> Union[str, Dict[str, Any]]:
                 metadata={"model_type": settings.MODEL_TYPE, "structured": False},
             )
 
+        return response, execution_time
+    except Exception as e:
+        logger.exception(f"Error during LLM generation: {e}")
+        raise
+
+
+def generate_objective(user_input: str) -> Union[str, Dict[str, Any]]:
+    try:
+        assert settings.USE_STRUCTURED_OUTPUT
+        response, execution_time = generate_objective_response(user_input)
+        log_to_langsmith(
+            chain_name="Structured Output Chain",
+            inputs={"query": user_input},
+            outputs={"response": response.model_dump()},
+            metadata={"model_type": settings.MODEL_TYPE, "structured": True},
+        )
         return response, execution_time
     except Exception as e:
         logger.exception(f"Error during LLM generation: {e}")

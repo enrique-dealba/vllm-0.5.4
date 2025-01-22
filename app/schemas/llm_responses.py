@@ -29,6 +29,13 @@ class EvidenceLLMResponse(BaseModel):
     )
 
 
+class ObjectiveType(BaseModel):
+    objective_name: str = Field(
+        ...,
+        description="Type of objective being specified. Choose from: CatalogMaintenanceObjective, PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, SpectralClearingObjective",
+    )
+
+
 class CatalogMaintenanceObjective(BaseModel):
     classification_marking: str = Field(
         ...,
