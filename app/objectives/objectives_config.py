@@ -181,7 +181,7 @@ Result: {{
 }}
 """
 
-objective_prompt = f"""
+objective_prompt_prev2 = f"""
 Extract the objective definition category that the user prompt is most associated with.
 Here are descriptions for the objectives:
 {cmo_info['example']}: Description: {cmo_info['description']}
@@ -189,4 +189,7 @@ Here are descriptions for the objectives:
 {so_info['example']}: Description: {so_info['description']}
 {deo_info['example']}: Description: {deo_info['description']}
 {sco_info['example']}: Description: {sco_info['description']}
+"""
+
+objective_prompt = """CatalogMaintenanceObjective manages astronomical catalog updates using specific sensors and algorithms. PeriodicRevisitObjective enables scheduled monitoring of targets with configurable revisit frequencies. SearchObjective facilitates astronomical search operations with prioritized scheduling capabilities. DataEnrichmentObjective focuses on resident space object observation tasks, managing multiple parameters including revisit frequencies and maximum observation counts. SpectralClearingObjective handles spectral analysis scheduling with specialized parameters for integration time and binning. Each objective includes classification marking, timing constraints, and priority settings, allowing precise control over observation tasks. Together, they provide a structured approach to managing various types of space observation and tracking operations.
 """
