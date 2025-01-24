@@ -35,6 +35,7 @@ def initialize_models():
     if settings.MODEL_TYPE.upper() == "LLM":
         try:
             tokenizer_mode = "mistral" if settings.IS_MISTRAL else "auto"
+            load_format = settings.LOAD_FORMAT
             llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
                 trust_remote_code=True,  # Mandatory for Hugging Face models
@@ -43,6 +44,7 @@ def initialize_models():
                 tokenizer_mode=tokenizer_mode,
                 vllm_kwargs={
                     "tokenizer_mode": tokenizer_mode,
+                    "load_format": load_format,
                     # "gpu_memory_utilization": gpu_utilization,
                 },
             )

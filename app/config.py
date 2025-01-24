@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # LLM Settings
     LLM_MODEL_NAME: str = "mistralai/Mistral-Small-Instruct-2409"
     IS_MISTRAL: bool = True
+    LOAD_FORMAT: str = "auto"
 
     # VLM Settings
     VLM_MODEL_NAME: str = "llava-hf/llava-1.5-7b-hf"
