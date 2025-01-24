@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -13,6 +15,7 @@ class Settings(BaseSettings):
     LLM_MODEL_NAME: str = "mistralai/Mistral-Small-Instruct-2409"
     IS_MISTRAL: bool = True
     LOAD_FORMAT: str = "auto"
+    QUANTIZATION: Optional[str] = None
 
     # VLM Settings
     VLM_MODEL_NAME: str = "llava-hf/llava-1.5-7b-hf"
