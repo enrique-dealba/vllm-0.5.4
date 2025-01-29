@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM pytorch/pytorch:2.1.0-cpu
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
@@ -44,16 +44,17 @@ RUN pip install --no-cache-dir --upgrade pip==24.0.0 && \
     setuptools-scm==8.0.0 \
     numpy==1.26.4
 
-# Install PyTorch CPU explicitly with MKL support
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install other requirements
+# Install other "external" python requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Build vLLM
+# Clone and install vLLM
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    python -c "import torch; print('PyTorch version:', torch.__version__)" && \
+    # Patch _version.py to fix the syntax error
+    sed -i "s/__version__ : str = version : str = '__version__ = '0.7.0'\\nversion = '0.7.0'/g" vllm/_version.py && \
+    # Remove or replace the pinned torch requirement
+    sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt setup.py && \
+    # Build and install vLLM
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
     rm -rf vllm
