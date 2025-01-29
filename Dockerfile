@@ -60,19 +60,31 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3) Create a clean _version.py file with correct version information
 # 4) Remove the torch requirement since we pre-installed it
 # ------------------------------------------------------------------
-RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
-    cd vllm && \
-    # Create version file with proper structure
-    mkdir -p vllm && \
-    echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
-    echo "version = __version__" >> vllm/_version.py && \
-    # Only modify files if they exist
-    (test -f requirements.txt && sed -i '/torch==/d' requirements.txt || true) && \
-    (test -f setup.py && sed -i '/torch==/d' setup.py || true) && \
-    # Install vLLM
-    VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
-    cd .. && \
-    rm -rf vllm
+# Clone vLLM repository
+RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git
+
+# Enter vLLM directory
+RUN cd vllm
+
+# Create version file directory
+RUN mkdir -p vllm
+
+# Create version file content
+RUN echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py
+RUN echo "version = **version**" >> vllm/_version.py
+
+# Remove torch from requirements if file exists
+RUN test -f requirements.txt && sed -i '/torch==/d' requirements.txt || true
+
+# Remove torch from setup.py if file exists
+RUN test -f setup.py && sed -i '/torch==/d' setup.py || true
+
+# Install vLLM
+RUN VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install
+
+# Cleanup
+RUN cd ..
+RUN rm -rf vllm
 
 # Copy application files
 COPY --chown=vllm:vllm app/ ./app/
