@@ -2,22 +2,16 @@ FROM python:3.12.1-slim
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
-
-# To build vLLM for CPU only
 ENV VLLM_TARGET_DEVICE=cpu
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:$LD_PRELOAD
 
-# Create non-root user `vllm`
+# Create non-root user
 RUN groupadd -r vllm && useradd -r -g vllm vllm
 
 WORKDIR /vllm-${VLLM_VERSION}
 
-# Install system dependencies
+# Install system dependencies without PPA
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    software-properties-common \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-    && apt-get update && apt-get install -y --no-install-recommends \
     gcc-12 \
     g++-12 \
     libnuma-dev \
@@ -25,14 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     libtcmalloc-minimal4 \
-    intel-mkl-full \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Set gcc-12 as default
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
-    --slave /usr/bin/g++ g++ /usr/bin/g++-12 \
-    --slave /usr/bin/gcov gcov /usr/bin/gcov-12
+    --slave /usr/bin/g++ g++ /usr/bin/g++-12
+
+# Now set TCMalloc after it's installed
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:$LD_PRELOAD
 
 # Copy requirements
 COPY --chown=vllm:vllm requirements.txt .
@@ -57,7 +52,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Build vLLM
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    # Verify torch is installed
     python -c "import torch; print('PyTorch version:', torch.__version__)" && \
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
