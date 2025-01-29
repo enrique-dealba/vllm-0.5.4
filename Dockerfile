@@ -49,7 +49,7 @@ RUN pip install --no-cache-dir --upgrade pip==25.0.0 && \
 #    Example: torch==2.1.0+cpu from the official PyTorch CPU index.
 # ------------------------------------------------------------------
 RUN pip install --no-cache-dir \
-    torch==2.5.1+cpu \
+    torch==2.5.0+cpu \
     -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 # Install other "external" python requirements
