@@ -55,13 +55,8 @@ RUN pip install --no-cache-dir \
 # Install other "external" python requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ------------------------------------------------------------------
-# 2) Clone the vLLM repo at the specified tag/branch
-# 3) Create a clean _version.py file with correct version information
-# 4) Remove the torch requirement since we pre-installed it
-# ------------------------------------------------------------------
-RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
-    echo "Cloned vLLM repository."
+# Clone and setup vLLM
+RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git
 
 WORKDIR /vllm-${VLLM_VERSION}/vllm
 
@@ -70,59 +65,41 @@ RUN mkdir -p vllm && \
     cat <<EOF > vllm/_version.py
 __version__: str = '${VLLM_VERSION}'
 version: str = __version__
-EOF && \
-    echo "Created vllm/_version.py with correct syntax." && \
-    cat vllm/_version.py && \
-    echo "Displayed contents of vllm/_version.py."
+EOF
 
 # Remove torch== from setup.py and requirements.txt if they exist
 RUN if [ -f setup.py ]; then \
-        sed -i '/torch==/d' setup.py && \
-        echo "Removed torch== from setup.py"; \
-    else \
-        echo "setup.py not found"; \
+        sed -i '/torch==/d' setup.py; \
     fi && \
     if [ -f requirements.txt ]; then \
-        sed -i '/torch==/d' requirements.txt && \
-        echo "Removed torch== from requirements.txt"; \
-    else \
-        echo "requirements.txt not found"; \
+        sed -i '/torch==/d' requirements.txt; \
     fi
 
 # Install vLLM
-RUN VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
-    echo "Installed vLLM successfully."
+RUN VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install
 
 WORKDIR /vllm-${VLLM_VERSION}
 
 # Clean up cloned repository
-RUN rm -rf vllm && \
-    echo "Removed cloned vllm repository."
-
-# ------------------------------------------------------------------
+RUN rm -rf vllm
 
 # Copy application files
 COPY --chown=vllm:vllm app/ ./app/
 COPY --chown=vllm:vllm scripts/ ./scripts/
 COPY --chown=vllm:vllm tests/ ./tests/
-COPY --chown=vllm:vllm Dockerfile ./Dockerfile && \
-    echo "Copied application files."
+COPY --chown=vllm:vllm Dockerfile ./Dockerfile
 
 # Permissions
-RUN chmod +x ./scripts/start.sh && \
-    echo "Set execute permissions for start.sh."
+RUN chmod +x ./scripts/start.sh
 
 # Switch to non-root vllm user
-USER vllm && \
-    echo "Switched to non-root user 'vllm'."
+USER vllm
 
 # Verify installation
-RUN python -c "import vllm; print('vLLM version:', vllm.__version__)" && \
-    echo "Verified vLLM installation."
+RUN python -c "import vllm; print('vLLM version:', vllm.__version__)"
 
 # Add CPU-specific environment variables
 ENV VLLM_CPU_KVCACHE_SPACE=40
-ENV VLLM_CPU_OMP_THREADS_BIND=0-7 && \
-    echo "Set CPU-specific environment variables."
+ENV VLLM_CPU_OMP_THREADS_BIND=0-7
 
 ENTRYPOINT ["./scripts/start.sh"]
