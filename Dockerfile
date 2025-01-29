@@ -1,45 +1,61 @@
-FROM nvcr.io/nvidia/pytorch:22.12-py3
+FROM python:3.12.1-slim
 
-ENV VLLM_VERSION=0.6.1
-ENV PYTHON_VERSION=310
+ARG VLLM_VERSION=0.6.1
+ENV VLLM_VERSION=${VLLM_VERSION}
+
+# To build vLLM for CPU only
+ENV VLLM_TARGET_DEVICE=cpu
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:$LD_PRELOAD
+
+# Create non-root user `vllm`
+RUN groupadd -r vllm && useradd -r -g vllm vllm
+
+WORKDIR /vllm-${VLLM_VERSION}
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential=12.9 \
+    gcc-12 \
+    g++-12 \
+    libnuma-dev \
+    cmake \
     wget \
+    git \
+    libtcmalloc-minimal4 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Miniconda
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
-    && bash miniconda.sh -b -p /root/miniconda3 \
-    && rm miniconda.sh
+# Copy requirements
+COPY --chown=vllm:vllm requirements.txt .
 
-# Add conda to path
-ENV PATH="/root/miniconda3/bin:${PATH}"
+# Python dependecnies
+RUN pip install --no-cache-dir --upgrade pip==24.0.0 && \
+    pip install --no-cache-dir \
+    cmake==3.28.1 \
+    wheel==0.42.0 \
+    packaging==23.2 \
+    ninja==1.11.1 \
+    setuptools-scm==8.0.0 \
+    numpy==1.26.4 \
+    && pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Create and activate conda environment
-RUN conda create -n vllm python=3.10 -y
-SHELL ["conda", "run", "-n", "vllm", "/bin/bash", "-c"]
+# Build vLLM
+RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
+    cd vllm && \
+    python setup.py install && \
+    cd .. && \
+    rm -rf vllm
 
-# Install vLLM with CUDA 11.8
-RUN pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl \
-    --extra-index-url https://download.pytorch.org/whl/cu118
+# Copy application files
+COPY --chown=vllm:vllm app/ ./app/
+COPY --chown=vllm:vllm scripts/ ./scripts/
+COPY --chown=vllm:vllm tests/ ./tests/
+COPY --chown=vllm:vllm Dockerfile ./Dockerfile
 
-# Set working directory
-WORKDIR /app
+# Permissions
+RUN chmod +x ./scripts/start.sh
 
-COPY requirements.txt .
+# Switch to non-root `vllm` user
+USER vllm
 
-# Install ALL pip dependencies
-RUN pip install -r requirements.txt && \
-    pip install pytest pytest-cov
-
-# Copy rest of application files
-COPY app/ ./app/
-COPY scripts/ ./scripts/
-COPY tests/ ./tests/
-
-# Make start script executable
-RUN chmod +x /app/scripts/start.sh
-
-# Set the entrypoint to our start script
-ENTRYPOINT ["/app/scripts/start.sh"]
+ENTRYPOINT ["./scripts/start.sh"]

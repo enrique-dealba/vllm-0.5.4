@@ -4,7 +4,7 @@ vLLM Version: 0.6.1
 To build Docker image:
 
 ```sh
-docker build -t vllm:cuda11.8 .
+docker build -t vllm:cpu .
 ```
 
 To run Docker container with LLMs:
