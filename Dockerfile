@@ -79,24 +79,37 @@ RUN set -x && \
     echo "__version__ = '${VLLM_VERSION}'" >> app/_version.py && \
     echo "version = __version__" >> app/_version.py
 
-# Remove torch== from setup.py and requirements.txt if they exist
+# Handle torch requirements before vLLM installation
 RUN set -x && \
-    cd vllm && \
-    if [ -f setup.py ]; then \
-        sed -i '/torch==/d' setup.py && \
-        echo "Removed 'torch==' from setup.py"; \
-    fi && \
-    if [ -f requirements.txt ]; then \
-        sed -i '/torch==/d' requirements.txt && \
-        echo "Removed 'torch==' from requirements.txt"; \
-    fi
+   cd vllm && \
+   # Remove or replace torch requirements in setup.py
+   sed -i 's/torch==2.5.1+cpu/torch>=2.3.1/g' setup.py && \
+   sed -i 's/torch==2.5.1/torch>=2.3.1/g' setup.py && \
+   sed -i 's/torch>=2.5.1/torch>=2.3.1/g' setup.py && \
+   # Remove any remaining torch requirements
+   sed -i '/torch==/d' setup.py && \
+   if [ -f requirements.txt ]; then \
+       sed -i '/torch==/d' requirements.txt; \
+   fi && \
+   # Show the modified requirements
+   echo "Modified setup.py torch requirements:" && \
+   grep "torch" setup.py || echo "No torch requirements found in setup.py"
 
-# Install vLLM
+# Install vLLM with controlled dependencies
 RUN set -x && \
-    cd vllm && \
-    VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 pip install -e . --config-settings="--build-option=--target-device=cpu" && \
-    pip install torch==2.3.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html --force-reinstall && \
-    echo "Installed vLLM successfully."
+   cd vllm && \
+   # Set environment variables
+   export VLLM_TARGET_DEVICE=cpu && \
+   export VLLM_CPU_AVX512BF16=0 && \
+   # Install torch first
+   pip install --no-cache-dir torch==2.3.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html && \
+   # Force install vLLM
+   pip install -e . --no-deps --force-reinstall && \
+   # Install remaining requirements manually
+   if [ -f requirements.txt ]; then \
+       pip install -r requirements.txt --no-cache-dir; \
+   fi && \
+   echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
 
