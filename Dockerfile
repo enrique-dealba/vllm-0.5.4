@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.1.0-cpu
+FROM pytorch/pytorch:2.0.1-cpu
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
@@ -35,7 +35,7 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:$LD_PRELOAD
 COPY --chown=vllm:vllm requirements.txt .
 
 # Python dependecnies
-RUN pip install --no-cache-dir --upgrade pip==24.0.0 && \
+RUN pip install --no-cache-dir --upgrade pip==25.0.0 && \
     pip install --no-cache-dir \
     cmake==3.28.1 \
     wheel==0.42.0 \
