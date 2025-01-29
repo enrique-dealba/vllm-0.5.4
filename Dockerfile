@@ -57,37 +57,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # ------------------------------------------------------------------
 # 2) Clone the vLLM repo at the specified tag/branch
-# 3) Patch the syntax error in _version.py
-# 4) Remove or override the pinned torch==2.5.1+cpu
+# 3) Create a clean _version.py file with correct version information
+# 4) Remove the torch requirement since we pre-installed it
 # ------------------------------------------------------------------
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    echo "Current directory:" && \
-    pwd && \
-    echo "Directory contents:" && \
-    ls -la && \
-    echo "Finding version files:" && \
-    find . -name "_version.py" && \
-    echo "Finding setup files:" && \
-    find . -name "setup.py" && \
-    echo "Finding requirement files:" && \
-    find . -name "requirements.txt" && \
-    echo "Creating version file..." && \
+    # First ensure we create a valid version file before installation
     mkdir -p vllm && \
+    # Create a clean version file with proper Python syntax
     echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
-    echo "version = '${VLLM_VERSION}'" >> vllm/_version.py && \
-    echo "Version file contents:" && \
-    cat vllm/_version.py && \
-    echo "Updating torch requirements..." && \
-    if [ -f "requirements.txt" ]; then \
-        sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt; \
-    fi && \
-    if [ -f "setup.py" ]; then \
-        sed -i "s/torch==2.5.1+cpu/torch/g" setup.py; \
-    fi && \
-    echo "Verifying torch installation:" && \
-    python -c "import torch; print('PyTorch version:', torch.__version__)" && \
-    echo "Installing vLLM..." && \
+    echo "version = __version__" >> vllm/_version.py && \
+    # Update requirements to use our pre-installed torch version
+    sed -i '/torch==/d' requirements.txt setup.py && \
+    # Now install vLLM
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
     rm -rf vllm
