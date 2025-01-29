@@ -62,10 +62,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ------------------------------------------------------------------
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    # First ensure version file exists and view it
-    cat vllm/_version.py && \
-    # Fix the version file - using a simpler sed pattern
-    sed -i 's/^.*version.*$/__version__ = "'${VLLM_VERSION}'"\nversion = "'${VLLM_VERSION}'"/' vllm/_version.py && \
+    # First explore the structure
+    find . -name "_version.py" && \
+    # Now use the correct path and create/modify version file if needed
+    echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
+    echo "version = '${VLLM_VERSION}'" >> vllm/_version.py && \
     # Remove pinned torch version
     sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt setup.py && \
     # Verify torch installation
