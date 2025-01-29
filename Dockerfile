@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.0.1-cpu
+FROM python:3.12-slim
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
@@ -34,7 +34,7 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:$LD_PRELOAD
 # Copy requirements
 COPY --chown=vllm:vllm requirements.txt .
 
-# Python dependecnies
+# Upgrade pip & install some basic python packages
 RUN pip install --no-cache-dir --upgrade pip==25.0.0 && \
     pip install --no-cache-dir \
     cmake==3.28.1 \
@@ -44,17 +44,31 @@ RUN pip install --no-cache-dir --upgrade pip==25.0.0 && \
     setuptools-scm==8.0.0 \
     numpy==1.26.4
 
+# ------------------------------------------------------------------
+# 1) Install a valid CPU torch wheel before building vLLM
+#    Example: torch==2.1.0+cpu from the official PyTorch CPU index.
+# ------------------------------------------------------------------
+RUN pip install --no-cache-dir \
+    torch==2.1.0+cpu \
+    -f https://download.pytorch.org/whl/cpu/torch_stable.html
+
 # Install other "external" python requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Clone and install vLLM
+# ------------------------------------------------------------------
+# 2) Clone the vLLM repo at the specified tag/branch
+# 3) Patch the syntax error in _version.py
+# 4) Remove or override the pinned torch==2.5.1+cpu
+# ------------------------------------------------------------------
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
     # Patch _version.py to fix the syntax error
     sed -i "s/__version__ : str = version : str = '__version__ = '0.7.0'\\nversion = '0.7.0'/g" vllm/_version.py && \
-    # Remove or replace the pinned torch requirement
+    # Also remove or replace the pinned `torch==2.5.1+cpu` line if it appears
     sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt setup.py && \
-    # Build and install vLLM
+    # Check that we already have the correct torch installed
+    python -c "import torch; print('PyTorch version:', torch.__version__)" && \
+    # Now build and install vLLM
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
     rm -rf vllm
