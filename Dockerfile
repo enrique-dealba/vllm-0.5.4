@@ -70,41 +70,32 @@ RUN set -x && \
     git clone --branch v${VLLM_VERSION} https://github.com/vllm-project/vllm.git && \
     echo "Cloned vLLM repository."
 
-WORKDIR /vllm-${VLLM_VERSION}/vllm
+WORKDIR /vllm-${VLLM_VERSION}
 
-# Create a clean _version.py with correct version information
+# Create version file
 RUN set -x && \
-    mkdir -p vllm && \
-    echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
-    echo "version = __version__" >> vllm/_version.py && \
-    echo "Created vllm/_version.py:" && \
-    cat vllm/_version.py
+    mkdir -p app && \
+    echo "# Version information" > app/_version.py && \
+    echo "__version__ = '${VLLM_VERSION}'" >> app/_version.py && \
+    echo "version = __version__" >> app/_version.py
 
 # Remove torch== from setup.py and requirements.txt if they exist
 RUN set -x && \
+    cd vllm && \
     if [ -f setup.py ]; then \
         sed -i '/torch==/d' setup.py && \
         echo "Removed 'torch==' from setup.py"; \
-    else \
-        echo "setup.py not found"; \
     fi && \
     if [ -f requirements.txt ]; then \
         sed -i '/torch==/d' requirements.txt && \
         echo "Removed 'torch==' from requirements.txt"; \
-    else \
-        echo "requirements.txt not found"; \
-    fi && \
-    echo "Verifying removal of 'torch==' lines:" && \
-    if [ -f setup.py ]; then \
-        grep 'torch==' setup.py || echo "'torch==' not found in setup.py"; \
-    fi && \
-    if [ -f requirements.txt ]; then \
-        grep 'torch==' requirements.txt || echo "'torch==' not found in requirements.txt"; \
     fi
 
 # Install vLLM
 RUN set -x && \
-    VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
+    cd vllm && \
+    VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 pip install -e . --config-settings="--build-option=--target-device=cpu" && \
+    pip install torch==2.3.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html --force-reinstall && \
     echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
