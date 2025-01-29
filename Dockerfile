@@ -55,49 +55,91 @@ RUN pip install --no-cache-dir \
 # Install other "external" python requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
+# vLLM Installation
+# ------------------------------------------------------------------
+# 2) Clone the vLLM repo at the specified tag/branch
+# 3) Create a clean _version.py file with correct version information
+# 4) Remove the torch requirement since we pre-installed it
+# ------------------------------------------------------------------
+# Enable shell debugging for these critical steps
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Clone and setup vLLM
-RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git
+RUN set -x && \
+    git clone --branch v${VLLM_VERSION} https://github.com/vllm-project/vllm.git && \
+    echo "Cloned vLLM repository."
 
 WORKDIR /vllm-${VLLM_VERSION}/vllm
 
-# Create a clean _version.py with correct syntax
-RUN mkdir -p vllm && \
-    echo "__version__: str = '${VLLM_VERSION}'" > vllm/_version.py && \
-    echo "version: str = __version__" >> vllm/_version.py
+# Create a clean _version.py with correct syntax using a heredoc
+RUN set -x && \
+    mkdir -p vllm && \
+    cat <<EOF > vllm/_version.py
+__version__ = '${VLLM_VERSION}'
+version = __version__
+EOF && \
+    echo "Created vllm/_version.py:" && \
+    cat vllm/_version.py
 
 # Remove torch== from setup.py and requirements.txt if they exist
-RUN if [ -f setup.py ]; then \
-        sed -i '/torch==/d' setup.py; \
+RUN set -x && \
+    if [ -f setup.py ]; then \
+        sed -i '/torch==/d' setup.py && \
+        echo "Removed 'torch==' from setup.py"; \
+    else \
+        echo "setup.py not found"; \
     fi && \
     if [ -f requirements.txt ]; then \
-        sed -i '/torch==/d' requirements.txt; \
+        sed -i '/torch==/d' requirements.txt && \
+        echo "Removed 'torch==' from requirements.txt"; \
+    else \
+        echo "requirements.txt not found"; \
+    fi && \
+    # Verify that 'torch==' lines are removed
+    echo "Verifying removal of 'torch==' lines:" && \
+    if [ -f setup.py ]; then \
+        grep 'torch==' setup.py || echo "'torch==' not found in setup.py"; \
+    fi && \
+    if [ -f requirements.txt ]; then \
+        grep 'torch==' requirements.txt || echo "'torch==' not found in requirements.txt"; \
     fi
 
 # Install vLLM
-RUN VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install
+RUN set -x && \
+    VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
+    echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
 
 # Clean up cloned repository
-RUN rm -rf vllm
+RUN set -x && \
+    rm -rf vllm && \
+    echo "Removed cloned vllm repository."
+
+# ------------------------------------------------------------------
 
 # Copy application files
 COPY --chown=vllm:vllm app/ ./app/
 COPY --chown=vllm:vllm scripts/ ./scripts/
 COPY --chown=vllm:vllm tests/ ./tests/
-COPY --chown=vllm:vllm Dockerfile ./Dockerfile
+COPY --chown=vllm:vllm Dockerfile ./Dockerfile && \
+    echo "Copied application files."
 
 # Permissions
-RUN chmod +x ./scripts/start.sh
+RUN chmod +x ./scripts/start.sh && \
+    echo "Set execute permissions for start.sh."
 
 # Switch to non-root vllm user
-USER vllm
+USER vllm && \
+    echo "Switched to non-root user 'vllm'."
 
 # Verify installation
-RUN python -c "import vllm; print('vLLM version:', vllm.__version__)"
+RUN python -c "import vllm; print('vLLM version:', vllm.__version__)" && \
+    echo "Verified vLLM installation."
 
 # Add CPU-specific environment variables
 ENV VLLM_CPU_KVCACHE_SPACE=40
-ENV VLLM_CPU_OMP_THREADS_BIND=0-7
+ENV VLLM_CPU_OMP_THREADS_BIND=0-7 && \
+    echo "Set CPU-specific environment variables."
 
 ENTRYPOINT ["./scripts/start.sh"]
