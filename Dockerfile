@@ -72,13 +72,11 @@ RUN set -x && \
 
 WORKDIR /vllm-${VLLM_VERSION}/vllm
 
-# Create a clean _version.py with correct syntax using a heredoc
+# Create a clean _version.py with correct version information
 RUN set -x && \
     mkdir -p vllm && \
-    cat <<EOF > vllm/_version.py
-__version__ = '${VLLM_VERSION}'
-version = __version__
-EOF && \
+    echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
+    echo "version = __version__" >> vllm/_version.py && \
     echo "Created vllm/_version.py:" && \
     cat vllm/_version.py
 
