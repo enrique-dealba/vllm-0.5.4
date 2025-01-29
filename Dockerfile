@@ -62,14 +62,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ------------------------------------------------------------------
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    # First ensure we create a valid version file before installation
+    # Create version file with proper structure
     mkdir -p vllm && \
-    # Create a clean version file with proper Python syntax
     echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
     echo "version = __version__" >> vllm/_version.py && \
-    # Update requirements to use our pre-installed torch version
-    sed -i '/torch==/d' requirements.txt setup.py && \
-    # Now install vLLM
+    # Only modify files if they exist
+    (test -f requirements.txt && sed -i '/torch==/d' requirements.txt || true) && \
+    (test -f setup.py && sed -i '/torch==/d' setup.py || true) && \
+    # Install vLLM
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
     rm -rf vllm
