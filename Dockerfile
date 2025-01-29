@@ -14,7 +14,7 @@ WORKDIR /vllm-${VLLM_VERSION}
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential=12.9 \
+    build-essential \
     gcc-12 \
     g++-12 \
     libnuma-dev \
@@ -36,12 +36,19 @@ RUN pip install --no-cache-dir --upgrade pip==24.0.0 && \
     packaging==23.2 \
     ninja==1.11.1 \
     setuptools-scm==8.0.0 \
-    numpy==1.26.4 \
-    && pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+    numpy==1.26.4
 
-# Build vLLM
+# Install PyTorch CPU explicitly
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install other requirements
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Build vLLM with verification
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
+    # Verify torch is installed
+    python -c "import torch; print('PyTorch version:', torch.__version__)" && \
     python setup.py install && \
     cd .. && \
     rm -rf vllm
@@ -57,5 +64,8 @@ RUN chmod +x ./scripts/start.sh
 
 # Switch to non-root `vllm` user
 USER vllm
+
+# Verify installation
+RUN python -c "import vllm; print('vLLM version:', vllm.__version__)"
 
 ENTRYPOINT ["./scripts/start.sh"]
