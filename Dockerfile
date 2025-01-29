@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM semmtech/nlp-base:torch-2.5.1-cpu-20241120
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
@@ -48,9 +48,9 @@ RUN pip install --no-cache-dir --upgrade pip==25.0.0 && \
 # 1) Install a valid CPU torch wheel before building vLLM
 #    Example: torch==2.3.1+cpu from the official PyTorch CPU index.
 # ------------------------------------------------------------------
-RUN pip install --no-cache-dir \
-    torch==2.3.1+cpu \
-    -f https://download.pytorch.org/whl/cpu/torch_stable.html
+# RUN pip install --no-cache-dir \
+#     torch==2.3.1+cpu \
+#     -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 # Install other "external" python requirements
 RUN pip install --no-cache-dir -r requirements.txt
