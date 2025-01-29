@@ -1,4 +1,4 @@
-FROM python:3.12.1-slim
+FROM python:3.12-slim
 
 ARG VLLM_VERSION=0.7.0
 ENV VLLM_VERSION=${VLLM_VERSION}
@@ -9,7 +9,7 @@ RUN groupadd -r vllm && useradd -r -g vllm vllm
 
 WORKDIR /vllm-${VLLM_VERSION}
 
-# Install system dependencies including Intel MKL and libdnnl
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc-12 \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     libtcmalloc-minimal4 \
-    libmkl-full-dev \
+    libopenblas-dev \
     libdnnl-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
