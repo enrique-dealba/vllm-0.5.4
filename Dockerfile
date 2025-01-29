@@ -62,16 +62,32 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ------------------------------------------------------------------
 RUN git clone --branch v${VLLM_VERSION} --depth 1 https://github.com/vllm-project/vllm.git && \
     cd vllm && \
-    # First explore the structure
+    echo "Current directory:" && \
+    pwd && \
+    echo "Directory contents:" && \
+    ls -la && \
+    echo "Finding version files:" && \
     find . -name "_version.py" && \
-    # Now use the correct path and create/modify version file if needed
+    echo "Finding setup files:" && \
+    find . -name "setup.py" && \
+    echo "Finding requirement files:" && \
+    find . -name "requirements.txt" && \
+    echo "Creating version file..." && \
+    mkdir -p vllm && \
     echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
     echo "version = '${VLLM_VERSION}'" >> vllm/_version.py && \
-    # Remove pinned torch version
-    sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt setup.py && \
-    # Verify torch installation
+    echo "Version file contents:" && \
+    cat vllm/_version.py && \
+    echo "Updating torch requirements..." && \
+    if [ -f "requirements.txt" ]; then \
+        sed -i "s/torch==2.5.1+cpu/torch/g" requirements.txt; \
+    fi && \
+    if [ -f "setup.py" ]; then \
+        sed -i "s/torch==2.5.1+cpu/torch/g" setup.py; \
+    fi && \
+    echo "Verifying torch installation:" && \
     python -c "import torch; print('PyTorch version:', torch.__version__)" && \
-    # Build and install vLLM
+    echo "Installing vLLM..." && \
     VLLM_TARGET_DEVICE=cpu VLLM_CPU_AVX512BF16=0 python setup.py install && \
     cd .. && \
     rm -rf vllm
