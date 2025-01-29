@@ -62,10 +62,8 @@ WORKDIR /vllm-${VLLM_VERSION}/vllm
 
 # Create a clean _version.py with correct syntax
 RUN mkdir -p vllm && \
-    cat <<EOF > vllm/_version.py
-__version__: str = '${VLLM_VERSION}'
-version: str = __version__
-EOF
+    echo "__version__: str = '${VLLM_VERSION}'" > vllm/_version.py && \
+    echo "version: str = __version__" >> vllm/_version.py
 
 # Remove torch== from setup.py and requirements.txt if they exist
 RUN if [ -f setup.py ]; then \
