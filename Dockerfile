@@ -9,7 +9,7 @@ RUN groupadd -r vllm && useradd -r -g vllm vllm
 
 WORKDIR /vllm-${VLLM_VERSION}
 
-# Install system dependencies without PPA
+# Install system dependencies including Intel MKL and libdnnl
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc-12 \
@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     libtcmalloc-minimal4 \
+    libmkl-full-dev \
+    libdnnl-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,10 +42,9 @@ RUN pip install --no-cache-dir --upgrade pip==24.0.0 && \
     packaging==23.2 \
     ninja==1.11.1 \
     setuptools-scm==8.0.0 \
-    numpy==1.26.4 \
-    oneDNN==3.3.4
+    numpy==1.26.4
 
-# Install PyTorch CPU explicitly
+# Install PyTorch CPU explicitly with MKL support
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 # Install other requirements
