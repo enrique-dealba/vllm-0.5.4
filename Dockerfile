@@ -85,7 +85,9 @@ RUN set -x && \
 # Handle vLLM installation with proper CPU configuration
 RUN set -x && \
     cd vllm && \
-    # Modify vLLM's setup.py to accept our torch version
+    # Set Python paths explicitly
+    export PYTHON_PATH=$(which python3) && \
+    # Modify vLLM's setup.py
     python3 -c 'import re; \
         content = open("setup.py").read(); \
         content = re.sub(r"torch==[\d\.]+\+cpu", "torch>=2.3.1", content); \
@@ -96,28 +98,32 @@ RUN set -x && \
     export VLLM_TARGET_DEVICE=cpu && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
-    # Create build directory for CMake
+    export VLLM_PYTHON_EXECUTABLE=$PYTHON_PATH && \
+    # Create build directory
     mkdir -p build && \
     cd build && \
-    # Configure CMake with explicit paths and flags
+    # Configure CMake with all required variables
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
         -DVLLM_TARGET_DEVICE=cpu \
         -DUSE_CUDA=OFF \
         -DCMAKE_PREFIX_PATH=$(python3 -c 'import torch.utils; print(torch.utils.cmake_prefix_path)') \
-        -DPYTHON_EXECUTABLE=$(which python3) \
+        -DPYTHON_EXECUTABLE=$PYTHON_PATH \
+        -DVLLM_PYTHON_EXECUTABLE=$PYTHON_PATH \
         -DTORCH_CPU_ONLY=ON \
         -DBUILD_TESTING=OFF && \
-    # Build the C++ components
+    # Build C++ components
     cmake --build . --config Release && \
     cd .. && \
-    # Install vLLM with modified dependencies
+    # Install with same configuration
+    VLLM_PYTHON_EXECUTABLE=$PYTHON_PATH \
     FORCE_CMAKE=1 \
     VLLM_TARGET_DEVICE=cpu \
     CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
                 -DVLLM_TARGET_DEVICE=cpu \
                 -DUSE_CUDA=OFF \
-                -DTORCH_CPU_ONLY=ON" \
+                -DTORCH_CPU_ONLY=ON \
+                -DVLLM_PYTHON_EXECUTABLE=$PYTHON_PATH" \
     pip install --no-cache-dir . && \
     # Verify installation
     python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); import vllm" && \
