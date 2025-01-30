@@ -84,8 +84,16 @@ RUN set -x && \
 
 # Handle vLLM installation with proper CPU configuration
 RUN set -x && \
+    # Install OpenCL and MKL dependencies
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ocl-icd-opencl-dev \
+        intel-mkl-full \
+        libomp-dev \
+        && \
+    rm -rf /var/lib/apt/lists/* && \
+    # Set up build environment
     cd vllm && \
-    # Set Python paths explicitly
     export PYTHON_PATH=$(which python3) && \
     # Modify vLLM's setup.py
     python3 -c 'import re; \
@@ -99,6 +107,9 @@ RUN set -x && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
     export VLLM_PYTHON_EXECUTABLE=$PYTHON_PATH && \
+    export USE_MKL=OFF && \
+    export USE_MKLDNN=OFF && \
+    export MKL_ROOT=/usr/lib/x86_64-linux-gnu && \
     # Create build directory
     mkdir -p build && \
     cd build && \
@@ -111,11 +122,17 @@ RUN set -x && \
         -DPYTHON_EXECUTABLE=$PYTHON_PATH \
         -DVLLM_PYTHON_EXECUTABLE=$PYTHON_PATH \
         -DTORCH_CPU_ONLY=ON \
-        -DBUILD_TESTING=OFF && \
+        -DUSE_OPENCL=OFF \
+        -DUSE_MKL=OFF \
+        -DUSE_MKLDNN=OFF \
+        -DBUILD_TESTING=OFF \
+        -DCMAKE_CXX_FLAGS="-DMKLDNN_CPU_BACKEND=OFF" && \
     # Build C++ components
     cmake --build . --config Release && \
     cd .. && \
-    # Install with same configuration
+    # Install with all configurations
+    USE_MKL=OFF \
+    USE_MKLDNN=OFF \
     VLLM_PYTHON_EXECUTABLE=$PYTHON_PATH \
     FORCE_CMAKE=1 \
     VLLM_TARGET_DEVICE=cpu \
@@ -123,7 +140,11 @@ RUN set -x && \
                 -DVLLM_TARGET_DEVICE=cpu \
                 -DUSE_CUDA=OFF \
                 -DTORCH_CPU_ONLY=ON \
-                -DVLLM_PYTHON_EXECUTABLE=$PYTHON_PATH" \
+                -DUSE_OPENCL=OFF \
+                -DUSE_MKL=OFF \
+                -DUSE_MKLDNN=OFF \
+                -DVLLM_PYTHON_EXECUTABLE=$PYTHON_PATH \
+                -DCMAKE_CXX_FLAGS='-DMKLDNN_CPU_BACKEND=OFF'" \
     pip install --no-cache-dir . && \
     # Verify installation
     python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); import vllm" && \
