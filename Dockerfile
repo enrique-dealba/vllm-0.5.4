@@ -70,13 +70,7 @@ RUN set -x && \
     git clone --branch v${VLLM_VERSION} https://github.com/vllm-project/vllm.git && \
     echo "Cloned vLLM repository."
 
-# Print torch version to verify
-RUN python3 -c "import torch; print(f'PyTorch version: {torch.__version__}')"
-
 WORKDIR /vllm-${VLLM_VERSION}
-
-# Print torch version to verify
-RUN python3 -c "import torch; print(f'PyTorch version: {torch.__version__}')"
 
 # Install numpy first to avoid warnings
 RUN pip install --no-cache-dir numpy==1.26.4
@@ -88,19 +82,38 @@ RUN set -x && \
     echo "__version__ = '${VLLM_VERSION}'" >> app/_version.py && \
     echo "version = __version__" >> app/_version.py
 
-# Handle vLLM installation
+# Handle vLLM installation with extensive CPU configuration
 RUN set -x && \
     cd vllm && \
-    # Modify CMakeLists.txt to force CPU-only build
+    # Force CPU-only configuration
+    export USE_CUDA=0 && \
+    export CUDA_VISIBLE_DEVICES="" && \
+    export VLLM_TARGET_DEVICE=cpu && \
+    export VLLM_CPU_AVX512BF16=0 && \
+    export TORCH_CUDA_ARCH_LIST="" && \
+    # Modify CMake configuration
     sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
-    # Install vLLM
-    VLLM_TARGET_DEVICE=cpu \
-    VLLM_CPU_AVX512BF16=0 \
-    CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release -DVLLM_TARGET_DEVICE=cpu" \
-    pip install -e . && \
+    sed -i 's/if(CUDA_FOUND)/if(FALSE)/g' CMakeLists.txt && \
+    # Create build directory and configure
+    mkdir -p build && \
+    cd build && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DVLLM_TARGET_DEVICE=cpu \
+        -DUSE_CUDA=OFF \
+        -DTORCH_CUDA_ARCH_LIST="" && \
+    cd .. && \
+    # Install without editable mode
+    pip install . \
+        --no-cache-dir \
+        --config-settings="--build-option=--cpu-only" \
+        --config-settings="--build-option=--target-device=cpu" && \
     echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
+
+# Verify the installation
+RUN python3 -c "import vllm; print('vLLM version:', vllm.__version__)"
 
 # Clean up cloned repository
 RUN set -x && \
