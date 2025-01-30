@@ -85,35 +85,46 @@ RUN set -x && \
 # Handle vLLM installation with proper CPU configuration
 RUN set -x && \
     cd vllm && \
-    # Remove existing torch installations
-    pip uninstall -y torch torchvision torchaudio && \
-    # Install correct torch versions
-    pip install --no-cache-dir \
-        torch==2.3.1+cpu \
-        torchvision==0.18.1+cpu \
-        --index-url https://download.pytorch.org/whl/cpu && \
-    # Configure build environment for CPU
+    # Modify vLLM's setup.py to accept our torch version
+    python3 -c 'import re; \
+        content = open("setup.py").read(); \
+        content = re.sub(r"torch==[\d\.]+\+cpu", "torch>=2.3.1", content); \
+        open("setup.py", "w").write(content)' && \
+    # Configure build environment
     export USE_CUDA=0 && \
     export CUDA_VISIBLE_DEVICES="" && \
     export VLLM_TARGET_DEVICE=cpu && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
-    # Modify CMake configuration
-    sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
-    sed -i 's/if(CUDA_FOUND)/if(FALSE)/g' CMakeLists.txt && \
-    sed -i '/find_package(CUDAToolkit/d' CMakeLists.txt && \
-    # Install vLLM
+    # Create build directory for CMake
+    mkdir -p build && \
+    cd build && \
+    # Configure CMake with explicit paths and flags
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DVLLM_TARGET_DEVICE=cpu \
+        -DUSE_CUDA=OFF \
+        -DCMAKE_PREFIX_PATH=$(python3 -c 'import torch.utils; print(torch.utils.cmake_prefix_path)') \
+        -DPYTHON_EXECUTABLE=$(which python3) \
+        -DTORCH_CPU_ONLY=ON \
+        -DBUILD_TESTING=OFF && \
+    # Build the C++ components
+    cmake --build . --config Release && \
+    cd .. && \
+    # Install vLLM with modified dependencies
+    FORCE_CMAKE=1 \
     VLLM_TARGET_DEVICE=cpu \
     CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
                 -DVLLM_TARGET_DEVICE=cpu \
                 -DUSE_CUDA=OFF \
-                -DCMAKE_PREFIX_PATH=$(python3 -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')" \
-    pip install --no-cache-dir -e . && \
+                -DTORCH_CPU_ONLY=ON" \
+    pip install --no-cache-dir . && \
+    # Verify installation
+    python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); import vllm" && \
     echo "Installed vLLM successfully."
 
-# Verify installation
-RUN python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); \
-    import vllm; print(f'vLLM version: {vllm.__version__}')"
+# Add version verification
+RUN python3 -c "import torch; assert torch.__version__.startswith('2.5.1'), f'Unexpected torch version: {torch.__version__}'"
 
 WORKDIR /vllm-${VLLM_VERSION}
 
