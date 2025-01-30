@@ -91,23 +91,21 @@ RUN set -x && \
     export VLLM_TARGET_DEVICE=cpu && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
+    export VLLM_PYTHON_EXECUTABLE=$(which python3) && \
     # Modify CMake configuration
     sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
     sed -i 's/if(CUDA_FOUND)/if(FALSE)/g' CMakeLists.txt && \
-    # Create build directory and configure
-    mkdir -p build && \
-    cd build && \
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DVLLM_TARGET_DEVICE=cpu \
-        -DUSE_CUDA=OFF \
-        -DTORCH_CUDA_ARCH_LIST="" && \
-    cd .. && \
-    # Install without editable mode
+    # Install package
+    CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
+                -DVLLM_TARGET_DEVICE=cpu \
+                -DUSE_CUDA=OFF \
+                -DTORCH_CUDA_ARCH_LIST= \
+                -DVLLM_PYTHON_EXECUTABLE=$(which python3)" \
+    VLLM_TARGET_DEVICE=cpu \
+    VLLM_CPU_AVX512BF16=0 \
     pip install . \
         --no-cache-dir \
-        --config-settings="--build-option=--cpu-only" \
-        --config-settings="--build-option=--target-device=cpu" && \
+        --verbose && \
     echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
