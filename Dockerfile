@@ -85,27 +85,35 @@ RUN set -x && \
 # Handle vLLM installation with extensive CPU configuration
 RUN set -x && \
     cd vllm && \
-    # Force CPU-only configuration
+    # Remove existing torch installations
+    pip uninstall -y torch torchvision torchaudio && \
+    # Install CPU-only torch first
+    pip install --no-cache-dir torch==2.5.1+cpu torchvision==0.16.1+cpu torchaudio==2.5.1+cpu \
+        -f https://download.pytorch.org/whl/torch_stable.html && \
+    # Configure build environment for CPU
     export USE_CUDA=0 && \
     export CUDA_VISIBLE_DEVICES="" && \
     export VLLM_TARGET_DEVICE=cpu && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
-    export VLLM_PYTHON_EXECUTABLE=$(which python3) && \
     # Modify CMake configuration
     sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
     sed -i 's/if(CUDA_FOUND)/if(FALSE)/g' CMakeLists.txt && \
-    # Install package
-    CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
-                -DVLLM_TARGET_DEVICE=cpu \
-                -DUSE_CUDA=OFF \
-                -DTORCH_CUDA_ARCH_LIST= \
-                -DVLLM_PYTHON_EXECUTABLE=$(which python3)" \
-    VLLM_TARGET_DEVICE=cpu \
-    VLLM_CPU_AVX512BF16=0 \
-    pip install . \
-        --no-cache-dir \
-        --verbose && \
+    sed -i '/find_package(CUDAToolkit/d' CMakeLists.txt && \
+    # Create build directory and configure
+    mkdir -p build && \
+    cd build && \
+    # Configure CMake explicitly
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DVLLM_TARGET_DEVICE=cpu \
+        -DUSE_CUDA=OFF \
+        -DCMAKE_PREFIX_PATH="$(python3 -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')" \
+        -DPYTHON_EXECUTABLE=$(which python3) && \
+    # Build and install
+    cmake --build . --config Release && \
+    cd .. && \
+    FORCE_CMAKE=1 pip install --no-cache-dir . && \
     echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
