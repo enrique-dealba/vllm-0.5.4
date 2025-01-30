@@ -87,10 +87,10 @@ RUN set -x && \
     cd vllm && \
     # Remove existing torch installations
     pip uninstall -y torch torchvision torchaudio && \
-    # Install latest CPU-compatible torch
+    # Install correct torch versions
     pip install --no-cache-dir \
         torch==2.3.1+cpu \
-        torchvision==0.14.1+cpu \
+        torchvision==0.18.1+cpu \
         --index-url https://download.pytorch.org/whl/cpu && \
     # Configure build environment for CPU
     export USE_CUDA=0 && \
@@ -98,20 +98,17 @@ RUN set -x && \
     export VLLM_TARGET_DEVICE=cpu && \
     export VLLM_CPU_AVX512BF16=0 && \
     export TORCH_CUDA_ARCH_LIST="" && \
-    # Create _version.py with correct version info
-    echo "__version__ = '${VLLM_VERSION}'" > vllm/_version.py && \
     # Modify CMake configuration
     sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
     sed -i 's/if(CUDA_FOUND)/if(FALSE)/g' CMakeLists.txt && \
     sed -i '/find_package(CUDAToolkit/d' CMakeLists.txt && \
-    # Force CPU-only build
+    # Install vLLM
     VLLM_TARGET_DEVICE=cpu \
     CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
                 -DVLLM_TARGET_DEVICE=cpu \
                 -DUSE_CUDA=OFF \
-                -DTORCH_CUDA_ARCH_LIST= \
-                -DPYTHON_EXECUTABLE=$(which python3)" \
-    pip install -e . --no-deps && \
+                -DCMAKE_PREFIX_PATH=$(python3 -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')" \
+    pip install --no-cache-dir -e . && \
     echo "Installed vLLM successfully."
 
 # Verify installation
