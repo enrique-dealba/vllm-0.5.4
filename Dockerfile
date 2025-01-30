@@ -70,7 +70,16 @@ RUN set -x && \
     git clone --branch v${VLLM_VERSION} https://github.com/vllm-project/vllm.git && \
     echo "Cloned vLLM repository."
 
+# Print torch version to verify
+RUN python3 -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+
 WORKDIR /vllm-${VLLM_VERSION}
+
+# Print torch version to verify
+RUN python3 -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+
+# Install numpy first to avoid warnings
+RUN pip install --no-cache-dir numpy==1.26.4
 
 # Create version file
 RUN set -x && \
@@ -79,37 +88,17 @@ RUN set -x && \
     echo "__version__ = '${VLLM_VERSION}'" >> app/_version.py && \
     echo "version = __version__" >> app/_version.py
 
-# Handle torch requirements before vLLM installation
+# Handle vLLM installation
 RUN set -x && \
-   cd vllm && \
-   # Remove or replace torch requirements in setup.py
-   sed -i 's/torch==2.5.1+cpu/torch>=2.3.1/g' setup.py && \
-   sed -i 's/torch==2.5.1/torch>=2.3.1/g' setup.py && \
-   sed -i 's/torch>=2.5.1/torch>=2.3.1/g' setup.py && \
-   # Remove any remaining torch requirements
-   sed -i '/torch==/d' setup.py && \
-   if [ -f requirements.txt ]; then \
-       sed -i '/torch==/d' requirements.txt; \
-   fi && \
-   # Show the modified requirements
-   echo "Modified setup.py torch requirements:" && \
-   grep "torch" setup.py || echo "No torch requirements found in setup.py"
-
-# Install vLLM with controlled dependencies
-RUN set -x && \
-   cd vllm && \
-   # Set environment variables
-   export VLLM_TARGET_DEVICE=cpu && \
-   export VLLM_CPU_AVX512BF16=0 && \
-   # Install torch first
-   pip install --no-cache-dir torch==2.3.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html && \
-   # Force install vLLM
-   pip install -e . --no-deps --force-reinstall && \
-   # Install remaining requirements manually
-   if [ -f requirements.txt ]; then \
-       pip install -r requirements.txt --no-cache-dir; \
-   fi && \
-   echo "Installed vLLM successfully."
+    cd vllm && \
+    # Modify CMakeLists.txt to force CPU-only build
+    sed -i 's/find_package(Torch REQUIRED)/find_package(Torch REQUIRED CPU)/g' CMakeLists.txt && \
+    # Install vLLM
+    VLLM_TARGET_DEVICE=cpu \
+    VLLM_CPU_AVX512BF16=0 \
+    CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release -DVLLM_TARGET_DEVICE=cpu" \
+    pip install -e . && \
+    echo "Installed vLLM successfully."
 
 WORKDIR /vllm-${VLLM_VERSION}
 
