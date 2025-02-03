@@ -33,7 +33,7 @@ case "$RUN_MODE" in
         ;;
     tests)
         echo "Running tests..."
-        PYTHONPATH=/app pytest /app/tests/ -v --cov=app "$@"
+        PYTHONPATH=/app pytest /app/tests/ -v -s --cov=app "$@"
         ;;
     *)
         echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', 'intents', 'rag', or 'tests'."

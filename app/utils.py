@@ -30,14 +30,33 @@ def load_image(url: str = settings.FIXED_IMAGE_URL) -> Image.Image:
 
 def load_schema() -> Type[BaseModel]:
     """Load schema with caching that respects settings updates"""
-    if (
-        not hasattr(settings, "_schema_cache")
-        or settings._schema_cache[0] != settings.LLM_RESPONSE_SCHEMA
-    ):
-        module = importlib.import_module("app.schemas.llm_responses")
-        schema_class = getattr(module, settings.LLM_RESPONSE_SCHEMA)
-        settings._schema_cache = (settings.LLM_RESPONSE_SCHEMA, schema_class)
-    return settings._schema_cache[1]
+    try:
+        if (
+            not hasattr(settings, "_schema_cache")
+            or settings._schema_cache[0] != settings.LLM_RESPONSE_SCHEMA
+        ):
+            module = importlib.import_module("app.schemas.llm_responses")
+            schema_class = getattr(module, settings.LLM_RESPONSE_SCHEMA)
+            # Verify the schema class is properly defined
+            if not issubclass(schema_class, BaseModel):
+                raise TypeError(
+                    f"Schema {settings.LLM_RESPONSE_SCHEMA} must be a Pydantic BaseModel"
+                )
+            settings._schema_cache = (settings.LLM_RESPONSE_SCHEMA, schema_class)
+        return settings._schema_cache[1]
+    except Exception as e:
+        print(f"Error loading schema: {e}")
+        raise
+
+
+def debug_schema(schema: Type[BaseModel]) -> None:
+    """Helper function to debug schema issues"""
+    print("\nSchema Debug Info:")
+    print(f"Schema name: {schema.__name__}")
+    print(f"Schema fields: {schema.__fields__.keys()}")
+    print(f"Schema base classes: {schema.__bases__}")
+    if hasattr(schema, "model_fields"):
+        print(f"Model fields: {schema.model_fields}")
 
 
 def log_to_langsmith(
