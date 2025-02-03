@@ -42,20 +42,17 @@ if st.button("Generate Schema"):
             # 3. If the initial response indicates a detailed objective type,
             # then run the detailed chain.
             if objective_type in detailed_objective_types:
-                # Backup the current schema configuration.
+                # Backup the current schema configuration
                 original_schema = settings.LLM_RESPONSE_SCHEMA
 
-                # Set the schema to match the detailed schema name.
-                # (For example, if objective_type == "CatalogMaintenanceObjective",
-                # this will set settings.LLM_RESPONSE_SCHEMA to "CatalogMaintenanceObjective",
-                # which exactly matches your schema class name.)
-                settings.LLM_RESPONSE_SCHEMA = objective_type
+                # Update schema using new method
+                settings.update_schema(objective_type)
 
-                # Now call the detailed chain.
+                # Generate detailed response
                 detailed_response, time_detailed = generate_response(user_input)
 
-                # Restore the original schema.
-                settings.LLM_RESPONSE_SCHEMA = original_schema
+                # Restore original schema
+                settings.update_schema(original_schema)
             else:
                 # Otherwise, stick with the initial response.
                 detailed_response, time_detailed = initial_response, 0.0

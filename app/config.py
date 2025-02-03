@@ -45,10 +45,5 @@ class Settings(BaseSettings):
     USE_STRUCTURED_OUTPUT: bool = True
     LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
 
-    # class Config:
-    #     env_file = ".env"
-    #     env_file_encoding = "utf-8"
-    #     extra = "ignore"
-
 
 settings = Settings()
