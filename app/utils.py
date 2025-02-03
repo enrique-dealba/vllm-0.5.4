@@ -65,8 +65,8 @@ def calculate_field_accuracy(fields):
         "collect_request_type": "RATE_TRACK_SIDEREAL",
         "data_mode": "TEST",
         "end_time_offset_minutes": 25,
-        "objective_end_time": "2024-05-21T22:30:00.250000+00:00",
-        "objective_start_time": "2024-05-21T19:20:00.150000+00:00",
+        "objective_end_time": "datetime.datetime(2024, 5, 21, 22, 30, 0, 250000, tzinfo=TzInfo(UTC))",
+        "objective_start_time": "datetime.datetime(2024, 5, 21, 19, 20, 0, 150000, tzinfo=TzInfo(UTC))",
         "orbital_regime": "LEO",
         "patience_minutes": 10,
         "priority": 12,
@@ -81,18 +81,27 @@ def calculate_field_accuracy(fields):
         if field_name in fields:
             current_value = fields[field_name]
 
-            # Special handling for datetime fields
+            # Handle datetime fields
             if field_name in ["objective_start_time", "objective_end_time"]:
-                # Extract just the datetime components without the formatting
-                expected_dt = expected_value.replace("T", " ").split("+")[0]
-                current_dt = str(current_value).split("tzinfo")[0].strip()
-                if expected_dt in current_dt:
+                # Convert both to simple strings and compare relevant parts
+                current_str = str(current_value)
+                expected_str = str(expected_value)
+                # Extract just the datetime components
+                current_parts = [
+                    p for p in current_str.split() if any(c.isdigit() for c in p)
+                ]
+                expected_parts = [
+                    p for p in expected_str.split() if any(c.isdigit() for c in p)
+                ]
+                if current_parts == expected_parts:
                     correct_fields += 1
                 continue
 
-            # Handle lists (like sensor_name_list and rso_id_list)
+            # Handle lists
             if isinstance(expected_value, list):
-                if sorted(current_value) == sorted(expected_value):
+                if sorted(str(x) for x in current_value) == sorted(
+                    str(x) for x in expected_value
+                ):
                     correct_fields += 1
                 continue
 

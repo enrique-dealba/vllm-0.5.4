@@ -27,6 +27,9 @@ def test_schema_update_propagation():
         patience_minutes=30,
         end_time_offset_minutes=20,
         priority=1000,
+        sensor_name_list=["RME02", "LMNT01"],
+        objective_start_time="2024-05-21T19:20:00.150000+00:00",
+        objective_end_time="2024-05-21T22:30:00.250000+00:00",
     )
 
     # Verify schema fields using instance
