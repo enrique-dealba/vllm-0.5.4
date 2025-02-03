@@ -29,9 +29,15 @@ def load_image(url: str = settings.FIXED_IMAGE_URL) -> Image.Image:
 
 
 def load_schema() -> Type[BaseModel]:
-    module = importlib.import_module("app.schemas.llm_responses")
-    schema_class = getattr(module, settings.LLM_RESPONSE_SCHEMA)
-    return schema_class
+    """Load schema with caching that respects settings updates"""
+    if (
+        not hasattr(settings, "_schema_cache")
+        or settings._schema_cache[0] != settings.LLM_RESPONSE_SCHEMA
+    ):
+        module = importlib.import_module("app.schemas.llm_responses")
+        schema_class = getattr(module, settings.LLM_RESPONSE_SCHEMA)
+        settings._schema_cache = (settings.LLM_RESPONSE_SCHEMA, schema_class)
+    return settings._schema_cache[1]
 
 
 def log_to_langsmith(
