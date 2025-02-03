@@ -23,14 +23,14 @@ if st.button("Generate Schema"):
                 settings.USE_STRUCTURED_OUTPUT
             ), "Structured output is disabled in settings."
 
-            # 1. Generate the initial response using the base objective schema
+            # 1. Generate the initial response using the base objective schema.
             initial_response, time_initial = generate_response(user_input)
             fields_initial = get_displayable_fields(initial_response)
 
-            # 2. Determine which objective type was predicted
+            # 2. Determine which objective type was predicted.
             objective_type = fields_initial.get("objective_name", None)
 
-            # List the objective types that need detailed processing
+            # List the objective types that need detailed processing.
             detailed_objective_types = [
                 "CatalogMaintenanceObjective",
                 "PeriodicRevisitObjective",
@@ -39,18 +39,26 @@ if st.button("Generate Schema"):
                 "SpectralClearingObjective",
             ]
 
-            # 3. If the initial response indicates one of these objective types,
-            # re-run the chain with a more detailed schema.
-            # Back up the current schema configuration
-            original_schema = settings.LLM_RESPONSE_SCHEMA
-            # For catalog maintenance objectives we want a template version;
-            # for the others, we assume the detailed schema has the same name.
-            if objective_type == "CatalogMaintenanceObjective":
-                settings.LLM_RESPONSE_SCHEMA = "CatalogMaintenanceObjective"
-            else:
+            # 3. If the initial response indicates a detailed objective type,
+            # then run the detailed chain.
+            if objective_type in detailed_objective_types:
+                # Backup the current schema configuration.
+                original_schema = settings.LLM_RESPONSE_SCHEMA
+
+                # Set the schema to match the detailed schema name.
+                # (For example, if objective_type == "CatalogMaintenanceObjective",
+                # this will set settings.LLM_RESPONSE_SCHEMA to "CatalogMaintenanceObjective",
+                # which exactly matches your schema class name.)
                 settings.LLM_RESPONSE_SCHEMA = objective_type
 
-            detailed_response, time_detailed = generate_response(user_input)
+                # Now call the detailed chain.
+                detailed_response, time_detailed = generate_response(user_input)
+
+                # Restore the original schema.
+                settings.LLM_RESPONSE_SCHEMA = original_schema
+            else:
+                # Otherwise, stick with the initial response.
+                detailed_response, time_detailed = initial_response, 0.0
 
             fields = get_displayable_fields(detailed_response)
             total_time = time_initial + time_detailed
