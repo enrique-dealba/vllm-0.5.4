@@ -1,6 +1,7 @@
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
+from app.config import settings
 from app.model import llm
 from app.utils import load_schema, time_function
 
@@ -47,40 +48,26 @@ JSON Response:"""
 
 @time_function
 def generate_objective_response(user_input: str):
-    LLMResponseSchema = load_schema()
+    """Two-step process for objective generation"""
+    # First pass - get objective type
+    initial_response = generate_structured_response(user_input)
 
-    parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
+    # If we got an objective type that needs details, do second pass
+    if hasattr(initial_response, "objective_name"):
+        objective_type = initial_response.objective_name
+        detailed_objective_types = [
+            "CatalogMaintenanceObjective",
+            "PeriodicRevisitObjective",
+            "SearchObjective",
+            "DataEnrichmentObjective",
+            "SpectralClearingObjective",
+        ]
 
-    template = """You are a helpful AI assistant that always responds in valid JSON format.
-    
-Format your response according to this schema:
-{format_instructions}
+        assert objective_type in detailed_objective_types
 
-Remember:
-1. Your response MUST be valid JSON
-2. Do not include any explanatory text outside the JSON
-3. Ensure all required fields are included
-4. Use the exact field names specified
-5. {objective_prompt}
-
-User Query: {query}
-
-JSON Response:"""
-
-    prompt = PromptTemplate(
-        template=template,
-        input_variables=["query"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-
-    chain = prompt | llm | parser
-
-    try:
-        return chain.invoke({"query": user_input})
-    except Exception:
-        # Fallback to basic response
-        basic_response = LLMResponseSchema(
-            response=f"I apologize, but I encountered an error processing your request. Here's my response: {llm.invoke(user_input)}",
-            confidence=0.5,
-        )
-        return basic_response
+        # Generate detailed response
+        # original_schema = settings.LLM_RESPONSE_SCHEMA
+        settings.update_schema(objective_type)
+        detailed_response = generate_structured_response(user_input)
+        # settings.update_schema(original_schema)
+        return detailed_response
