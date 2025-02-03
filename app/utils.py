@@ -62,10 +62,13 @@ def debug_schema(schema: Type[BaseModel]) -> None:
 
 def normalize_datetime_string(dt_str: str) -> str:
     """Extract datetime components in a consistent format."""
-    # Extract numbers using regex
-    numbers = re.findall(r"\d+", dt_str)
-    if len(numbers) >= 6:  # We have at least year, month, day, hour, minute, second
-        return f"{numbers[0]}-{numbers[1]:>02}-{numbers[2]:>02} {numbers[3]:>02}:{numbers[4]:>02}:{numbers[5]:>02}"
+    # Extract components using regex
+    # Match year, month, day, hour, minute, second, microsecond
+    pattern = r"(\d{4})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{0,6})"
+    match = re.search(pattern, dt_str)
+    if match:
+        year, month, day, hour, minute, second, micro = match.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d} {int(hour):02d}:{int(minute):02d}:{int(second):02d}"
     return dt_str
 
 
@@ -93,22 +96,25 @@ def calculate_field_accuracy(fields):
 
             # Handle datetime fields
             if field_name in ["objective_start_time", "objective_end_time"]:
-                expected_parts = str(expected_value).split("tzinfo")[0].strip()
-                current_parts = str(current_value).split("tzinfo")[0].strip()
-                if expected_parts == current_parts:
+                expected_normalized = normalize_datetime_string(str(expected_value))
+                current_normalized = normalize_datetime_string(str(current_value))
+                if expected_normalized == current_normalized:
                     correct_fields += 1
                 continue
 
-            # Handle lists
+            # Handle lists (including empty lists)
             if isinstance(expected_value, list):
-                if sorted(str(x) for x in current_value) == sorted(
-                    str(x) for x in expected_value
-                ):
-                    correct_fields += 1
+                try:
+                    if sorted(str(x).strip() for x in current_value) == sorted(
+                        str(x).strip() for x in expected_value
+                    ):
+                        correct_fields += 1
+                except (TypeError, AttributeError):
+                    pass
                 continue
 
             # Regular field comparison
-            if str(current_value) == str(expected_value):
+            if str(current_value).strip() == str(expected_value).strip():
                 correct_fields += 1
 
     accuracy = (correct_fields / total_fields) * 100
