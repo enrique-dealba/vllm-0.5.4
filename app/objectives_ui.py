@@ -17,8 +17,8 @@ def calculate_field_accuracy(fields):
         "collect_request_type": "RATE_TRACK_SIDEREAL",
         "data_mode": "TEST",
         "end_time_offset_minutes": 25,
-        "objective_end_time": "datetime.datetime(2024, 5, 21, 22, 30, 0, 250000, tzinfo=TzInfo(UTC))",
-        "objective_start_time": "datetime.datetime(2024, 5, 21, 19, 20, 0, 150000, tzinfo=TzInfo(UTC))",
+        "objective_end_time": "2024-05-21T22:30:00.250000+00:00",
+        "objective_start_time": "2024-05-21T19:20:00.150000+00:00",
         "orbital_regime": "LEO",
         "patience_minutes": 10,
         "priority": 12,
@@ -31,11 +31,29 @@ def calculate_field_accuracy(fields):
 
     for field_name, expected_value in expected_fields.items():
         if field_name in fields:
-            if str(fields[field_name]) == str(expected_value):
+            current_value = fields[field_name]
+
+            # Special handling for datetime fields
+            if field_name in ["objective_start_time", "objective_end_time"]:
+                # Extract just the datetime components without the formatting
+                expected_dt = expected_value.replace("T", " ").split("+")[0]
+                current_dt = str(current_value).split("tzinfo")[0].strip()
+                if expected_dt in current_dt:
+                    correct_fields += 1
+                continue
+
+            # Handle lists (like sensor_name_list and rso_id_list)
+            if isinstance(expected_value, list):
+                if sorted(current_value) == sorted(expected_value):
+                    correct_fields += 1
+                continue
+
+            # Regular field comparison
+            if str(current_value) == str(expected_value):
                 correct_fields += 1
 
     accuracy = (correct_fields / total_fields) * 100
-    return accuracy
+    return accuracy, correct_fields, total_fields
 
 
 # Set up the Streamlit interface
