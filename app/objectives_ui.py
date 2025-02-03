@@ -47,14 +47,14 @@ if st.button("Generate Schema"):
                 # For catalog maintenance objectives we want a template version;
                 # for the others, we assume the detailed schema has the same name.
                 if objective_type == "CatalogMaintenanceObjective":
-                    settings.LLM_RESPONSE_SCHEMA = "CatalogMaintenanceObjectiveTemplate"
+                    settings.LLM_RESPONSE_SCHEMA = "CatalogMaintenanceObjective"
                 else:
                     settings.LLM_RESPONSE_SCHEMA = objective_type
 
                 detailed_response, time_detailed = generate_response(user_input)
 
                 # Restore the original schema setting after obtaining the detailed response
-                settings.LLM_RESPONSE_SCHEMA = original_schema
+                # settings.LLM_RESPONSE_SCHEMA = original_schema
 
                 fields = get_displayable_fields(detailed_response)
                 total_time = time_initial + time_detailed
