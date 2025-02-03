@@ -41,27 +41,19 @@ if st.button("Generate Schema"):
 
             # 3. If the initial response indicates one of these objective types,
             # re-run the chain with a more detailed schema.
-            if objective_type in detailed_objective_types:
-                # Back up the current schema configuration
-                original_schema = settings.LLM_RESPONSE_SCHEMA
-                # For catalog maintenance objectives we want a template version;
-                # for the others, we assume the detailed schema has the same name.
-                if objective_type == "CatalogMaintenanceObjective":
-                    settings.LLM_RESPONSE_SCHEMA = "CatalogMaintenanceObjective"
-                else:
-                    settings.LLM_RESPONSE_SCHEMA = objective_type
-
-                detailed_response, time_detailed = generate_response(user_input)
-
-                # Restore the original schema setting after obtaining the detailed response
-                # settings.LLM_RESPONSE_SCHEMA = original_schema
-
-                fields = get_displayable_fields(detailed_response)
-                total_time = time_initial + time_detailed
+            # Back up the current schema configuration
+            original_schema = settings.LLM_RESPONSE_SCHEMA
+            # For catalog maintenance objectives we want a template version;
+            # for the others, we assume the detailed schema has the same name.
+            if objective_type == "CatalogMaintenanceObjective":
+                settings.LLM_RESPONSE_SCHEMA = "CatalogMaintenanceObjective"
             else:
-                # If no detailed chain is needed, use the initial response.
-                fields = fields_initial
-                total_time = time_initial
+                settings.LLM_RESPONSE_SCHEMA = objective_type
+
+            detailed_response, time_detailed = generate_response(user_input)
+
+            fields = get_displayable_fields(detailed_response)
+            total_time = time_initial + time_detailed
 
             # Display the JSON fields nicely and show the total execution time.
             st.json(fields)
