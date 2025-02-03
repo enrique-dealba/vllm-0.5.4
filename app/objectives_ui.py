@@ -26,11 +26,12 @@ if st.button("Generate Schema"):
                 settings.USE_STRUCTURED_OUTPUT
             ), "Structured output is disabled in settings."
 
-            response = generate_objective_response(user_input)
+            response, time_details = generate_objective_response(user_input)
             fields = get_displayable_fields(response)
 
             # Display the response
             st.json(fields)
+            st.info(f"Total Execution Time: {time_details:.2f} seconds")
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
