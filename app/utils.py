@@ -93,9 +93,10 @@ def calculate_field_accuracy(fields):
 
             # Handle datetime fields
             if field_name in ["objective_start_time", "objective_end_time"]:
-                current_normalized = normalize_datetime_string(str(current_value))
-                expected_normalized = normalize_datetime_string(str(expected_value))
-                if current_normalized == expected_normalized:
+                # Extract just the datetime components
+                expected_parts = str(expected_value).split("tzinfo")[0].strip()
+                current_parts = str(current_value).split("tzinfo")[0].strip()
+                if expected_parts == current_parts:
                     correct_fields += 1
                 continue
 
@@ -112,7 +113,7 @@ def calculate_field_accuracy(fields):
                 correct_fields += 1
 
     accuracy = (correct_fields / total_fields) * 100
-    return accuracy, correct_fields, total_fields
+    return accuracy
 
 
 def log_to_langsmith(
