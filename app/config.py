@@ -1,9 +1,19 @@
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+    def update_schema(self, new_schema: str):
+        """Update LLM response schema and notify observers"""
+        self.LLM_RESPONSE_SCHEMA = new_schema
+        if hasattr(self, "_schema_cache"):
+            delattr(self, "_schema_cache")
+
     # General Settings
     PORT: int = 8888
     HOST: str = "0.0.0.0"
@@ -35,11 +45,10 @@ class Settings(BaseSettings):
     USE_STRUCTURED_OUTPUT: bool = True
     LLM_RESPONSE_SCHEMA: str = "BasicLLMResponse"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
-        allow_mutation = True
+    # class Config:
+    #     env_file = ".env"
+    #     env_file_encoding = "utf-8"
+    #     extra = "ignore"
 
 
 settings = Settings()
