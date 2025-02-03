@@ -34,7 +34,10 @@ if st.button("Generate Schema"):
             st.info(f"Total Execution Time: {time_details:.2f} seconds")
             # Field accuracy
             accuracy = calculate_field_accuracy(fields)
-            st.info(f"Percent Correct Fields: {accuracy:.1f}%")
+            accuracy, correct_fields, total_fields = calculate_field_accuracy(fields)
+            st.info(
+                f"Percent Correct Fields: {accuracy:.1f}% ({correct_fields}/{total_fields} fields)"
+            )
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
