@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -36,6 +37,39 @@ class ObjectiveType(BaseModel):
     )
 
 
+# v1
+# class CatalogMaintenanceObjective(BaseModel):
+#     classification_marking: str = Field(
+#         ...,
+#         description="Classification level of objective intents. Choose from: U, C, S, TS, U//FOUO",
+#     )
+#     data_mode: str = Field(
+#         ...,
+#         description="String type for the Machina Common DataModeType. Choose from: TEST, REAL, SIMULATED, EXERCISE",
+#     )
+#     collect_request_type: str = Field(
+#         "RATE_TRACK_SIDEREAL",
+#         description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+#     )
+#     orbital_regime: str = Field(
+#         ...,
+#         description="Orbital regime classification for this catalog maintenance objective. Choose from: LEO, MEO, GEO, XGEO",
+#     )
+#     patience_minutes: int = Field(
+#         30,
+#         description="Amount of time in minutes to wait before assuming an intent has failed",
+#     )
+#     end_time_offset_minutes: int = Field(
+#         20,
+#         description="Number of minutes into the future to schedule this intent",
+#     )
+#     priority: int = Field(
+#         1000,
+#         description="Priority level for scheduling (higher numbers indicate lower priority, defaults to 1000)",
+#     )
+
+
+# v2
 class CatalogMaintenanceObjective(BaseModel):
     classification_marking: str = Field(
         ...,
@@ -64,6 +98,22 @@ class CatalogMaintenanceObjective(BaseModel):
     priority: int = Field(
         1000,
         description="Priority level for scheduling (higher numbers indicate lower priority, defaults to 1000)",
+    )
+    sensor_name_list: List[str] = Field(
+        ...,
+        description="List of sensor names to be used",
+    )
+    rso_id_list: Optional[List[str]] = Field(
+        default=[],
+        description="Optional list of RSO IDs",
+    )
+    objective_start_time: datetime = Field(
+        ...,
+        description="Start time of the objective in ISO 8601 format with timezone",
+    )
+    objective_end_time: datetime = Field(
+        ...,
+        description="End time of the objective in ISO 8601 format with timezone",
     )
 
 
