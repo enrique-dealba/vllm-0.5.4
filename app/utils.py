@@ -1,5 +1,6 @@
 import importlib
 import json
+import re
 import time
 from collections import defaultdict
 from datetime import datetime
@@ -59,6 +60,15 @@ def debug_schema(schema: Type[BaseModel]) -> None:
         print(f"Model fields: {schema.model_fields}")
 
 
+def normalize_datetime_string(dt_str: str) -> str:
+    """Extract datetime components in a consistent format."""
+    # Extract numbers using regex
+    numbers = re.findall(r"\d+", dt_str)
+    if len(numbers) >= 6:  # We have at least year, month, day, hour, minute, second
+        return f"{numbers[0]}-{numbers[1]:>02}-{numbers[2]:>02} {numbers[3]:>02}:{numbers[4]:>02}:{numbers[5]:>02}"
+    return dt_str
+
+
 def calculate_field_accuracy(fields):
     expected_fields = {
         "classification_marking": "U",
@@ -83,17 +93,9 @@ def calculate_field_accuracy(fields):
 
             # Handle datetime fields
             if field_name in ["objective_start_time", "objective_end_time"]:
-                # Convert both to simple strings and compare relevant parts
-                current_str = str(current_value)
-                expected_str = str(expected_value)
-                # Extract just the datetime components
-                current_parts = [
-                    p for p in current_str.split() if any(c.isdigit() for c in p)
-                ]
-                expected_parts = [
-                    p for p in expected_str.split() if any(c.isdigit() for c in p)
-                ]
-                if current_parts == expected_parts:
+                current_normalized = normalize_datetime_string(str(current_value))
+                expected_normalized = normalize_datetime_string(str(expected_value))
+                if current_normalized == expected_normalized:
                     correct_fields += 1
                 continue
 
