@@ -50,7 +50,7 @@ JSON Response:"""
 def generate_objective_response(user_input: str):
     """Two-step process for objective generation"""
     # First pass - get objective type
-    initial_response = generate_structured_response(user_input)
+    initial_response, _ = generate_structured_response(user_input)
 
     # If we got an objective type that needs details, do second pass
     if hasattr(initial_response, "objective_name"):
@@ -62,12 +62,13 @@ def generate_objective_response(user_input: str):
             "DataEnrichmentObjective",
             "SpectralClearingObjective",
         ]
-
         assert objective_type in detailed_objective_types
 
         # Generate detailed response
-        # original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
-        detailed_response = generate_structured_response(user_input)
-        # settings.update_schema(original_schema)
+        detailed_response, _ = generate_structured_response(user_input)
+
+        # Total time is sum of both operations
         return detailed_response
+
+    return "OBJECTIVE ERROR"
