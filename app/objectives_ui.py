@@ -27,6 +27,7 @@ if st.button("Generate Schema"):
             ), "Structured output is disabled in settings."
 
             response, time_details = generate_objective_response(user_input)
+            st.info(f"Raw Response: {response}")
             fields = get_displayable_fields(response)
 
             # Display the response
