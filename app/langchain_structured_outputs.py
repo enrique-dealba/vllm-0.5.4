@@ -75,7 +75,8 @@ def generate_objective_response(user_input: str):
         # Reset schema to original to enable back-and-forth
         settings.update_schema(original_schema)
 
-        # Total time is sum of both operations
+        # Add objective_name field
+        detailed_response.objective_name = str(objective_type)
         return detailed_response
 
     return "OBJECTIVE ERROR"
