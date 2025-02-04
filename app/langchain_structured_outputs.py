@@ -60,9 +60,14 @@ def generate_objective_response(user_input: str):
             "PeriodicRevisitObjective",
             "SearchObjective",
             "DataEnrichmentObjective",
-            "SpectralClearingObjective",
+            "GeodssRevisitObjective",
+            "SensorCheckoutObjective",
+            "SingleIntentObjective",
+            "UctObservationObjective",
+            "BaselineAutonomyObjective",
         ]
-        assert objective_type in detailed_objective_types
+        if objective_type not in detailed_objective_types:
+            return f"ERROR - Found mismatched objective: '{objective_type}'."
 
         # Generate detailed response
         settings.update_schema(objective_type)
