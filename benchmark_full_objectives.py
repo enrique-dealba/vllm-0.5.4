@@ -334,7 +334,7 @@ class ObjectiveBenchmark:
 
         # Detailed per-case results
         print("\n=== Detailed Results per Test Case ===")
-        for idx, row in df.iterrows():
+        for _, row in df.iterrows():
             print("-" * 80)
             # print(f"Query: {row['query']}")
             print(f"Expected Objective Name: {row['expected_objective_name']}")
