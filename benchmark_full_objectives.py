@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple
 
 import httpx
 import pandas as pd
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -286,71 +286,43 @@ class ObjectiveBenchmark:
         return self.results
 
     def print_results_analysis(self):
-        """Print a comprehensive analysis of the benchmark results.
-        Calculates overall field accuracy and objective_name accuracy.
-        """
+        """Print comprehensive analysis of benchmark results with cumulative field accuracy."""
         df = pd.DataFrame(self.results)
 
-        # Field accuracy metrics
-        avg_field_accuracy = df["field_accuracy"].mean()
-        overall_correct_fields = df["correct_field_count"].sum()
-        overall_total_fields = df["total_field_count"].sum()
-        overall_field_accuracy = (
-            (overall_correct_fields / overall_total_fields) * 100
-            if overall_total_fields
-            else 0
-        )
-
-        # Objective name accuracy metrics
-        obj_name_accuracy = accuracy_score(
+        # Calculate overall metrics
+        total_tests = len(df)
+        accuracy = accuracy_score(
             df["expected_objective_name"], df["predicted_objective_name"]
         )
-
-        # Overall execution time
         avg_execution_time = df["execution_time"].mean()
 
         # Print summary
         print("\n=== Benchmark Summary ===")
         print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
         print(f"Iterations per Test Case: {N_ITERATIONS}")
-        print(f"Total Tests Run: {len(df)}")
-        print(f"Average Field Accuracy (per test case): {avg_field_accuracy:.2f}%")
-        print(
-            f"Overall Field Accuracy: {overall_field_accuracy:.2f}% "
-            f"({overall_correct_fields}/{overall_total_fields} fields correct)"
-        )
-        print(f"Objective Name Accuracy: {obj_name_accuracy:.2%}")
+        print(f"Total Tests Run: {total_tests}")
+        print(f"Overall Accuracy: {accuracy:.2%}")
         print(f"Average Execution Time: {avg_execution_time:.3f}s")
-
-        # Classification report for objective names
-        print("\n=== Objective Name Classification Report ===")
-        print(
-            classification_report(
-                df["expected_objective_name"],
-                df["predicted_objective_name"],
-                zero_division=0,
-            )
-        )
 
         # Group results by objective name to get cumulative statistics
         grouped_results = df.groupby("expected_objective_name").agg(
             {
                 "predicted_objective_name": "first",
-                "objective_name_correct": "all",
+                "objective_name_correct": "all",  # This returns a single boolean
                 "correct_field_count": "sum",
                 "total_field_count": "sum",
                 "execution_time": "mean",
             }
         )
 
-        # Detailed per-case results
+        # Print detailed results with cumulative statistics
         print("\n=== Detailed Results per Objective Type ===")
         for obj_name, row in grouped_results.iterrows():
             print("-" * 80)
             print(f"Expected Objective Name: {obj_name}")
             print(
                 f"Predicted Objective Name: {row['predicted_objective_name']} "
-                f"({'Correct' if all(row['objective_name_correct']) else 'Incorrect'})"
+                f"({'Correct' if row['objective_name_correct'] else 'Incorrect'})"  # Remove all()
             )
 
             # Calculate cumulative field accuracy
