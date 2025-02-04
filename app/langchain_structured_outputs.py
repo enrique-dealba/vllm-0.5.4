@@ -69,9 +69,11 @@ def generate_objective_response(user_input: str):
         if objective_type not in detailed_objective_types:
             return f"ERROR - Found mismatched objective: '{objective_type}'."
 
-        # Generate detailed response
+        original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
         detailed_response, _ = generate_structured_response(user_input)
+        # Reset schema to original to enable back-and-forth
+        settings.update_schema(original_schema)
 
         # Total time is sum of both operations
         return detailed_response
