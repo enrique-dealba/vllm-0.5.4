@@ -473,6 +473,7 @@ def display_response(llm_response: Any, writer_func=print) -> None:
 
 
 def get_displayable_fields(llm_response: Any) -> Dict:
+    """Get fields from LLM response and ensure they're JSON-serializable."""
     displayable_fields = {}
 
     # Add response field first if it exists
@@ -484,6 +485,10 @@ def get_displayable_fields(llm_response: Any) -> Dict:
         if is_valid_field(field_name):
             value = getattr(llm_response, field_name)
             if not callable(value):  # Skip methods
-                displayable_fields[field_name] = value
+                # Convert datetime objects to ISO format strings
+                if isinstance(value, datetime):
+                    displayable_fields[field_name] = value.isoformat()
+                else:
+                    displayable_fields[field_name] = value
 
     return displayable_fields
