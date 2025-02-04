@@ -336,7 +336,7 @@ class ObjectiveBenchmark:
         print("\n=== Detailed Results per Test Case ===")
         for idx, row in df.iterrows():
             print("-" * 80)
-            print(f"Query: {row['query']}")
+            # print(f"Query: {row['query']}")
             print(f"Expected Objective Name: {row['expected_objective_name']}")
             print(
                 f"Predicted Objective Name: {row['predicted_objective_name']} "
@@ -346,14 +346,14 @@ class ObjectiveBenchmark:
                 f"Field Accuracy: {row['field_accuracy']:.2f}% "
                 f"({row['correct_field_count']}/{row['total_field_count']})"
             )
-            print("\nField-by-Field Comparison:")
-            field_details = row["field_details"]
-            for field_name, details in sorted(field_details.items()):
-                status = "✓" if details["correct"] else "✗"
-                print(f"\n{field_name}:")
-                print(f"  Expected: {details['expected']}")
-                print(f"  Predicted: {details['predicted']}")
-                print(f"  Status: {status}")
+            # print("\nField-by-Field Comparison:")
+            # field_details = row["field_details"]
+            # for field_name, details in sorted(field_details.items()):
+            #     status = "✓" if details["correct"] else "✗"
+            #     print(f"\n{field_name}:")
+            #     print(f"  Expected: {details['expected']}")
+            #     print(f"  Predicted: {details['predicted']}")
+            #     print(f"  Status: {status}")
 
             print(f"\nExecution Time: {row['execution_time']:.3f}s")
 
