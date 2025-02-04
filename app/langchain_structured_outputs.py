@@ -77,6 +77,7 @@ def generate_objective_response(user_input: str):
 
         # Add objective_name field
         detailed_response.objective_name = str(objective_type)
+        assert detailed_response.objective_name == str(objective_type)
         return detailed_response
 
-    return "OBJECTIVE ERROR"
+    return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"

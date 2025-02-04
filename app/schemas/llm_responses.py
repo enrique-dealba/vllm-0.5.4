@@ -179,10 +179,10 @@ class CatalogMaintenanceObjective(BaseModel):
         False,
         description="Flag to determine RSO visibility before intent generation",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="The common name for this objective",
-    # )
+    objective_name: Optional[str] = Field(
+        "CatalogMaintenanceObjective",
+        description="Name for this objective. Defaults to 'CatalogMaintenanceObjective'",
+    )
 
 
 class PeriodicRevisitObjective(BaseModel):
@@ -266,10 +266,10 @@ class PeriodicRevisitObjective(BaseModel):
         None,
         description="The latest time when the intents should be submitted for",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Periodic Revisit Objective {UUID}'",
-    # )
+    objective_name: Optional[str] = Field(
+        "PeriodicRevisitObjective",
+        description="Name for this objective. Defaults to 'PeriodicRevisitObjective'",
+    )
 
 
 class DataEnrichmentObjective(BaseModel):
@@ -337,10 +337,10 @@ class DataEnrichmentObjective(BaseModel):
         True,
         description="Flag to determine RSO visibility before intent generation",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Data Enrichment Objective'",
-    # )
+    objective_name: Optional[str] = Field(
+        "DataEnrichmentObjective",
+        description="Name for this objective. Defaults to 'DataEnrichmentObjective'",
+    )
 
 
 class SearchObjective(BaseModel):
@@ -424,10 +424,10 @@ class SearchObjective(BaseModel):
         None,
         description="Search start time, calculated as objective_start_time + 15 minutes automatically",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Search Objective {UUID}'",
-    # )
+    objective_name: Optional[str] = Field(
+        "SearchObjective",
+        description="Name for this objective. Defaults to 'SearchObjective'",
+    )
 
 
 class GeodssRevisitObjective(BaseModel):
@@ -571,10 +571,11 @@ class GeodssRevisitObjective(BaseModel):
         0,
         description="CCD Camera Command (0=Configure, 1=Start, 2=Stop, 3=Reset, 4=Calibration)",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Periodic Revisit Objective {UUID}'",
-    # )
+    # TODO: Official doc had this default to PRO, double check this
+    objective_name: Optional[str] = Field(
+        "GeodssRevisitObjective",
+        description="Name for this objective. Defaults to 'GeodssRevisitObjective'",
+    )
 
 
 class SensorCheckoutObjective(BaseModel):
@@ -650,10 +651,10 @@ class SensorCheckoutObjective(BaseModel):
         10,
         description="Priority level for scheduling (higher numbers indicate lower priority)",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Sensor Checkout Objective'",
-    # )
+    objective_name: Optional[str] = Field(
+        "SensorCheckoutObjective",
+        description="Name for this objective. Defaults to 'SensorCheckoutObjective'",
+    )
 
 
 class SingleIntentObjective(BaseModel):
@@ -721,10 +722,10 @@ class SingleIntentObjective(BaseModel):
         None,
         description="End time of the objective in ISO 8601 format with timezone",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'Single Intent Objective'",
-    # )
+    objective_name: Optional[str] = Field(
+        "SingleIntentObjective",
+        description="Name for this objective. Defaults to 'SingleIntentObjective'",
+    )
 
 
 class UctObservationObjective(BaseModel):
@@ -804,10 +805,10 @@ class UctObservationObjective(BaseModel):
         False,
         description="If True, submit intents for the brightest unobserved UCTs first",
     )
-    # objective_name: Optional[str] = Field(
-    #     None,
-    #     description="Name for this objective. Defaults to 'UCT Observation Objective'",
-    # )
+    objective_name: Optional[str] = Field(
+        "UctObservationObjective",
+        description="Name for this objective. Defaults to 'UctObservationObjective'",
+    )
 
 
 class BaselineAutonomyObjective(BaseModel):
@@ -843,10 +844,10 @@ class BaselineAutonomyObjective(BaseModel):
         None,
         description="List of RSO IDs, to be overwritten at runtime",
     )
-    # objective_name: str = Field(
-    #     "BaselineAutonomyObjective",
-    #     description="Name for this objective",
-    # )
+    objective_name: str = Field(
+        "BaselineAutonomyObjective",
+        description="Name for this objective. Defaults to 'BaselineAutonomyObjective'",
+    )
 
 
 class ChunkMetadata(BaseModel):
