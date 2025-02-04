@@ -129,7 +129,7 @@ class CatalogMaintenanceObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     orbital_regime: Optional[str] = Field(
         None,
@@ -204,7 +204,7 @@ class PeriodicRevisitObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -236,11 +236,11 @@ class PeriodicRevisitObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
-        description="End time of the objective in ISO 8601 format with timezone",
+        description="End time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     priority: int = Field(
         10,
@@ -260,11 +260,11 @@ class PeriodicRevisitObjective(BaseModel):
     )
     intent_start_time: Optional[datetime] = Field(
         None,
-        description="The earliest time when the intents should be submitted for",
+        description="The earliest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_end_time: Optional[datetime] = Field(
         None,
-        description="The latest time when the intents should be submitted for",
+        description="The latest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_name: Optional[str] = Field(
         "PeriodicRevisitObjective",
@@ -295,7 +295,7 @@ class DataEnrichmentObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -315,11 +315,11 @@ class DataEnrichmentObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
-        description="End time of the objective in ISO 8601 format with timezone",
+        description="End time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     priority: int = Field(
         20,
@@ -327,11 +327,11 @@ class DataEnrichmentObjective(BaseModel):
     )
     intent_start_time: Optional[datetime] = Field(
         None,
-        description="The earliest time when the intents should be submitted for",
+        description="The earliest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_end_time: Optional[datetime] = Field(
         None,
-        description="The latest time when the intents should be submitted for",
+        description="The latest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     visibility_check: bool = Field(
         True,
@@ -366,7 +366,7 @@ class SearchObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -449,7 +449,7 @@ class GeodssRevisitObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -481,19 +481,19 @@ class GeodssRevisitObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
-        description="End time of the objective in ISO 8601 format with timezone",
+        description="End time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_start_time: Optional[datetime] = Field(
         None,
-        description="The earliest time when the intents should be submitted for",
+        description="The earliest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_end_time: Optional[datetime] = Field(
         None,
-        description="The latest time when the intents should be submitted for",
+        description="The latest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     priority: int = Field(
         10,
@@ -597,7 +597,7 @@ class SensorCheckoutObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -633,19 +633,19 @@ class SensorCheckoutObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
-        description="End time of the objective in ISO 8601 format with timezone",
+        description="End time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_start_time: Optional[datetime] = Field(
         None,
-        description="The earliest time when the intents should be submitted for",
+        description="The earliest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_end_time: Optional[datetime] = Field(
         None,
-        description="The latest time when the intents should be submitted for",
+        description="The latest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     priority: int = Field(
         10,
@@ -680,7 +680,7 @@ class SingleIntentObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -704,11 +704,11 @@ class SingleIntentObjective(BaseModel):
     )
     intent_start_time: Optional[datetime] = Field(
         None,
-        description="The earliest time when the intents should be submitted for",
+        description="The earliest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     intent_end_time: Optional[datetime] = Field(
         None,
-        description="The latest time when the intents should be submitted for",
+        description="The latest time when the intents should be submitted for. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_uuid: Optional[str] = Field(
         None,
@@ -716,11 +716,11 @@ class SingleIntentObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
-        description="End time of the objective in ISO 8601 format with timezone",
+        description="End time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_name: Optional[str] = Field(
         "SingleIntentObjective",
@@ -747,7 +747,7 @@ class UctObservationObjective(BaseModel):
     )
     collect_request_type: str = Field(
         "RATE_TRACK_SIDEREAL",
-        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL",
+        description="Collect request type of tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with RATE_TRACK_SIDEREAL",
     )
     frame_type: str = Field(
         "LIGHT",
@@ -791,7 +791,7 @@ class UctObservationObjective(BaseModel):
     )
     objective_start_time: Optional[datetime] = Field(
         None,
-        description="Start time of the objective in ISO 8601 format with timezone",
+        description="Start time of the objective in ISO 8601 format with timezone. Note: do NOT confuse 'objective' with 'intent'",
     )
     objective_end_time: Optional[datetime] = Field(
         None,
