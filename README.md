@@ -1,5 +1,5 @@
 # vllm-0.6.1
-vLLM 0.6.1
+vLLM 0.6.1 - LLM Project
 
 To build Docker image:
 
