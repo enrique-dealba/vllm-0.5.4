@@ -136,22 +136,28 @@ def normalize_datetime_string(dt_str: str) -> str:
 
 def calculate_field_accuracy_custom(
     predicted: dict, expected: dict
-) -> Tuple[float, int, int]:
-    """Compare each field in the expected dictionary against the predicted dictionary.
-    The comparison for datetime fields uses normalize_datetime_string.
-    For list values, the lists are sorted and compared.
-    Returns (accuracy_percentage, number_of_correct_fields, total_fields_compared).
-    """
+) -> Tuple[float, int, int, Dict[str, Dict[str, Any]]]:
+    """Compare fields and return detailed field comparison info."""
     correct_fields = 0
     total_fields = len(expected)
+    field_details = {}
 
     for field_name, expected_value in expected.items():
-        # Check if field is present in predicted output
-        if field_name not in predicted:
-            continue  # Missing field; do not count as correct
-        current_value = predicted[field_name]
+        field_info = {
+            "expected": expected_value,
+            "predicted": predicted.get(field_name, "MISSING"),
+            "correct": False,
+        }
 
-        # Handle datetime fields (by name)
+        # Check if field is present
+        if field_name not in predicted:
+            field_details[field_name] = field_info
+            continue
+
+        current_value = predicted[field_name]
+        field_info["predicted"] = current_value
+
+        # Handle datetime fields
         if field_name in [
             "objective_start_time",
             "objective_end_time",
@@ -159,27 +165,29 @@ def calculate_field_accuracy_custom(
         ]:
             expected_norm = normalize_datetime_string(str(expected_value))
             current_norm = normalize_datetime_string(str(current_value))
-            if expected_norm == current_norm:
-                correct_fields += 1
-            continue
+            is_correct = expected_norm == current_norm
 
-        # Handle lists (sort before comparing)
-        if isinstance(expected_value, list):
+        # Handle lists
+        elif isinstance(expected_value, list):
             try:
-                if sorted(str(item).strip() for item in current_value) == sorted(
-                    str(item).strip() for item in expected_value
-                ):
-                    correct_fields += 1
+                expected_sorted = sorted(str(item).strip() for item in expected_value)
+                current_sorted = sorted(str(item).strip() for item in current_value)
+                is_correct = expected_sorted == current_sorted
             except Exception:
-                pass
-            continue
+                is_correct = False
 
-        # Regular field comparison (string equality, ignoring extra spaces)
-        if str(current_value).strip() == str(expected_value).strip():
+        # Regular comparison
+        else:
+            is_correct = str(current_value).strip() == str(expected_value).strip()
+
+        if is_correct:
             correct_fields += 1
 
+        field_info["correct"] = is_correct
+        field_details[field_name] = field_info
+
     accuracy = (correct_fields / total_fields) * 100 if total_fields > 0 else 0.0
-    return accuracy, correct_fields, total_fields
+    return accuracy, correct_fields, total_fields, field_details
 
 
 class ObjectiveBenchmark:
@@ -189,10 +197,7 @@ class ObjectiveBenchmark:
         self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     async def test_single_objective(self, query: str, expected: dict) -> Dict:
-        """Send a single objective query to the API and compute field accuracy.
-        Also compute a separate metric for objective_name correctness.
-        """
-        async with self.semaphore:  # Limit concurrent requests
+        async with self.semaphore:
             try:
                 async with httpx.AsyncClient() as client:
                     start_time = time.time()
@@ -205,17 +210,14 @@ class ObjectiveBenchmark:
                     result = response.json()
                     execution_time = time.time() - start_time
 
-                    # Compute field accuracy (compare only those fields present in the expected output)
-                    field_accuracy, correct_count, total_count = (
+                    field_accuracy, correct_count, total_count, field_details = (
                         calculate_field_accuracy_custom(result, expected)
                     )
 
-                    # Special metric: objective_name correctness
                     predicted_obj_name = result.get("objective_name")
                     expected_obj_name = expected.get("objective_name")
                     objective_name_correct = predicted_obj_name == expected_obj_name
 
-                    # Rate limiting delay
                     await asyncio.sleep(RATE_LIMIT_DELAY)
 
                     return {
@@ -227,13 +229,12 @@ class ObjectiveBenchmark:
                         "correct_field_count": correct_count,
                         "total_field_count": total_count,
                         "execution_time": execution_time,
+                        "field_details": field_details,
                         "predicted": result,
                     }
             except Exception as e:
                 logger.error(f"Error processing query '{query}': {str(e)}")
-                await asyncio.sleep(
-                    RATE_LIMIT_DELAY
-                )  # Still apply rate limiting on error
+                await asyncio.sleep(RATE_LIMIT_DELAY)
                 return {
                     "query": query,
                     "expected_objective_name": expected.get("objective_name"),
@@ -243,6 +244,7 @@ class ObjectiveBenchmark:
                     "correct_field_count": 0,
                     "total_field_count": len(expected),
                     "execution_time": 0,
+                    "field_details": {},
                     "predicted": {},
                 }
 
@@ -312,7 +314,7 @@ class ObjectiveBenchmark:
         # Detailed per-case results
         print("\n=== Detailed Results per Test Case ===")
         for idx, row in df.iterrows():
-            print("-" * 40)
+            print("-" * 80)
             print(f"Query: {row['query']}")
             print(f"Expected Objective Name: {row['expected_objective_name']}")
             print(
@@ -323,7 +325,16 @@ class ObjectiveBenchmark:
                 f"Field Accuracy: {row['field_accuracy']:.2f}% "
                 f"({row['correct_field_count']}/{row['total_field_count']})"
             )
-            print(f"Execution Time: {row['execution_time']:.3f}s")
+            print("\nField-by-Field Comparison:")
+            field_details = row["field_details"]
+            for field_name, details in sorted(field_details.items()):
+                status = "✓" if details["correct"] else "✗"
+                print(f"\n{field_name}:")
+                print(f"  Expected: {details['expected']}")
+                print(f"  Predicted: {details['predicted']}")
+                print(f"  Status: {status}")
+
+            print(f"\nExecution Time: {row['execution_time']:.3f}s")
 
 
 async def main():
