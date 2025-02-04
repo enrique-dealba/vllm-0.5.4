@@ -202,7 +202,7 @@ class ObjectiveBenchmark:
                 async with httpx.AsyncClient() as client:
                     start_time = time.time()
                     response = await client.post(
-                        f"{self.api_url}/generate_objective",
+                        f"{self.api_url}/generate_full_objective",
                         json={"text": query},
                         timeout=30.0,
                     )

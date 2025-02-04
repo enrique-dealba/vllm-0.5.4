@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse
 from huggingface_hub import login
 
 from app.config import settings
+from app.langchain_structured_outputs import generate_objective_response
 from app.llm_logic import generate_response
+from app.utils import get_displayable_fields
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +52,42 @@ async def generate_response_api(request: Request):
         raise he
     except Exception as e:
         logger.exception(f"Unexpected error during generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate_full_objective")
+async def generate_full_objective_api(request: Request):
+    """Generate a complete spaceplan objective using the UI-side logic."""
+    try:
+        request_data = await request.json()
+        query = request_data.get("text")
+        if not query:
+            raise HTTPException(
+                status_code=400, detail="No text provided for generation."
+            )
+
+        # Ensure structured output is enabled (matching UI check)
+        if not settings.USE_STRUCTURED_OUTPUT:
+            raise HTTPException(
+                status_code=400,
+                detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
+            )
+
+        # Use the same function as the UI
+        llm_response, execution_time = generate_objective_response(query)
+
+        # Get displayable fields (matching UI behavior)
+        response_dict = get_displayable_fields(llm_response)
+
+        # Add execution time to response
+        response_dict["execution_time_seconds"] = round(execution_time, 4)
+
+        return JSONResponse(response_dict)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error during full objective generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
