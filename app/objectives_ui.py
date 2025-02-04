@@ -14,7 +14,7 @@ from app.utils import calculate_field_accuracy, get_displayable_fields
 st.title("LLM")
 
 # Create the input field
-user_input = st.text_input("Enter spaceplan objective:", "")
+user_input = st.text_area("Enter spaceplan objective:", "")
 
 # Handle the generate button
 if st.button("Generate Schema"):
