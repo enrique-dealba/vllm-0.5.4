@@ -122,15 +122,24 @@ OBJECTIVE_TEST_CASES = {
 }
 
 
+# Precompile regex patterns
+_PATTERNS = [
+    # Matches strings like: datetime.datetime(2024, 8, 11, 19, 20, tzinfo=TzInfo(UTC))
+    re.compile(r"(\d{4})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})"),
+    # Matches ISO strings like: 2024-08-11T19:20:00+00:00
+    re.compile(r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})"),
+]
+
+
 def normalize_datetime_string(dt_str: str) -> str:
-    """Extract datetime components in a consistent format.
-    Uses a regex to capture year, month, day, hour, minute, second (ignores microseconds).
+    """Extract datetime components from various string formats and return a normalized string in
+    the format "YYYY-MM-DD HH:MM".
     """
-    pattern = r"(\d{4})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})[^\d]*(\d{1,2})"
-    match = re.search(pattern, dt_str)
-    if match:
-        year, month, day, hour, minute, second = match.groups()
-        return f"{year}-{int(month):02d}-{int(day):02d} {int(hour):02d}:{int(minute):02d}:{int(second):02d}"
+    for pattern in _PATTERNS:
+        match = pattern.search(dt_str)
+        if match:
+            year, month, day, hour, minute = match.groups()
+            return f"{year}-{int(month):02d}-{int(day):02d} {int(hour):02d}:{int(minute):02d}"
     return dt_str
 
 
