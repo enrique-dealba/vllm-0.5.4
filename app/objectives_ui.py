@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
 from app.langchain_structured_outputs import generate_objective_response
-from app.utils import calculate_field_accuracy, get_displayable_fields
+from app.utils import get_displayable_fields
 
 # Set up the Streamlit interface
 st.title("LLM")
@@ -27,18 +27,18 @@ if st.button("Generate Schema"):
             ), "Structured output is disabled in settings."
 
             response, time_details = generate_objective_response(user_input)
-            st.info(f"Raw Response: {response}")
+            # st.info(f"Raw Response: {response}")
             fields = get_displayable_fields(response)
 
             # Display the response
             st.json(fields)
             st.info(f"Total Execution Time: {time_details:.2f} seconds")
             # Field accuracy
-            accuracy = calculate_field_accuracy(fields)
-            accuracy, correct_fields, total_fields = calculate_field_accuracy(fields)
-            st.info(
-                f"Percent Correct Fields: {accuracy:.1f}% ({correct_fields}/{total_fields} fields)"
-            )
+            # accuracy = calculate_field_accuracy(fields)
+            # accuracy, correct_fields, total_fields = calculate_field_accuracy(fields)
+            # st.info(
+            #     f"Percent Correct Fields: {accuracy:.1f}% ({correct_fields}/{total_fields} fields)"
+            # )
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
