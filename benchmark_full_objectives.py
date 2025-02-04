@@ -296,7 +296,6 @@ class ObjectiveBenchmark:
         )
         avg_execution_time = df["execution_time"].mean()
 
-        # Print summary
         print("\n=== Benchmark Summary ===")
         print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
         print(f"Iterations per Test Case: {N_ITERATIONS}")
@@ -304,48 +303,65 @@ class ObjectiveBenchmark:
         print(f"Overall Accuracy: {accuracy:.2%}")
         print(f"Average Execution Time: {avg_execution_time:.3f}s")
 
-        # Group results by objective name to get cumulative statistics
+        # Track field-specific accuracy across all tests
+        field_accuracy_counts = {}  # {field_name: (correct_count, total_count)}
+
+        # Group results and print per-objective stats
         grouped_results = df.groupby("expected_objective_name").agg(
             {
                 "predicted_objective_name": "first",
-                "objective_name_correct": "all",  # This returns a single boolean
+                "objective_name_correct": "all",
                 "correct_field_count": "sum",
                 "total_field_count": "sum",
                 "execution_time": "mean",
+                "field_details": list,
             }
         )
 
-        # Print detailed results with cumulative statistics
         print("\n=== Detailed Results per Objective Type ===")
         for obj_name, row in grouped_results.iterrows():
             print("-" * 80)
             print(f"Expected Objective Name: {obj_name}")
             print(
                 f"Predicted Objective Name: {row['predicted_objective_name']} "
-                f"({'Correct' if row['objective_name_correct'] else 'Incorrect'})"  # Remove all()
+                f"({'Correct' if row['objective_name_correct'] else 'Incorrect'})"
             )
 
-            # Calculate cumulative field accuracy
             total_correct = row["correct_field_count"]
             total_fields = row["total_field_count"]
             cumulative_accuracy = (
                 (total_correct / total_fields * 100) if total_fields > 0 else 0
             )
-
             print(
                 f"Field Accuracy: {cumulative_accuracy:.2f}% "
                 f"({total_correct}/{total_fields})"
             )
-            # print("\nField-by-Field Comparison:")
-            # field_details = row["field_details"]
-            # for field_name, details in sorted(field_details.items()):
-            #     status = "✓" if details["correct"] else "✗"
-            #     print(f"\n{field_name}:")
-            #     print(f"  Expected: {details['expected']}")
-            #     print(f"  Predicted: {details['predicted']}")
-            #     print(f"  Status: {status}")
+
+            # Only show incorrect fields
+            print("\nIncorrect Fields:")
+            for iteration_details in row["field_details"]:
+                for field_name, details in sorted(iteration_details.items()):
+                    # Update field accuracy tracking
+                    if field_name not in field_accuracy_counts:
+                        field_accuracy_counts[field_name] = [0, 0]
+                    field_accuracy_counts[field_name][1] += 1  # increment total
+                    if details["correct"]:
+                        field_accuracy_counts[field_name][0] += 1  # increment correct
+
+                    # Show only incorrect fields
+                    if not details["correct"]:
+                        print(f"\n{field_name}:")
+                        print(f"  Expected: {details['expected']}")
+                        print(f"  Predicted: {details['predicted']}")
 
             print(f"\nExecution Time: {row['execution_time']:.3f}s")
+
+        # Print overall field-specific accuracy for non-perfect fields
+        print("\n=== Field-Specific Accuracy ===")
+        for field_name, (correct, total) in sorted(field_accuracy_counts.items()):
+            accuracy = (correct / total) * 100
+            if accuracy < 100:  # Only show non-perfect fields
+                print(f"{field_name}: {accuracy:.2f}%")
 
 
 async def main():
