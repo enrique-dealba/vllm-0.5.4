@@ -123,7 +123,7 @@ OBJECTIVE_TEST_CASES = {
     (
         "Create a PeriodicRevisitObjective for targets 12225,68887 using sensors RME05,LMNT06. "
         "Set S marking, TEST mode, priority 2, patience minutes 30, ignore other objective submissions false. "
-        "Start at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400, number of frames 5, integration time 2 seconds."
+        "Start objective at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400, number of frames 5, integration time 2 seconds."
     ): {
         "classification_marking": "S",
         "target_id_list": ["12225", "68887"],
@@ -179,7 +179,7 @@ OBJECTIVE_TEST_CASES = {
     (
         "Create a SingleIntentObjective with target ID 11223, RSO ID 66778, using sensors RME22,LMNT24. "
         "Set U marking, REAL mode, RATE_TRACK_SIDEREAL tracking, priority 10. "
-        "Start at 2024-10-01 11:20:00+00:00. Set number of frames to 5, integration time 2 seconds, binning 2."
+        "Start objective at 2024-10-01 11:20:00+00:00. Set number of frames to 5, integration time 2 seconds, binning 2."
     ): {
         "classification_marking": "U",
         "target_id": "11223",
@@ -203,7 +203,7 @@ OBJECTIVE_TEST_CASES = {
     (
         "Create a DataEnrichmentObjective for targets 55441, 99886, 50051 using sensors RME31,LMNT34. "
         "Set U//FOUO marking, REAL mode, RATE_TRACK tracking, max RSO to observe 8, revisits per hour 10. "
-        "Start at 2025-01-21 08:00:00+00:00. Set visibility check true, number of frames 5, integration time 2 seconds."
+        "Start at 2025-01-21 08:00:00+00:00. Set visibility check true."
     ): {
         "classification_marking": "U//FOUO",
         "data_mode": "REAL",
@@ -222,8 +222,6 @@ OBJECTIVE_TEST_CASES = {
         "intent_end_time": None,
         "visibility_check": True,
         "objective_name": "DataEnrichmentObjective",
-        "number_of_frames": 5,
-        "integration_time": 2,
     },
     # Example 8: SensorCheckoutObjective
     (
