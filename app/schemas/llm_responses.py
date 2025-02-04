@@ -33,7 +33,7 @@ class EvidenceLLMResponse(BaseModel):
 class ObjectiveType(BaseModel):
     objective_name: str = Field(
         ...,
-        description="Type of objective being specified. Choose from: CatalogMaintenanceObjective, PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, SpectralClearingObjective",
+        description="Type of objective being specified. Choose from: CatalogMaintenanceObjective, PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, GeodssRevisitObjective, SensorCheckoutObjective, SingleIntentObjective, UctObservationObjective, BaselineAutonomyObjective",
     )
 
 
