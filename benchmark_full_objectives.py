@@ -149,7 +149,6 @@ def calculate_field_accuracy_custom(
             "correct": False,
         }
 
-        # Check if field is present
         if field_name not in predicted:
             field_details[field_name] = field_info
             continue
@@ -163,15 +162,28 @@ def calculate_field_accuracy_custom(
             "objective_end_time",
             "search_start_time",
         ]:
+            # Convert expected datetime string to normalized format
             expected_norm = normalize_datetime_string(str(expected_value))
+            # Convert predicted ISO format to normalized format
             current_norm = normalize_datetime_string(str(current_value))
             is_correct = expected_norm == current_norm
+
+        # Handle numeric fields that could be int/float
+        elif isinstance(expected_value, (int, float)):
+            try:
+                # Convert both to float for comparison
+                expected_float = float(expected_value)
+                current_float = float(current_value)
+                # Compare with small tolerance for floating point
+                is_correct = abs(expected_float - current_float) < 1e-10
+            except (ValueError, TypeError):
+                is_correct = False
 
         # Handle lists
         elif isinstance(expected_value, list):
             try:
-                expected_sorted = sorted(str(item).strip() for item in expected_value)
-                current_sorted = sorted(str(item).strip() for item in current_value)
+                expected_sorted = sorted(str(x).strip() for x in expected_value)
+                current_sorted = sorted(str(x).strip() for x in current_value)
                 is_correct = expected_sorted == current_sorted
             except Exception:
                 is_correct = False
