@@ -332,19 +332,37 @@ class ObjectiveBenchmark:
             )
         )
 
+        # Group results by objective name to get cumulative statistics
+        grouped_results = df.groupby("expected_objective_name").agg(
+            {
+                "predicted_objective_name": "first",
+                "objective_name_correct": "all",
+                "correct_field_count": "sum",
+                "total_field_count": "sum",
+                "execution_time": "mean",
+            }
+        )
+
         # Detailed per-case results
-        print("\n=== Detailed Results per Test Case ===")
-        for _, row in df.iterrows():
+        print("\n=== Detailed Results per Objective Type ===")
+        for obj_name, row in grouped_results.iterrows():
             print("-" * 80)
-            # print(f"Query: {row['query']}")
-            print(f"Expected Objective Name: {row['expected_objective_name']}")
+            print(f"Expected Objective Name: {obj_name}")
             print(
                 f"Predicted Objective Name: {row['predicted_objective_name']} "
-                f"({'Correct' if row['objective_name_correct'] else 'Incorrect'})"
+                f"({'Correct' if all(row['objective_name_correct']) else 'Incorrect'})"
             )
+
+            # Calculate cumulative field accuracy
+            total_correct = row["correct_field_count"]
+            total_fields = row["total_field_count"]
+            cumulative_accuracy = (
+                (total_correct / total_fields * 100) if total_fields > 0 else 0
+            )
+
             print(
-                f"Field Accuracy: {row['field_accuracy']:.2f}% "
-                f"({row['correct_field_count']}/{row['total_field_count']})"
+                f"Field Accuracy: {cumulative_accuracy:.2f}% "
+                f"({total_correct}/{total_fields})"
             )
             # print("\nField-by-Field Comparison:")
             # field_details = row["field_details"]
