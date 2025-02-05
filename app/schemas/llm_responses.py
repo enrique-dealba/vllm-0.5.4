@@ -307,7 +307,7 @@ class DataEnrichmentObjective(BaseModel):
     )
     max_rso_to_observe: int = Field(
         6,
-        description="Number of RSO to observe",
+        description="Number of RSOs to observe. Defaults to 6",
     )
     revisits_per_hour: float = Field(
         12.0,
@@ -339,7 +339,7 @@ class DataEnrichmentObjective(BaseModel):
     )
     objective_name: Optional[str] = Field(
         "DataEnrichmentObjective",
-        description="Name for this objective. Defaults to 'DataEnrichmentObjective'",
+        description="Name for this objective. Defaults to 'DataEnrichmentObjective'. Note: Do NOT confuse DataEnrichmentObjective with PeriodicRevisitObjective",
     )
 
 

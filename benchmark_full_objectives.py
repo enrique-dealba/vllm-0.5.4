@@ -202,7 +202,7 @@ OBJECTIVE_TEST_CASES = {
     # Example 7: DataEnrichmentObjective
     (
         "Create a DataEnrichmentObjective for targets 55441, 99886, 50051 using sensors RME31,LMNT34. "
-        "Set U//FOUO marking, REAL mode, RATE_TRACK tracking, max RSO to observe 8, revisits per hour 10. "
+        "Set U//FOUO marking, REAL mode, RATE_TRACK tracking, and set max RSO to observe as 8, 10 revisits per hour. "
         "Start at 2025-01-21 08:00:00+00:00. Set visibility check true."
     ): {
         "classification_marking": "U//FOUO",
