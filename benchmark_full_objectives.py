@@ -528,6 +528,7 @@ class ObjectiveBenchmark:
 
 
 async def main():
+    start_time = time.time()
     api_url = "http://localhost:8888"
 
     # Health check with retry
@@ -556,6 +557,11 @@ async def main():
     benchmark = ObjectiveBenchmark(api_url)
     await benchmark.run_benchmark()
     benchmark.print_results_analysis()
+
+    total_time = time.time() - start_time
+    minutes = int(total_time // 60)
+    seconds = int(total_time % 60)
+    print(f"\nTotal Benchmark Time: {minutes}mins {seconds}secs")
 
 
 if __name__ == "__main__":
