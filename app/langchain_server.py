@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from huggingface_hub import login
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.langchain_structured_outputs import generate_objective_response
@@ -57,7 +58,6 @@ async def generate_response_api(request: Request):
 
 @app.post("/generate_full_objective")
 async def generate_full_objective_api(request: Request):
-    """Generate a complete spaceplan objective using the UI-side logic."""
     try:
         request_data = await request.json()
         query = request_data.get("text")
@@ -66,22 +66,19 @@ async def generate_full_objective_api(request: Request):
                 status_code=400, detail="No text provided for generation."
             )
 
-        # Ensure structured output is enabled (matching UI check)
         if not settings.USE_STRUCTURED_OUTPUT:
             raise HTTPException(
                 status_code=400,
                 detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
             )
 
-        # Use the same function as the UI
-        llm_response, execution_time = generate_objective_response(query)
+        # Offload the blocking call to a thread
+        llm_response, execution_time = await run_in_threadpool(
+            generate_objective_response, query
+        )
 
-        # Get displayable fields (matching UI behavior)
         response_dict = get_displayable_fields(llm_response)
-
-        # Add execution time to response
         response_dict["execution_time_seconds"] = round(execution_time, 4)
-
         return JSONResponse(response_dict)
 
     except HTTPException as he:
