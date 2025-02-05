@@ -438,9 +438,9 @@ class ObjectiveBenchmark:
 
         # Calculate overall metrics
         total_tests = len(df)
-        accuracy = accuracy_score(
-            df["expected_objective_name"], df["predicted_objective_name"]
-        )
+        predicted_names = df["predicted_objective_name"].fillna("NONE")
+        expected_names = df["expected_objective_name"].fillna("NONE")
+        accuracy = accuracy_score(expected_names, predicted_names)
         avg_execution_time = df["execution_time"].mean()
 
         print("\n=== Benchmark Summary ===")
