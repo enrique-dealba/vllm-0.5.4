@@ -36,24 +36,30 @@ JSON Response:"""
     chain = prompt | llm | parser
 
     try:
-        return chain.invoke({"query": user_input})
-    except Exception:
-        # Fallback to basic response
-        basic_response = LLMResponseSchema(
-            response=f"I apologize, but I encountered an error processing your request. Here's my response: {llm.invoke(user_input)}",
-            confidence=0.5,
-        )
-        return basic_response
+        result = chain.invoke({"query": user_input})
+        return result
+    except Exception as e:
+        error_message = f"Error in structured response generation: {str(e)}"
+        # Return a plain dictionary with an error message.
+        return {"error": error_message}, 0.0
 
 
 @time_function
 def generate_objective_response(user_input: str):
-    """Two-step process for objective generation"""
-    # First pass - get objective type
-    initial_response, _ = generate_structured_response(user_input)
+    """Two-step process for objective generation.
+    First, determine the objective type. Then, update the schema and generate details.
+    If any step fails, return an error message.
+    """
+    try:
+        # First pass: get the basic response (which should contain the objective type)
+        initial_response, _ = generate_structured_response(user_input)
+        # Check if we got an error from the fallback
+        if isinstance(initial_response, dict) and "error" in initial_response:
+            return initial_response["error"]
 
-    # If we got an objective type that needs details, do second pass
-    if hasattr(initial_response, "objective_name"):
+        if not hasattr(initial_response, "objective_name"):
+            return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"
+
         objective_type = initial_response.objective_name
         detailed_objective_types = [
             "CatalogMaintenanceObjective",
@@ -69,15 +75,22 @@ def generate_objective_response(user_input: str):
         if objective_type not in detailed_objective_types:
             return f"ERROR - Found mismatched objective: '{objective_type}'."
 
+        # Save the original schema and update it to the specific objective type.
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
-        detailed_response, _ = generate_structured_response(user_input)
-        # Reset schema to original to enable back-and-forth
-        settings.update_schema(original_schema)
 
-        # Add objective_name field
+        detailed_response, exec_time = generate_structured_response(user_input)
+        # Check if the detailed generation returned an error.
+        if isinstance(detailed_response, dict) and "error" in detailed_response:
+            # Reset the schema before returning the error.
+            settings.update_schema(original_schema)
+            return detailed_response["error"]
+
+        # Reset the schema to the original.
+        settings.update_schema(original_schema)
+        # Add the objective_name field explicitly.
         detailed_response.objective_name = str(objective_type)
         assert detailed_response.objective_name == str(objective_type)
         return detailed_response
-
-    return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"
+    except Exception as e:
+        return f"Unexpected error during objective generation: {str(e)}"
