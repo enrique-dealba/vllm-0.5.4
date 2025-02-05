@@ -13,8 +13,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Benchmark settings
-N_ITERATIONS = 3  # Number of times to run each test case
-RATE_LIMIT_DELAY = 3.0  # Seconds to wait between requests
+N_ITERATIONS = 5  # Number of times to run each test case
+RATE_LIMIT_DELAY = 15.0  # Seconds to wait between requests
 MAX_CONCURRENT_REQUESTS = 1  # Maximum number of concurrent requests
 
 # ------------------------------------------------------------------------------
