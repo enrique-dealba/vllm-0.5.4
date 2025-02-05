@@ -505,10 +505,26 @@ class ObjectiveBenchmark:
 
         # Print overall field-specific accuracy for non-perfect fields
         print("\n=== Field-Specific Accuracy ===")
+        total_correct_all_fields = 0
+        total_fields_all = 0
+
         for field_name, (correct, total) in sorted(field_accuracy_counts.items()):
             accuracy = (correct / total) * 100
+            total_correct_all_fields += correct
+            total_fields_all += total
             if accuracy < 100:  # Only show non-perfect fields
                 print(f"{field_name}: {accuracy:.2f}%")
+
+        # Add overall field accuracy across all types
+        overall_field_accuracy = (
+            (total_correct_all_fields / total_fields_all * 100)
+            if total_fields_all > 0
+            else 0
+        )
+        print("\n=== Overall Field Accuracy ===")
+        print(
+            f"Total Accuracy Across All Fields: {overall_field_accuracy:.2f}% ({total_correct_all_fields}/{total_fields_all})"
+        )
 
 
 async def main():
