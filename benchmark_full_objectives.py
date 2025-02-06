@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 # Benchmark settings
 N_ITERATIONS = 5  # Number of times to run each test case
-RATE_LIMIT_DELAY = 15.0  # Seconds to wait between requests
-MAX_CONCURRENT_REQUESTS = 1  # Maximum number of concurrent requests
+RATE_LIMIT_DELAY = 2.0  # Seconds to wait between requests
+MAX_CONCURRENT_REQUESTS = 1  # Maximum number of concurrent requests. Note: Must be 1
 
 # ------------------------------------------------------------------------------
 # Test cases: Each key is a prompt; each value is the expected output dictionary.
@@ -441,13 +441,14 @@ class ObjectiveBenchmark:
         predicted_names = df["predicted_objective_name"].fillna("NONE")
         expected_names = df["expected_objective_name"].fillna("NONE")
         accuracy = accuracy_score(expected_names, predicted_names)
+        obj_accuracy = accuracy
         avg_execution_time = df["execution_time"].mean()
 
         print("\n=== Benchmark Summary ===")
         print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
         print(f"Iterations per Test Case: {N_ITERATIONS}")
         print(f"Total Tests Run: {total_tests}")
-        print(f"Overall Accuracy: {accuracy:.2%}")
+        print(f"Overall Objective Accuracy: {obj_accuracy:.2%}")
         print(f"Average Execution Time: {avg_execution_time:.3f}s")
 
         # Track field-specific accuracy across all tests
@@ -521,6 +522,8 @@ class ObjectiveBenchmark:
             if total_fields_all > 0
             else 0
         )
+        print("\n=== Overall Objective Accuracy ===")
+        print(f"Accuracy: {obj_accuracy:.2%}")
         print("\n=== Overall Field Accuracy ===")
         print(
             f"Total Accuracy Across All Fields: {overall_field_accuracy:.2f}% ({total_correct_all_fields}/{total_fields_all})"
