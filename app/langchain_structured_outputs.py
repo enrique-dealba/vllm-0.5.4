@@ -3,7 +3,7 @@ from langchain_core.prompts import PromptTemplate
 
 from app.config import settings
 from app.model import llm
-from app.utils import get_current_iso_time, load_schema, time_function
+from app.utils import load_schema, time_function
 
 
 @time_function
@@ -79,10 +79,18 @@ def generate_objective_response(user_input: str):
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
 
-        cur_time = get_current_iso_time()
-        obj_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
+        # TODO: This current feature breaks PRO. Maybe add `cur_time` AFTER user_input (not before).
+        """
+        TODO: Validate on this PRO prompt
+        Create a PeriodicRevisitObjective for targets 12225,68887 using sensors RME05,LMNT06.
+        Set S marking, TEST mode, priority 2, patience minutes 30, ignore other objective
+        submissions false. Start at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400,
+        number of frames 5, integration time 2 seconds.
+        """
+        # cur_time = get_current_iso_time()
+        # user_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
 
-        detailed_response, _ = generate_structured_response(obj_input)
+        detailed_response, _ = generate_structured_response(user_input)
         # Check if the detailed generation returned an error.
         if isinstance(detailed_response, dict) and "error" in detailed_response:
             # Reset the schema before returning the error.
