@@ -3,7 +3,7 @@ from langchain_core.prompts import PromptTemplate
 
 from app.config import settings
 from app.model import llm
-from app.utils import load_schema, time_function
+from app.utils import get_current_iso_time, load_schema, time_function
 
 
 @time_function
@@ -79,7 +79,10 @@ def generate_objective_response(user_input: str):
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
 
-        detailed_response, exec_time = generate_structured_response(user_input)
+        cur_time = get_current_iso_time()
+        obj_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
+
+        detailed_response, _ = generate_structured_response(obj_input)
         # Check if the detailed generation returned an error.
         if isinstance(detailed_response, dict) and "error" in detailed_response:
             # Reset the schema before returning the error.

@@ -9,6 +9,7 @@ from statistics import mean
 from typing import Any, Dict, Type
 from uuid import uuid4
 
+import pytz
 import requests
 from langchain.callbacks.tracers import LangChainTracer
 from PIL import Image
@@ -492,3 +493,8 @@ def get_displayable_fields(llm_response: Any) -> Dict:
                     displayable_fields[field_name] = value
 
     return displayable_fields
+
+
+def get_current_iso_time() -> str:
+    """Returns current time in ISO 8601 format with timezone (e.g., '2024-02-06T14:30:00+00:00')"""
+    return datetime.now(pytz.UTC).isoformat()
