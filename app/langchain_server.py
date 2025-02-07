@@ -1,7 +1,9 @@
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from huggingface_hub import login
 from starlette.concurrency import run_in_threadpool
 
@@ -16,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LangChain LLM API", version="1.0.0")
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
+
 # Authenticate with Hugging Face Hub
 if settings.HUGGING_FACE_HUB_TOKEN:
     try:
@@ -25,6 +30,12 @@ if settings.HUGGING_FACE_HUB_TOKEN:
         logger.error(f"Failed to authenticate with HuggingFace Hub: {e}")
 else:
     logger.warning("HUGGING_FACE_HUB_TOKEN not provided.")
+
+
+# Add chat interface route
+@app.get("/", response_class=HTMLResponse)
+async def chat_interface(request: Request):
+    return templates.TemplateResponse("chat.html", {"request": request})
 
 
 @app.post("/generate")
