@@ -1,11 +1,13 @@
 import logging
 import os
-from typing import Any, AsyncIterator, Iterator, List, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 
 from langchain_community.llms import VLLM as LangChainVLLM
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models.base import BaseLanguageModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, BaseMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
+from pydantic import Field
 from vllm import LLM as VLM
 
 from app.config import settings
@@ -19,8 +21,10 @@ image = None
 
 
 class MockLLM(BaseLanguageModel):
-    def __init__(self):
-        self.response_type = "mock"
+    """Mock LLM for testing purposes"""
+
+    model_name: str = Field(default="mock_llm")
+    mock_response_type: str = Field(default="mock")
 
     def invoke(self, prompt: str, **kwargs) -> str:
         """Return a JSON str that matches expected schema format."""
@@ -55,30 +59,29 @@ class MockLLM(BaseLanguageModel):
         return "mock_llm"
 
     @property
-    def _identifying_params(self) -> dict:
+    def _identifying_params(self) -> Dict[str, Any]:
         return {"mock": True}
 
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        return self.invoke(prompt)
+
     def predict(self, text: str, **kwargs) -> str:
-        return self.invoke(text, **kwargs)
+        return self.invoke(text)
 
     def predict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
-        return self.invoke(str(messages), **kwargs)
+        return self.invoke(str(messages))
 
     async def apredict(self, text: str, **kwargs) -> str:
-        return self.invoke(text, **kwargs)
+        return self.invoke(text)
 
     async def apredict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
-        return self.invoke(str(messages), **kwargs)
-
-    def generate_prompt(
-        self, prompts: List[str], stop: Optional[List[str]] = None, **kwargs
-    ) -> Any:
-        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
-
-    async def agenerate_prompt(
-        self, prompts: List[str], stop: Optional[List[str]] = None, **kwargs
-    ) -> Any:
-        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+        return self.invoke(str(messages))
 
     def stream(self, prompt: str, **kwargs) -> Iterator[GenerationChunk]:
         yield GenerationChunk(text=self.invoke(prompt))
@@ -90,14 +93,14 @@ class MockLLM(BaseLanguageModel):
         self, messages: List[BaseMessage], **kwargs
     ) -> Iterator[ChatGenerationChunk]:
         yield ChatGenerationChunk(
-            message=BaseMessage(content=self.invoke(str(messages)))
+            message=BaseMessageChunk(content=self.invoke(str(messages)))
         )
 
     async def astream_chat(
         self, messages: List[BaseMessage], **kwargs
     ) -> AsyncIterator[ChatGenerationChunk]:
         yield ChatGenerationChunk(
-            message=BaseMessage(content=self.invoke(str(messages)))
+            message=BaseMessageChunk(content=self.invoke(str(messages)))
         )
 
 
