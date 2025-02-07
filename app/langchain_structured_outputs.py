@@ -1,3 +1,5 @@
+import json
+
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
@@ -42,6 +44,16 @@ JSON Response:"""
             json_str = llm.invoke(prompt.format(query=user_input))
             print(f"generate_structured_response: Mock LLM raw response: {json_str}")
             result = parser.parse(json_str)
+
+            # If this is a BasicLLMResponse, parse the inner JSON
+            if hasattr(result, "response") and isinstance(result.response, str):
+                try:
+                    inner_json = json.loads(result.response)
+                    if isinstance(inner_json, dict) and "objective_name" in inner_json:
+                        return inner_json
+                except json.JSONDecodeError:
+                    pass
+
             print(f"generate_structured_response: Parsed result: {result}")
             return result
 

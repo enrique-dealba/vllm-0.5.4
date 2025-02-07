@@ -28,11 +28,40 @@ class MockLLM(BaseLanguageModel):
     mock_response_type: str = Field(default="mock")
 
     def invoke(self, prompt: str, **kwargs) -> str:
-        """Return a mock JSON string that matches expected schema format."""
+        """Return a mock JSON string matching the current schema format."""
         query = prompt.split("User Query: ")[-1].split("\nJSON Response:")[0]
 
-        # Note: By default BasicLLMResponse schema expects {"response": "string"}
-        mock_response = {"response": f"I have reversed your text: '{query}'."}
+        # Check which schema we're using based on format instructions
+        if "objective_name" in prompt:
+            # Detailed objective schema
+            mock_response = {
+                "objective_name": "SearchObjective",
+                "binning": None,
+                "classification_marking": "U",
+                "collect_request_type": "MOCK_REQUEST",
+                "data_mode": "MOCK",
+                "end_time_offset_minutes": 20,
+                "final_offset": 30,
+                "frame_overlap_percentage": 0.5,
+                "frame_type": "MOCK",
+                "initial_offset": 30,
+                "integration_time": None,
+                "number_of_frames": None,
+                "objective_end_time": None,
+                "objective_start_time": None,
+                "objective_uuid": "mock-123",
+                "priority": 1,
+                "search_start_time": None,
+                "search_type": "MOCK_SEARCH",
+                "sensor_name": "mockSensor",
+                "target_id": f"mock-uuid-MOCK_QUERY:{query}",
+                "visibility_check": False,
+            }
+        else:
+            # Basic schema (expects a response field with objective_name)
+            mock_response = {
+                "response": json.dumps({"objective_name": "SearchObjective"})
+            }
 
         return json.dumps(mock_response)
 
