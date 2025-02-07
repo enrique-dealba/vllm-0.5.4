@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SDA Domain Ontology",
+    "type": "object",
+    "properties": {
+      "exampleField": {
+        "type": "string",
+        "description": "A sample field for demo."
+      }
+    },
+    "required": ["exampleField"]
+  }
+  
