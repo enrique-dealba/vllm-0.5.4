@@ -41,30 +41,27 @@ async function sendMessage() {
 function formatResponse(result) {
     let formatted = [];
     
-    if (result.target_id && result.target_id.includes('MOCK_QUERY:')) {
-        formatted.push(`Query: ${result.target_id.split('MOCK_QUERY:')[1]}`);
-        formatted.push('');
-    }
-
+    // First handle the objective name if present
     if (result.objective_name) {
         formatted.push(`Objective Name: ${result.objective_name}`);
     }
 
+    // Handle all other fields
     const entries = Object.entries(result).sort(([a], [b]) => a.localeCompare(b));
-    
     for (const [key, value] of entries) {
-        if (key !== 'objective_name' && 
-            key !== 'execution_time_seconds' && 
-            key !== 'target_id') {
+        if (key !== 'objective_name' && key !== 'execution_time_seconds') {
             formatted.push(`${key}: ${value}`);
         }
     }
 
-    if (result.execution_time_seconds) {
+    // Add execution time if present
+    if (result.execution_time_seconds !== undefined) {
         formatted.push('');
         formatted.push(`Execution Time: ${result.execution_time_seconds.toFixed(2)}s`);
     }
 
+    // For debugging
+    console.log('Formatted response:', formatted);
     return formatted.join('\n');
 }
 
