@@ -1,0 +1,17 @@
+name: Hello-World
+version:
+  major: 1
+  minor: 0
+  patch: 0
+description: A minimal Hello World graph for AMIGOS bootstrapping.
+# Define a simple graph structure with one node; extend as needed.
+nodes:
+  - id: node1
+    type: EGRESS
+    config:
+      # For example, this adapter might forward a request to an LLM endpoint.
+      endpoint: "http://localhost:8888/generate"
+edges:
+  # In a more complete graph, you would define data flow between nodes.
+  - from: node1
+    to: node1   # (self-referencing here as a placeholder)

@@ -31,6 +31,13 @@ case "$RUN_MODE" in
         echo "Starting Streamlit UI for RAG..."
         exec streamlit run /app/app/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
         ;;
+    amigos)
+        echo "Starting AMIGOS 4 mode..."
+        # Here you could add any bootstrapping steps (for example, reading amigos-config.yaml,
+        # loading graphs/ontologies into your service, or interfacing with an external orchestrator).
+        # For now, we simply start the server.
+        exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
+        ;;
     tests)
         echo "Running tests..."
         PYTHONPATH=/app pytest /app/tests/ -v -s --cov=app "$@"

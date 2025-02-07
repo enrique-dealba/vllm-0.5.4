@@ -1,0 +1,19 @@
+amigos:
+  bootstrap:
+    enabled: true
+    ontology:
+      filepath: bootstrap/ontologies/sda-domain-ontology.json
+    graph:
+      directory:
+        enabled: true
+        path: bootstrap/graphs/
+      # Define graphs to be deployed after instantiation.
+      deployments:
+        - name: Hello-World
+          version:
+            major: 1
+            minor: 0
+            patch: 0
+          # NOTE: Optional extra settings:
+          # graphSettings:
+          #   flag: prod
