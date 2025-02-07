@@ -36,9 +36,14 @@ JSON Response:"""
     try:
         # For MockLLM
         if hasattr(llm, "mock_response_type"):
-            result = llm.invoke(prompt.format(query=user_input))
-            # Convert dict from mock to expected pydatnic model
-            return parser.parse(str(result))
+            print(
+                f"generate_structured_response: Schema being used: {LLMResponseSchema}"
+            )
+            json_str = llm.invoke(prompt.format(query=user_input))
+            print(f"generate_structured_response: Mock LLM raw response: {json_str}")
+            result = parser.parse(json_str)
+            print(f"generate_structured_response: Parsed result: {result}")
+            return result
 
         chain = prompt | llm | parser
 
