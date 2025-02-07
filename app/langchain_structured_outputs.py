@@ -50,12 +50,15 @@ JSON Response:"""
                 try:
                     inner_json = json.loads(result.response)
                     if isinstance(inner_json, dict) and "objective_name" in inner_json:
-                        return inner_json
+                        # Convert to ObjectiveType model
+                        from app.schemas.llm_responses import ObjectiveType
+
+                        return ObjectiveType(**inner_json), 0.001
                 except json.JSONDecodeError:
                     pass
 
             print(f"generate_structured_response: Parsed result: {result}")
-            return result
+            return result, 0.001
 
         chain = prompt | llm | parser
 
