@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LangChain LLM API", version="1.0.0")
 
-logger.debug(f"Current working directory: {os.getcwd()}")
-logger.debug(f"Static path exists: {os.path.exists('app/static')}")
-logger.debug(f"Templates path exists: {os.path.exists('app/templates')}")
-logger.debug(f"USE_MOCK_LLM setting: {os.getenv('USE_MOCK_LLM')}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Static path exists: {os.path.exists('app/static')}")
+print(f"Templates path exists: {os.path.exists('app/templates')}")
+print(f"USE_MOCK_LLM setting: {os.getenv('USE_MOCK_LLM')}")
 
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -44,7 +44,7 @@ else:
 # Add chat interface route
 @app.get("/", response_class=HTMLResponse)
 async def chat_interface(request: Request):
-    logger.debug("Serving chat interface")
+    print("Serving chat interface")
     return templates.TemplateResponse("chat.html", {"request": request})
 
 
@@ -82,7 +82,7 @@ async def generate_full_objective_api(request: Request):
     try:
         request_data = await request.json()
         query = request_data.get("text")
-        logger.debug(f"Received query: {query}")
+        print(f"Received query: {query}")
 
         if not query:
             logger.error("No text provided in request")
@@ -97,16 +97,16 @@ async def generate_full_objective_api(request: Request):
                 detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
             )
 
-        logger.debug("Calling generate_objective_response...")
+        print("Calling generate_objective_response...")
         # Offload the blocking call to a thread
         llm_response, execution_time = await run_in_threadpool(
             generate_objective_response, query
         )
-        logger.debug(f"Raw LLM response: {llm_response}")
+        print(f"Raw LLM response: {llm_response}")
 
         response_dict = get_displayable_fields(llm_response)
         response_dict["execution_time_seconds"] = round(execution_time, 4)
-        logger.debug(f"Final response dict: {response_dict}")
+        print(f"Final response dict: {response_dict}")
         return JSONResponse(response_dict)
 
     except HTTPException as he:
