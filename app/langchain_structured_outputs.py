@@ -33,9 +33,15 @@ JSON Response:"""
         partial_variables={"format_instructions": parser.get_format_instructions()},
     )
 
-    chain = prompt | llm | parser
-
     try:
+        # For MockLLM
+        if hasattr(llm, "mock_response_type"):
+            result = llm.invoke(prompt.format(query=user_input))
+            # Convert dict from mock to expected pydatnic model
+            return parser.parse(str(result))
+
+        chain = prompt | llm | parser
+
         result = chain.invoke({"query": user_input})
         return result
     except Exception as e:
