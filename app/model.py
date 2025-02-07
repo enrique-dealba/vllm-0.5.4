@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
@@ -26,11 +27,11 @@ class MockLLM(BaseLanguageModel):
     model_name: str = Field(default="mock_llm")
     mock_response_type: str = Field(default="mock")
 
-    def invoke(self, prompt: str, **kwargs) -> dict:
-        """Return a parsed dict that matches expected schema format."""
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """Return a JSON string that matches expected schema format."""
         query = prompt.split("User Query: ")[-1].split("\nJSON Response:")[0]
 
-        return {
+        mock_response = {
             "objective_name": "SearchObjective",
             "binning": None,
             "classification_marking": "U",
@@ -53,6 +54,8 @@ class MockLLM(BaseLanguageModel):
             "target_id": f"mock-uuid-MOCK_QUERY:{query}",
             "visibility_check": False,
         }
+
+        return json.dumps(mock_response)
 
     @property
     def _llm_type(self) -> str:
