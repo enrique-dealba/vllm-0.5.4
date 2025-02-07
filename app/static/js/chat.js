@@ -43,7 +43,6 @@ function formatResponse(result) {
         formatted.push(`Objective Name: ${result.objective_name}`);
     }
     
-    // Add other fields from the response
     for (const [key, value] of Object.entries(result)) {
         if (key !== 'objective_name' && key !== 'execution_time_seconds') {
             formatted.push(`${key}: ${value}`);
@@ -61,14 +60,12 @@ function addMessage(text, sender) {
     const chatHistory = document.getElementById('chat-history');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
-    // Preserve newlines in the response
     messageDiv.style.whiteSpace = 'pre-wrap';
     messageDiv.textContent = text;
     chatHistory.appendChild(messageDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// Allow Enter key to send messages
 document.getElementById('user-input').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         sendMessage();
