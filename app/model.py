@@ -1,8 +1,11 @@
 import logging
 import os
+from typing import Any, AsyncIterator, Iterator, List, Optional
 
 from langchain_community.llms import VLLM as LangChainVLLM
 from langchain_core.language_models.base import BaseLanguageModel
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
 from vllm import LLM as VLM
 
 from app.config import settings
@@ -54,6 +57,48 @@ class MockLLM(BaseLanguageModel):
     @property
     def _identifying_params(self) -> dict:
         return {"mock": True}
+
+    def predict(self, text: str, **kwargs) -> str:
+        return self.invoke(text, **kwargs)
+
+    def predict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
+        return self.invoke(str(messages), **kwargs)
+
+    async def apredict(self, text: str, **kwargs) -> str:
+        return self.invoke(text, **kwargs)
+
+    async def apredict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
+        return self.invoke(str(messages), **kwargs)
+
+    def generate_prompt(
+        self, prompts: List[str], stop: Optional[List[str]] = None, **kwargs
+    ) -> Any:
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
+    async def agenerate_prompt(
+        self, prompts: List[str], stop: Optional[List[str]] = None, **kwargs
+    ) -> Any:
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
+    def stream(self, prompt: str, **kwargs) -> Iterator[GenerationChunk]:
+        yield GenerationChunk(text=self.invoke(prompt))
+
+    async def astream(self, prompt: str, **kwargs) -> AsyncIterator[GenerationChunk]:
+        yield GenerationChunk(text=self.invoke(prompt))
+
+    def stream_chat(
+        self, messages: List[BaseMessage], **kwargs
+    ) -> Iterator[ChatGenerationChunk]:
+        yield ChatGenerationChunk(
+            message=BaseMessage(content=self.invoke(str(messages)))
+        )
+
+    async def astream_chat(
+        self, messages: List[BaseMessage], **kwargs
+    ) -> AsyncIterator[ChatGenerationChunk]:
+        yield ChatGenerationChunk(
+            message=BaseMessage(content=self.invoke(str(messages)))
+        )
 
 
 def initialize_models():
