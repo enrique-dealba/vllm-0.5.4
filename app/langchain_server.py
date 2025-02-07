@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LangChain LLM API", version="1.0.0")
 
+print(f"Current working directory: {os.getcwd()}")
+print(f"Static path exists: {os.path.exists('app/static')}")
+print(f"Templates path exists: {os.path.exists('app/templates')}")
+
+# Mount static files and templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 

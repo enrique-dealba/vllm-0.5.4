@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LLM Spaceplan Objectives</title>
+    <meta charset="UTF-8">
+    <title>LLM Chat Interface</title>
     <style>
         #chat-container {
             width: 800px;
@@ -37,6 +38,8 @@
         .bot-message {
             background-color: #f5f5f5;
             margin-right: 20%;
+            white-space: pre-wrap;
+            font-family: monospace;
         }
     </style>
 </head>
@@ -44,7 +47,7 @@
     <div id="chat-container">
         <div id="chat-history"></div>
         <div id="input-container">
-            <input type="text" id="user-input" placeholder="Type your spaceplan objective...">
+            <input type="text" id="user-input" placeholder="Type your message...">
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>

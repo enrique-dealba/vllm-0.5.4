@@ -10,3 +10,5 @@ instructor==1.7.2
 langchain==0.3.14
 langchain_community==0.3.14
 bitsandbytes==0.42.0
+jinja2
+aiofiles

@@ -2,11 +2,10 @@ async function sendMessage() {
     const input = document.getElementById('user-input');
     const message = input.value.trim();
     if (!message) return;
-
-    // Add user message to chat
+    
     addMessage(message, 'user');
     input.value = '';
-
+    
     try {
         const start_time = performance.now();
         const response = await fetch('/generate_full_objective', {
@@ -21,18 +20,19 @@ async function sendMessage() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const result = await response.json();
-        const execution_time = (performance.now() - start_time) / 1000;
-
-        // Format the structured response for display
-        const formattedResponse = formatResponse(result);
+        let result;
+        try {
+            result = await response.json();
+        } catch (jsonError) {
+            throw new Error('Failed to parse response as JSON');
+        }
         
-        // Add bot response to chat
+        const execution_time = (performance.now() - start_time) / 1000;
+        const formattedResponse = formatResponse(result);
         addMessage(formattedResponse, 'bot');
-
     } catch (error) {
         console.error('Error:', error);
-        addMessage('Error: Could not get response - ' + error.message, 'bot');
+        addMessage(`Error: ${error.message}`, 'bot');
     }
 }
 
