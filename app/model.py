@@ -14,8 +14,37 @@ vlm = None
 image = None
 
 
+class MockLLM:
+    def __init__(self):
+        """Mock LLM for testing."""
+        self.response_type = "mock"
+
+    def invoke(self, text: str) -> dict:
+        return {
+            "objective_name": f"Mock-{text[::-1]}",  # Reversed user text
+            "classification_marking": "U",
+            "collect_request_type": "MOCK_REQUEST",
+            "data_mode": "MOCK",
+            "end_time_offset_minutes": 42,
+            "final_offset": 24,
+            "frame_overlap_percentage": 0.27,
+            "frame_type": "MOCK",
+            "initial_offset": 30,
+            "objective_uuid": "mock-3141",
+            "priority": 1000,
+            "search_type": "MOCK_SEARCH",
+            "sensor_name": "RME-MOCK",
+            "target_id": "98765",
+        }
+
+
 def initialize_models():
     global llm, vlm, image
+
+    if os.getenv("USE_MOCK_LLM", "false").lower() == "true":
+        llm = MockLLM()
+        logger.info("Initialized Mock LLM")
+        return
 
     # Set Hugging Face Hub Token
     if settings.HUGGING_FACE_HUB_TOKEN:
