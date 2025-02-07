@@ -2,6 +2,7 @@ import logging
 import os
 
 from langchain_community.llms import VLLM as LangChainVLLM
+from langchain_core.language_models.base import BaseLanguageModel
 from vllm import LLM as VLM
 
 from app.config import settings
@@ -14,28 +15,45 @@ vlm = None
 image = None
 
 
-class MockLLM:
+class MockLLM(BaseLanguageModel):
     def __init__(self):
-        """Mock LLM for testing."""
         self.response_type = "mock"
 
-    def invoke(self, text: str) -> dict:
-        return {
-            "objective_name": f"Mock-{text[::-1]}",  # Reversed user text
-            "classification_marking": "U",
-            "collect_request_type": "MOCK_REQUEST",
-            "data_mode": "MOCK",
-            "end_time_offset_minutes": 42,
-            "final_offset": 24,
-            "frame_overlap_percentage": 0.27,
-            "frame_type": "MOCK",
-            "initial_offset": 30,
-            "objective_uuid": "mock-3141",
-            "priority": 1000,
-            "search_type": "MOCK_SEARCH",
-            "sensor_name": "RME-MOCK",
-            "target_id": "98765",
-        }
+    def invoke(self, prompt: str, **kwargs) -> str:
+        """Return a JSON str that matches expected schema format."""
+        query = prompt.split("User Query: ")[-1].split("\nJSON Response:")[0]
+
+        return f"""{{
+    "objective_name": "SearchObjective",
+    "binning": null,
+    "classification_marking": "U",
+    "collect_request_type": "MOCK_REQUEST",
+    "data_mode": "MOCK",
+    "end_time_offset_minutes": 20,
+    "final_offset": 30,
+    "frame_overlap_percentage": 0.5,
+    "frame_type": "MOCK",
+    "initial_offset": 30,
+    "integration_time": null,
+    "number_of_frames": null,
+    "objective_end_time": null,
+    "objective_start_time": null,
+    "objective_uuid": "mock-123",
+    "priority": 1,
+    "search_start_time": null,
+    "search_type": "MOCK_SEARCH",
+    "sensor_name": "mockSensor",
+    "target_id": "mock-uuid-MOCK_QUERY:{query}",
+    "visibility_check": false
+}}"""
+
+    @property
+    def _llm_type(self) -> str:
+        return "mock_llm"
+
+    @property
+    def _identifying_params(self) -> dict:
+        return {"mock": True}
 
 
 def initialize_models():
@@ -43,7 +61,7 @@ def initialize_models():
 
     if os.getenv("USE_MOCK_LLM", "false").lower() == "true":
         llm = MockLLM()
-        logger.info("Initialized Mock LLM")
+        logger.info("Initialized Mock LLM for testing")
         return
 
     # Set Hugging Face Hub Token
