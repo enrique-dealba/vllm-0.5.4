@@ -14,14 +14,17 @@ from app.llm_logic import generate_response
 from app.utils import get_displayable_fields
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LangChain LLM API", version="1.0.0")
 
-print(f"Current working directory: {os.getcwd()}")
-print(f"Static path exists: {os.path.exists('app/static')}")
-print(f"Templates path exists: {os.path.exists('app/templates')}")
+logger.debug(f"Current working directory: {os.getcwd()}")
+logger.debug(f"Static path exists: {os.path.exists('app/static')}")
+logger.debug(f"Templates path exists: {os.path.exists('app/templates')}")
+logger.debug(f"USE_MOCK_LLM setting: {os.getenv('USE_MOCK_LLM')}")
 
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -41,6 +44,7 @@ else:
 # Add chat interface route
 @app.get("/", response_class=HTMLResponse)
 async def chat_interface(request: Request):
+    logger.debug("Serving chat interface")
     return templates.TemplateResponse("chat.html", {"request": request})
 
 
@@ -78,24 +82,31 @@ async def generate_full_objective_api(request: Request):
     try:
         request_data = await request.json()
         query = request_data.get("text")
+        logger.debug(f"Received query: {query}")
+
         if not query:
+            logger.error("No text provided in request")
             raise HTTPException(
                 status_code=400, detail="No text provided for generation."
             )
 
         if not settings.USE_STRUCTURED_OUTPUT:
+            logger.error("Structured output is disabled")
             raise HTTPException(
                 status_code=400,
                 detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
             )
 
+        logger.debug("Calling generate_objective_response...")
         # Offload the blocking call to a thread
         llm_response, execution_time = await run_in_threadpool(
             generate_objective_response, query
         )
+        logger.debug(f"Raw LLM response: {llm_response}")
 
         response_dict = get_displayable_fields(llm_response)
         response_dict["execution_time_seconds"] = round(execution_time, 4)
+        logger.debug(f"Final response dict: {response_dict}")
         return JSONResponse(response_dict)
 
     except HTTPException as he:
@@ -178,3 +189,21 @@ async def health_check():
     return JSONResponse(
         {"status": "healthy", "message": "Model is initialized and ready."}
     )
+
+
+@app.get("/test-mock")
+async def test_mock():
+    try:
+        from app.model import llm
+
+        test_response = llm.invoke("test query")
+        return JSONResponse(
+            {
+                "status": "success",
+                "llm_type": llm._llm_type,
+                "test_response": test_response,
+            }
+        )
+    except Exception as e:
+        logger.exception("Error testing mock LLM")
+        return JSONResponse({"status": "error", "error": str(e)})
