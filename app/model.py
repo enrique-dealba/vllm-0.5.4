@@ -103,6 +103,26 @@ class MockLLM(BaseLanguageModel):
             message=BaseMessageChunk(content=self.invoke(str(messages)))
         )
 
+    def generate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        callbacks: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Mock implementation of generate_prompt"""
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
+    async def agenerate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        callbacks: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Mock implementation of agenerate_prompt"""
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
 
 def initialize_models():
     global llm, vlm, image
