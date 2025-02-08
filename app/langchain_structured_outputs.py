@@ -71,15 +71,20 @@ def generate_objective_response(user_input: str):
 
         # First pass: get the basic response (which should contain the objective type)
         initial_response, _ = generate_structured_response(user_input)
-        # If an error occurred during structured generation, return an error dict.
+        # If an error occurred during structured generation, return the error.
         if isinstance(initial_response, dict) and "error" in initial_response:
             return {"error": initial_response["error"]}
 
-        # Ensure that the basic response has the required "objective_name" field.
-        if not hasattr(initial_response, "objective_name"):
-            return {"error": f"OBJECTIVE TYPE ERROR - Found: {initial_response}"}
+        # Extract objective_type whether initial_response is a dict or an object.
+        if isinstance(initial_response, dict):
+            if "objective_name" not in initial_response:
+                return {"error": f"OBJECTIVE TYPE ERROR - Found: {initial_response}"}
+            objective_type = initial_response["objective_name"]
+        else:
+            if not hasattr(initial_response, "objective_name"):
+                return {"error": f"OBJECTIVE TYPE ERROR - Found: {initial_response}"}
+            objective_type = initial_response.objective_name
 
-        objective_type = initial_response.objective_name
         detailed_objective_types = [
             "CatalogMaintenanceObjective",
             "PeriodicRevisitObjective",
@@ -98,22 +103,23 @@ def generate_objective_response(user_input: str):
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
 
-        # (Optional) If you need to include current time or modify the query, do it here.
-        # For example:
-        # cur_time = get_current_iso_time()
-        # user_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
-
         detailed_response, _ = generate_structured_response(user_input)
-        # If the detailed generation returned an error, reset the schema and return the error.
-        if isinstance(detailed_response, dict) and "error" in detailed_response:
-            settings.update_schema(original_schema)
-            return {"error": detailed_response["error"]}
+        if isinstance(detailed_response, dict):
+            if "error" in detailed_response:
+                settings.update_schema(original_schema)
+                return {"error": detailed_response["error"]}
+            # Overwrite or add the objective_name field.
+            detailed_response["objective_name"] = str(objective_type)
+            result = detailed_response
+        else:
+            if hasattr(detailed_response, "error"):
+                settings.update_schema(original_schema)
+                return {"error": detailed_response.error}
+            detailed_response.objective_name = str(objective_type)
+            result = detailed_response
 
         # Reset the schema to the original.
         settings.update_schema(original_schema)
-        # Add (or overwrite) the objective_name field explicitly.
-        detailed_response.objective_name = str(objective_type)
-        assert detailed_response.objective_name == str(objective_type)
-        return detailed_response
+        return result
     except Exception as e:
         return {"error": f"Unexpected error during objective generation: {str(e)}"}

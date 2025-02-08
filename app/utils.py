@@ -460,6 +460,15 @@ def is_valid_field(field_name) -> bool:
 
 def display_response(llm_response: Any, writer_func=print) -> None:
     """Display all available fields from the LLM response."""
+    if isinstance(llm_response, dict):
+        # Display "response" first if present
+        if "response" in llm_response:
+            display_field("response", llm_response["response"], writer_func)
+        for key, value in llm_response.items():
+            if is_valid_field(key):
+                display_field(key, value, writer_func)
+        return
+
     # Always display response field first if it exists
     if hasattr(llm_response, "response"):
         display_field("response", llm_response.response, writer_func)
@@ -475,6 +484,9 @@ def display_response(llm_response: Any, writer_func=print) -> None:
 
 def get_displayable_fields(llm_response: Any) -> Dict:
     """Get fields from LLM response and ensure they're JSON-serializable."""
+    if isinstance(llm_response, dict):
+        return llm_response
+
     displayable_fields = {}
 
     # Add response field first if it exists
