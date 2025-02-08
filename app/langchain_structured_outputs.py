@@ -62,7 +62,7 @@ def generate_objective_response(user_input: str):
                 "classification_marking": "U",
                 "collect_request_type": "MOCK_REQUEST",
                 "data_mode": "MOCK",
-                "end_time_offset_minutes": 20,
+                "end_time_offset_minutes": 42,
                 "frame_overlap_percentage": 0.5,
                 "frame_type": "MOCK",
                 "target_id": f"mock-uuid-{user_input}",
