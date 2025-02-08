@@ -161,3 +161,21 @@ async def health_check():
     return JSONResponse(
         {"status": "healthy", "message": "Model is initialized and ready."}
     )
+
+
+@app.get("/test-mock")
+async def test_mock():
+    try:
+        from app.model import llm
+
+        test_response = llm.invoke("test query")
+        return JSONResponse(
+            {
+                "status": "success",
+                "llm_type": llm._llm_type,
+                "test_response": test_response,
+            }
+        )
+    except Exception as e:
+        logger.exception("Error testing mock LLM")
+        return JSONResponse({"status": "error", "error": str(e)})

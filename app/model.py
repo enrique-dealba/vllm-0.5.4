@@ -1,7 +1,12 @@
 import logging
 import os
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 
 from langchain_community.llms import VLLM as LangChainVLLM
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.messages import BaseMessage, BaseMessageChunk
+from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
+from pydantic import Field
 from vllm import LLM as VLM
 
 from app.config import settings
@@ -14,8 +19,93 @@ vlm = None
 image = None
 
 
+class MockLLM(BaseLLM):
+    """Mock LLM for testing purposes"""
+
+    model_name: str = Field(default="mock_llm")
+    mock_response_type: str = Field(default="mock")
+
+    def invoke(self, prompt: str, **kwargs) -> dict:
+        """Basic mock response that just needs to work with LangChain."""
+        return {"response": "SearchObjective"}
+
+    @property
+    def _llm_type(self) -> str:
+        return "mock_llm"
+
+    @property
+    def _identifying_params(self) -> Dict[str, Any]:
+        return {"mock": True}
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        return self.invoke(prompt)
+
+    def predict(self, text: str, **kwargs) -> str:
+        return self.invoke(text)
+
+    def predict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
+        return self.invoke(str(messages))
+
+    async def apredict(self, text: str, **kwargs) -> str:
+        return self.invoke(text)
+
+    async def apredict_messages(self, messages: List[BaseMessage], **kwargs) -> str:
+        return self.invoke(str(messages))
+
+    def stream(self, prompt: str, **kwargs) -> Iterator[GenerationChunk]:
+        yield GenerationChunk(text=self.invoke(prompt))
+
+    async def astream(self, prompt: str, **kwargs) -> AsyncIterator[GenerationChunk]:
+        yield GenerationChunk(text=self.invoke(prompt))
+
+    def stream_chat(
+        self, messages: List[BaseMessage], **kwargs
+    ) -> Iterator[ChatGenerationChunk]:
+        yield ChatGenerationChunk(
+            message=BaseMessageChunk(content=self.invoke(str(messages)))
+        )
+
+    async def astream_chat(
+        self, messages: List[BaseMessage], **kwargs
+    ) -> AsyncIterator[ChatGenerationChunk]:
+        yield ChatGenerationChunk(
+            message=BaseMessageChunk(content=self.invoke(str(messages)))
+        )
+
+    def generate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        callbacks: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Mock implementation of generate_prompt"""
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
+    async def agenerate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        callbacks: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Mock implementation of agenerate_prompt"""
+        return [{"generated_text": self.invoke(prompt)} for prompt in prompts]
+
+
 def initialize_models():
     global llm, vlm, image
+
+    if os.getenv("USE_MOCK_LLM", "false").lower() == "true":
+        llm = MockLLM()
+        logger.info("Initialized Mock LLM for testing")
+        return
 
     # Set Hugging Face Hub Token
     if settings.HUGGING_FACE_HUB_TOKEN:
