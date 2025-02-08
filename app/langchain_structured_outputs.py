@@ -27,7 +27,7 @@ User Query: {query}
 
 JSON Response:"""
 
-    # For MockLLM
+    # For MockLLM: bypass actual LLM logic and return a fixed response.
     if hasattr(llm, "mock_response_type"):
         mock_response = {"objective_name": "SearchObjective"}
         return mock_response
@@ -44,8 +44,7 @@ JSON Response:"""
         return result
     except Exception as e:
         error_message = f"Error in structured response generation: {str(e)}"
-        # Return a plain dictionary with an error message.
-        return {"error": error_message}, 0.0
+        return {"error": error_message}
 
 
 @time_function
@@ -55,7 +54,7 @@ def generate_objective_response(user_input: str):
     If any step fails, return an error message.
     """
     try:
-        # For MockLLM
+        # For MockLLM: return a fixed detailed mock response.
         if hasattr(llm, "mock_response_type"):
             mock_response = {
                 "objective_name": "SearchObjective",
@@ -72,12 +71,13 @@ def generate_objective_response(user_input: str):
 
         # First pass: get the basic response (which should contain the objective type)
         initial_response, _ = generate_structured_response(user_input)
-        # Check if we got an error from the fallback
+        # If an error occurred during structured generation, return an error dict.
         if isinstance(initial_response, dict) and "error" in initial_response:
-            return initial_response["error"]
+            return {"error": initial_response["error"]}
 
+        # Ensure that the basic response has the required "objective_name" field.
         if not hasattr(initial_response, "objective_name"):
-            return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"
+            return {"error": f"OBJECTIVE TYPE ERROR - Found: {initial_response}"}
 
         objective_type = initial_response.objective_name
         detailed_objective_types = [
@@ -92,35 +92,28 @@ def generate_objective_response(user_input: str):
             "BaselineAutonomyObjective",
         ]
         if objective_type not in detailed_objective_types:
-            return f"ERROR - Found mismatched objective: '{objective_type}'."
+            return {"error": f"ERROR - Found mismatched objective: '{objective_type}'."}
 
         # Save the original schema and update it to the specific objective type.
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
 
-        # TODO: This current feature breaks PRO. Maybe add `cur_time` AFTER user_input (not before).
-        """
-        TODO: Validate on this PRO prompt
-        Create a PeriodicRevisitObjective for targets 12225,68887 using sensors RME05,LMNT06.
-        Set S marking, TEST mode, priority 2, patience minutes 30, ignore other objective
-        submissions false. Start at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400,
-        number of frames 5, integration time 2 seconds.
-        """
+        # (Optional) If you need to include current time or modify the query, do it here.
+        # For example:
         # cur_time = get_current_iso_time()
         # user_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
 
         detailed_response, _ = generate_structured_response(user_input)
-        # Check if the detailed generation returned an error.
+        # If the detailed generation returned an error, reset the schema and return the error.
         if isinstance(detailed_response, dict) and "error" in detailed_response:
-            # Reset the schema before returning the error.
             settings.update_schema(original_schema)
-            return detailed_response["error"]
+            return {"error": detailed_response["error"]}
 
         # Reset the schema to the original.
         settings.update_schema(original_schema)
-        # Add the objective_name field explicitly.
+        # Add (or overwrite) the objective_name field explicitly.
         detailed_response.objective_name = str(objective_type)
         assert detailed_response.objective_name == str(objective_type)
         return detailed_response
     except Exception as e:
-        return f"Unexpected error during objective generation: {str(e)}"
+        return {"error": f"Unexpected error during objective generation: {str(e)}"}
