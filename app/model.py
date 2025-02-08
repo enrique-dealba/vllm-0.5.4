@@ -4,6 +4,7 @@ from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 
 from langchain_community.llms import VLLM as LangChainVLLM
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models.base import BaseLanguageModel
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
 from pydantic import Field
@@ -19,7 +20,7 @@ vlm = None
 image = None
 
 
-class MockLLM(BaseLLM):
+class MockLLM(BaseLanguageModel):
     """Mock LLM for testing purposes"""
 
     model_name: str = Field(default="mock_llm")
