@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     MODEL_TYPE: str = "LLM"  # Default to LLM; options: 'LLM', 'VLM'
 
     # LLM Settings
-    LLM_MODEL_NAME: str = "mistralai/Mistral-Small-Instruct-2409"
-    IS_MISTRAL: bool = True
+    LLM_MODEL_NAME: str = "tiiuae/Falcon3-7B-Instruct"
+    IS_MISTRAL: bool = False
     LOAD_FORMAT: str = "auto"
     QUANTIZATION: Optional[str] = None
 
