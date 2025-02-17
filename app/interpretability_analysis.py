@@ -2,10 +2,8 @@ import os
 
 import matplotlib.pyplot as plt
 import torch
-from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from app.config import settings
-from app.model import llm  # Our global LLM instance
 
 # Dictionaries to hold activations and gradients.
 activation_dict = {}
@@ -42,20 +40,20 @@ def register_hooks(transformer_model):
 
 
 def get_underlying_model():
-    """Extract the underlying Hugging Face transformer model.
-    Assumes your LangChainVLLM instance exposes the model as `llm.model`.
-    """
-    if hasattr(llm, "model"):
-        return llm.model
-    else:
-        raise ValueError(
-            "Underlying model not found. Ensure your LLM instance exposes a PyTorch model."
-        )
+    model_name = os.getenv("LLM_MODEL_NAME", "tiiuae/Falcon3-7B-Instruct")
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    return model
 
 
-# Initialize tokenizer using the model name from settings.
-# Note: We force the slow tokenizer (use_fast=False) to bypass the fast tokenizer error.
-tokenizer = AutoTokenizer.from_pretrained(settings.LLM_MODEL_NAME, use_fast=False)
+# Update tokenizer initialization
+tokenizer = AutoTokenizer.from_pretrained(
+    os.getenv("LLM_MODEL_NAME", "tiiuae/Falcon3-7B-Instruct"), use_fast=False
+)
 
 
 def run_forward(input_text: str):

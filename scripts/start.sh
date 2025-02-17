@@ -15,6 +15,10 @@ case "$RUN_MODE" in
         echo "Starting FastAPI server..."
         exec uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1
         ;;
+    analysis)
+        echo "Running LLM interpretability analysis..."
+        exec python -m app.interpretability_analysis
+        ;;
     ui)
         echo "Starting Streamlit UI..."
         exec streamlit run /app/app/streamlit_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
