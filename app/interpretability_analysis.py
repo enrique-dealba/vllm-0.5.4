@@ -48,19 +48,42 @@ def register_hooks(model):
     logger.info("Registering hooks...")
     hook_handles = []
 
-    # Register hooks for each transformer layer's MLP
-    for idx, layer in enumerate(model.transformer.h):
-        # Register forward hook for activations
-        handle = layer.mlp.register_forward_hook(record_activation_hook(f"mlp_{idx}"))
-        hook_handles.append(handle)
+    # Handle different model architectures
+    if hasattr(model, "model"):
+        # Falcon architecture
+        layers = model.model.layers
+        for idx, layer in enumerate(layers):
+            # Register forward hook for activations
+            handle = layer.mlp.register_forward_hook(
+                record_activation_hook(f"mlp_{idx}")
+            )
+            hook_handles.append(handle)
 
-        # Register backward hook for gradients
-        handle = layer.mlp.register_full_backward_hook(
-            neuron_gradient_hook(f"mlp_{idx}_grad")
+            # Register backward hook for gradients
+            handle = layer.mlp.register_full_backward_hook(
+                neuron_gradient_hook(f"mlp_{idx}_grad")
+            )
+            hook_handles.append(handle)
+
+            logger.info(f"Registered hooks for layer {idx}")
+    elif hasattr(model, "transformer"):
+        # LLaMA architecture
+        for idx, layer in enumerate(model.transformer.h):
+            handle = layer.mlp.register_forward_hook(
+                record_activation_hook(f"mlp_{idx}")
+            )
+            hook_handles.append(handle)
+
+            handle = layer.mlp.register_full_backward_hook(
+                neuron_gradient_hook(f"mlp_{idx}_grad")
+            )
+            hook_handles.append(handle)
+
+            logger.info(f"Registered hooks for layer {idx}")
+    else:
+        raise ValueError(
+            f"Unsupported model architecture. Model structure: {model.__class__.__name__}"
         )
-        hook_handles.append(handle)
-
-        logger.info(f"Registered hooks for layer {idx}")
 
     return hook_handles
 
