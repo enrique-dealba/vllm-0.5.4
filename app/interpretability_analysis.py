@@ -136,7 +136,8 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         logger.info(f"Processing {len(activation_dict)} activation layers...")
         for layer_name, activations in activation_dict.items():
             plt.figure(figsize=(10, 6))
-            act_values = activations.numpy().flatten()
+            # Convert bfloat16 to float32 before numpy conversion
+            act_values = activations.float().numpy().flatten()
 
             # Basic statistics
             mean = np.mean(act_values)
@@ -164,7 +165,8 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         logger.info(f"Processing {len(neuron_grad_dict)} gradient layers...")
         for layer_name, grads in neuron_grad_dict.items():
             plt.figure(figsize=(10, 6))
-            grad_values = grads.numpy().flatten()
+            # Convert bfloat16 to float32 before numpy conversion
+            grad_values = grads.float().numpy().flatten()
 
             # Basic statistics
             mean = np.mean(grad_values)
@@ -192,19 +194,19 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         summary_stats = {
             "activations": {
                 layer: {
-                    "mean": float(activation_dict[layer].mean()),
-                    "std": float(activation_dict[layer].std()),
-                    "min": float(activation_dict[layer].min()),
-                    "max": float(activation_dict[layer].max()),
+                    "mean": float(activation_dict[layer].float().mean()),
+                    "std": float(activation_dict[layer].float().std()),
+                    "min": float(activation_dict[layer].float().min()),
+                    "max": float(activation_dict[layer].float().max()),
                 }
                 for layer in activation_dict
             },
             "gradients": {
                 layer: {
-                    "mean": float(neuron_grad_dict[layer].mean()),
-                    "std": float(neuron_grad_dict[layer].std()),
-                    "min": float(neuron_grad_dict[layer].min()),
-                    "max": float(neuron_grad_dict[layer].max()),
+                    "mean": float(neuron_grad_dict[layer].float().mean()),
+                    "std": float(neuron_grad_dict[layer].float().std()),
+                    "min": float(neuron_grad_dict[layer].float().min()),
+                    "max": float(neuron_grad_dict[layer].float().max()),
                 }
                 for layer in neuron_grad_dict
             },
