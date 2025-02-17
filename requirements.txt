@@ -11,3 +11,4 @@ langchain==0.3.14
 langchain_community==0.3.14
 bitsandbytes==0.42.0
 matplotlib
+accelerate>=0.26.0
