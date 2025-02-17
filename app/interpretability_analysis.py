@@ -54,7 +54,8 @@ def get_underlying_model():
 
 
 # Initialize tokenizer using the model name from settings.
-tokenizer = AutoTokenizer.from_pretrained(settings.LLM_MODEL_NAME)
+# Note: We force the slow tokenizer (use_fast=False) to bypass the fast tokenizer error.
+tokenizer = AutoTokenizer.from_pretrained(settings.LLM_MODEL_NAME, use_fast=False)
 
 
 def run_forward(input_text: str):
