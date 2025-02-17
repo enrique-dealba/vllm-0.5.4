@@ -1,9 +1,9 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 
 # Dictionaries to hold activations and gradients.
 activation_dict = {}
@@ -90,34 +90,58 @@ def compute_gradients(input_text: str):
 
 
 def plot_neuron_gradient_distribution(save_plots=False, save_dir="/app/plots"):
-    """Plot a histogram of the neuron-level gradients for each hooked MLP layer.
+    logger.info(
+        f"Starting plot generation. Save plots: {save_plots}, Save dir: {save_dir}"
+    )
+    logger.info(f"Number of gradient layers: {len(neuron_grad_dict)}")
 
-    Args:
-        save_plots (bool): If True, save the plots as PNG files.
-        save_dir (str): Directory where plots will be saved (mounted from the host).
-    """
+    if not neuron_grad_dict:
+        logger.error(
+            "No gradients were captured! Check if hooks were properly registered"
+        )
+        return
+
     for layer_name, grad_tensor in neuron_grad_dict.items():
-        plt.figure(figsize=(6, 3))
-        # Flatten the gradient tensor to a 1D array.
-        grad_values = grad_tensor.numpy().flatten()
-        plt.hist(grad_values, bins=50, alpha=0.7)
-        plt.title(f"Gradient Distribution for {layer_name}")
-        plt.xlabel("Gradient value")
-        plt.ylabel("Frequency")
-        plt.tight_layout()
-        if save_plots:
-            os.makedirs(save_dir, exist_ok=True)
-            filename = os.path.join(save_dir, f"{layer_name}_gradient_distribution.png")
-            plt.savefig(filename)
-            print(f"Saved plot to {filename}")
-        else:
-            plt.show()
-        plt.close()
+        logger.info(f"Processing layer: {layer_name}")
+        try:
+            plt.figure(figsize=(6, 3))
+            grad_values = grad_tensor.numpy().flatten()
+            plt.hist(grad_values, bins=50, alpha=0.7)
+            plt.title(f"Gradient Distribution for {layer_name}")
+            plt.xlabel("Gradient value")
+            plt.ylabel("Frequency")
+            plt.tight_layout()
 
+            if save_plots:
+                os.makedirs(save_dir, exist_ok=True)
+                filename = os.path.join(
+                    save_dir, f"{layer_name}_gradient_distribution.png"
+                )
+                plt.savefig(filename)
+                logger.info(f"Saved plot to {filename}")
+            else:
+                plt.show()
+            plt.close()
+        except Exception as e:
+            logger.error(
+                f"Error processing layer {layer_name}: {str(e)}", exc_info=True
+            )
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    sample_text = "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings."
-    # Run a backward pass to populate neuron_grad_dict.
-    compute_gradients(sample_text)
-    # Save plots to the directory (which should be mounted from your host).
-    plot_neuron_gradient_distribution(save_plots=True, save_dir="/app/plots")
+    try:
+        logger.info("Starting analysis...")
+        sample_text = "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings."
+        logger.info(f"Computing gradients for text: {sample_text}")
+
+        grad_magnitudes = compute_gradients(sample_text)
+        logger.info(f"Computed gradient magnitudes: {grad_magnitudes}")
+
+        logger.info("Generating plots...")
+        plot_neuron_gradient_distribution(save_plots=True, save_dir="/app/plots")
+        logger.info("Analysis complete!")
+    except Exception as e:
+        logger.error(f"Error during analysis: {str(e)}", exc_info=True)
