@@ -1,3 +1,5 @@
+## Visualizing LLM Activations
+
 Build a Docker image using:
 ```sh
 docker build -t vllm:cuda11.8 .
