@@ -229,7 +229,7 @@ def debug_llm():
 
     debug_info = {}
 
-    # Debug info for the top-level VLLM instance.
+    # Top-level VLLM object.
     llm_attrs = {
         attr: str(getattr(llm, attr)) for attr in dir(llm) if not attr.startswith("_")
     }
@@ -263,7 +263,7 @@ def debug_llm():
             "methods": client_methods,
         }
 
-        # Drill into the llm_engine within the client.
+        # Inspect the llm_engine within the client.
         if hasattr(client, "llm_engine"):
             engine = getattr(client, "llm_engine")
             engine_attrs = {
@@ -282,50 +282,79 @@ def debug_llm():
                 "methods": engine_methods,
             }
 
-            # Further inspect the engine_core if available.
-            if hasattr(engine, "engine_core"):
-                engine_core = getattr(engine, "engine_core")
-                engine_core_attrs = {
-                    attr: str(getattr(engine_core, attr))
-                    for attr in dir(engine_core)
+            # Inspect the GPUExecutor (model_executor) if available.
+            if hasattr(engine, "model_executor"):
+                executor = getattr(engine, "model_executor")
+                executor_attrs = {
+                    attr: str(getattr(executor, attr))
+                    for attr in dir(executor)
                     if not attr.startswith("_")
                 }
-                engine_core_methods = [
+                executor_methods = [
                     attr
-                    for attr in dir(engine_core)
+                    for attr in dir(executor)
                     if not attr.startswith("_")
-                    and inspect.ismethod(getattr(engine_core, attr))
+                    and inspect.ismethod(getattr(executor, attr))
                 ]
-                debug_info["client"]["llm_engine"]["engine_core"] = {
-                    "type": str(type(engine_core)),
-                    "attributes": engine_core_attrs,
-                    "methods": engine_core_methods,
+                debug_info["client"]["llm_engine"]["model_executor"] = {
+                    "type": str(type(executor)),
+                    "attributes": executor_attrs,
+                    "methods": executor_methods,
                 }
 
-                # Optionally, if you suspect the underlying torch model might be stored here,
-                # check for an attribute named 'model' (or similar) and include its info.
-                if hasattr(engine_core, "model"):
-                    underlying_model = getattr(engine_core, "model")
-                    model_attrs = {
-                        attr: str(getattr(underlying_model, attr))
-                        for attr in dir(underlying_model)
+                # Now inspect the driver_worker, where the underlying model is likely stored.
+                if hasattr(executor, "driver_worker"):
+                    worker = getattr(executor, "driver_worker")
+                    worker_attrs = {
+                        attr: str(getattr(worker, attr))
+                        for attr in dir(worker)
                         if not attr.startswith("_")
                     }
-                    model_methods = [
+                    worker_methods = [
                         attr
-                        for attr in dir(underlying_model)
+                        for attr in dir(worker)
                         if not attr.startswith("_")
-                        and inspect.ismethod(getattr(underlying_model, attr))
+                        and inspect.ismethod(getattr(worker, attr))
                     ]
-                    debug_info["client"]["llm_engine"]["engine_core"][
-                        "underlying_model"
+                    debug_info["client"]["llm_engine"]["model_executor"][
+                        "driver_worker"
                     ] = {
-                        "type": str(type(underlying_model)),
-                        "attributes": model_attrs,
-                        "methods": model_methods,
+                        "type": str(type(worker)),
+                        "attributes": worker_attrs,
+                        "methods": worker_methods,
                     }
+
+                    # If the driver_worker exposes an attribute that is the underlying model, capture it.
+                    if hasattr(worker, "model"):
+                        underlying_model = getattr(worker, "model")
+                        model_attrs = {
+                            attr: str(getattr(underlying_model, attr))
+                            for attr in dir(underlying_model)
+                            if not attr.startswith("_")
+                        }
+                        model_methods = [
+                            attr
+                            for attr in dir(underlying_model)
+                            if not attr.startswith("_")
+                            and inspect.ismethod(getattr(underlying_model, attr))
+                        ]
+                        debug_info["client"]["llm_engine"]["model_executor"][
+                            "driver_worker"
+                        ]["underlying_model"] = {
+                            "type": str(type(underlying_model)),
+                            "attributes": model_attrs,
+                            "methods": model_methods,
+                        }
+                    else:
+                        debug_info["client"]["llm_engine"]["model_executor"][
+                            "driver_worker"
+                        ]["underlying_model"] = "Not found"
+                else:
+                    debug_info["client"]["llm_engine"]["model_executor"][
+                        "driver_worker"
+                    ] = "Not available"
             else:
-                debug_info["client"]["llm_engine"]["engine_core"] = "Not available"
+                debug_info["client"]["llm_engine"]["model_executor"] = "Not available"
         else:
             debug_info["client"]["llm_engine"] = "Not available"
     else:
