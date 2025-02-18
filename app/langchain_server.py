@@ -192,7 +192,9 @@ async def test_mock():
 def debug_llm():
     from app.model import llm
 
-    # Debug info for the top-level llm object.
+    debug_info = {}
+
+    # Debug info for the top-level VLLM instance.
     llm_attrs = {
         attr: str(getattr(llm, attr)) for attr in dir(llm) if not attr.startswith("_")
     }
@@ -201,16 +203,13 @@ def debug_llm():
         for attr in dir(llm)
         if not attr.startswith("_") and inspect.ismethod(getattr(llm, attr))
     ]
-
-    debug_info = {
-        "llm": {
-            "type": str(type(llm)),
-            "attributes": llm_attrs,
-            "methods": llm_methods,
-        }
+    debug_info["llm"] = {
+        "type": str(type(llm)),
+        "attributes": llm_attrs,
+        "methods": llm_methods,
     }
 
-    # If llm has a "client" attribute, inspect it.
+    # Inspect the client.
     if hasattr(llm, "client"):
         client = getattr(llm, "client")
         client_attrs = {
@@ -229,25 +228,73 @@ def debug_llm():
             "methods": client_methods,
         }
 
-        # If the client exposes the underlying PyTorch model via a "model" attribute, inspect that.
-        if hasattr(client, "model"):
-            underlying_model = getattr(client, "model")
-            model_attrs = {
-                attr: str(getattr(underlying_model, attr))
-                for attr in dir(underlying_model)
+        # Drill into the llm_engine within the client.
+        if hasattr(client, "llm_engine"):
+            engine = getattr(client, "llm_engine")
+            engine_attrs = {
+                attr: str(getattr(engine, attr))
+                for attr in dir(engine)
                 if not attr.startswith("_")
             }
-            model_methods = [
+            engine_methods = [
                 attr
-                for attr in dir(underlying_model)
-                if not attr.startswith("_")
-                and inspect.ismethod(getattr(underlying_model, attr))
+                for attr in dir(engine)
+                if not attr.startswith("_") and inspect.ismethod(getattr(engine, attr))
             ]
-            debug_info["client"]["underlying_model"] = {
-                "type": str(type(underlying_model)),
-                "attributes": model_attrs,
-                "methods": model_methods,
+            debug_info["client"]["llm_engine"] = {
+                "type": str(type(engine)),
+                "attributes": engine_attrs,
+                "methods": engine_methods,
             }
+
+            # Further inspect the engine_core if available.
+            if hasattr(engine, "engine_core"):
+                engine_core = getattr(engine, "engine_core")
+                engine_core_attrs = {
+                    attr: str(getattr(engine_core, attr))
+                    for attr in dir(engine_core)
+                    if not attr.startswith("_")
+                }
+                engine_core_methods = [
+                    attr
+                    for attr in dir(engine_core)
+                    if not attr.startswith("_")
+                    and inspect.ismethod(getattr(engine_core, attr))
+                ]
+                debug_info["client"]["llm_engine"]["engine_core"] = {
+                    "type": str(type(engine_core)),
+                    "attributes": engine_core_attrs,
+                    "methods": engine_core_methods,
+                }
+
+                # Optionally, if you suspect the underlying torch model might be stored here,
+                # check for an attribute named 'model' (or similar) and include its info.
+                if hasattr(engine_core, "model"):
+                    underlying_model = getattr(engine_core, "model")
+                    model_attrs = {
+                        attr: str(getattr(underlying_model, attr))
+                        for attr in dir(underlying_model)
+                        if not attr.startswith("_")
+                    }
+                    model_methods = [
+                        attr
+                        for attr in dir(underlying_model)
+                        if not attr.startswith("_")
+                        and inspect.ismethod(getattr(underlying_model, attr))
+                    ]
+                    debug_info["client"]["llm_engine"]["engine_core"][
+                        "underlying_model"
+                    ] = {
+                        "type": str(type(underlying_model)),
+                        "attributes": model_attrs,
+                        "methods": model_methods,
+                    }
+            else:
+                debug_info["client"]["llm_engine"]["engine_core"] = "Not available"
+        else:
+            debug_info["client"]["llm_engine"] = "Not available"
+    else:
+        debug_info["client"] = "Not available"
 
     return JSONResponse(debug_info)
 
