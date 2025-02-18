@@ -1,3 +1,5 @@
+import logging
+
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
@@ -10,6 +12,9 @@ from app.interpretability_analysis import (
 )
 from app.model import llm
 from app.utils import load_schema, time_function
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @time_function
@@ -121,24 +126,27 @@ def generate_structured_response_with_tracking(user_input: str):
     model. After the chain call completes, it returns both the chain's result and a
     tracking summary containing activation (and gradient) statistics.
     """
+    # Log all attributes/methods of the LLM for debugging.
+    llm_attrs = {
+        attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")
+    }
+    logger.debug("LLM attributes: %s", llm_attrs.keys())
+
     # Build the chain just like before.
     LLMResponseSchema = load_schema()
     parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
-    template = """You are a helpful AI assistant that always responds in valid JSON format.
-    
-Format your response according to this schema:
-{format_instructions}
-
-Remember:
-1. Your response MUST be valid JSON
-2. Do not include any explanatory text outside the JSON
-3. Ensure all required fields are included
-4. Use the exact field names specified
-
-User Query: {query}
-
-JSON Response:"""
-
+    template = (
+        "You are a helpful AI assistant that always responds in valid JSON format.\n\n"
+        "Format your response according to this schema:\n"
+        "{format_instructions}\n\n"
+        "Remember:\n"
+        "1. Your response MUST be valid JSON\n"
+        "2. Do not include any explanatory text outside the JSON\n"
+        "3. Ensure all required fields are included\n"
+        "4. Use the exact field names specified\n\n"
+        "User Query: {query}\n\n"
+        "JSON Response:"
+    )
     prompt = PromptTemplate(
         template=template,
         input_variables=["query"],
@@ -146,35 +154,49 @@ JSON Response:"""
     )
     chain = prompt | llm | parser
 
-    # Save the original llm.invoke
+    # Check that llm has an "invoke" attribute.
+    if not hasattr(llm, "invoke"):
+        logger.error("LLM object does not have an 'invoke' method!")
+        raise AttributeError("LLM object does not have an 'invoke' method!")
+
+    # Save the original llm.invoke method.
     original_invoke = llm.invoke
+    logger.debug("Original llm.invoke: %s", original_invoke)
 
     def tracked_invoke(input_data, **kwargs):
+        logger.debug(
+            "Tracked invoke called with input_data: %s, kwargs: %s", input_data, kwargs
+        )
         # Clear previous tracking data.
         activation_dict.clear()
         neuron_grad_dict.clear()
         # Register hooks on the underlying model.
-        # (Assuming the underlying model is accessible as `llm.model`.)
+        # (Assuming the underlying model is accessible as llm.model)
+        logger.debug("Registering hooks on llm.model: %s", llm.model)
         hook_handles = register_hooks(llm.model)
         # Call the original invoke (this is the real chain processing).
         result = original_invoke(input_data, **kwargs)
         # Remove all hooks.
         for handle in hook_handles:
             handle.remove()
+        logger.debug("Tracked invoke returning result: %s", result)
         return result
 
     # Replace the LLM's invoke method with our tracked version.
     llm.invoke = tracked_invoke
+    logger.debug("LLM.invoke replaced with tracked_invoke.")
 
     try:
         # Execute the chain. This call will now capture neural activations.
         result = chain.invoke({"query": user_input})
     except Exception as e:
         error_message = f"Error in tracked structured response generation: {str(e)}"
+        logger.exception(error_message)
         result = {"error": error_message}
     finally:
         # Always restore the original invoke method.
         llm.invoke = original_invoke
+        logger.debug("LLM.invoke restored to original.")
 
     # Prepare neural tracking summary.
     tracking_data = {
