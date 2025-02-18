@@ -130,7 +130,7 @@ def generate_structured_response_with_tracking(user_input: str):
     llm_attrs = {
         attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")
     }
-    logger.debug("LLM attributes: %s", llm_attrs.keys())
+    logger.info("LLM attributes: %s", llm_attrs.keys())
 
     # Build the chain just like before.
     LLMResponseSchema = load_schema()
@@ -161,10 +161,10 @@ def generate_structured_response_with_tracking(user_input: str):
 
     # Save the original llm.invoke method.
     original_invoke = llm.invoke
-    logger.debug("Original llm.invoke: %s", original_invoke)
+    logger.info("Original llm.invoke: %s", original_invoke)
 
     def tracked_invoke(input_data, **kwargs):
-        logger.debug(
+        logger.info(
             "Tracked invoke called with input_data: %s, kwargs: %s", input_data, kwargs
         )
         # Clear previous tracking data.
@@ -172,19 +172,19 @@ def generate_structured_response_with_tracking(user_input: str):
         neuron_grad_dict.clear()
         # Register hooks on the underlying model.
         # (Assuming the underlying model is accessible as llm.model)
-        logger.debug("Registering hooks on llm.model: %s", llm.model)
+        logger.info("Registering hooks on llm.model: %s", llm.model)
         hook_handles = register_hooks(llm.model)
         # Call the original invoke (this is the real chain processing).
         result = original_invoke(input_data, **kwargs)
         # Remove all hooks.
         for handle in hook_handles:
             handle.remove()
-        logger.debug("Tracked invoke returning result: %s", result)
+        logger.info("Tracked invoke returning result: %s", result)
         return result
 
     # Replace the LLM's invoke method with our tracked version.
     llm.invoke = tracked_invoke
-    logger.debug("LLM.invoke replaced with tracked_invoke.")
+    logger.info("LLM.invoke replaced with tracked_invoke.")
 
     try:
         # Execute the chain. This call will now capture neural activations.
@@ -196,7 +196,7 @@ def generate_structured_response_with_tracking(user_input: str):
     finally:
         # Always restore the original invoke method.
         llm.invoke = original_invoke
-        logger.debug("LLM.invoke restored to original.")
+        logger.info("LLM.invoke restored to original.")
 
     # Prepare neural tracking summary.
     tracking_data = {
