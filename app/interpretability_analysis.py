@@ -1,7 +1,7 @@
-import datetime
 import json
 import logging
 import os
+from datetime import datetime
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
