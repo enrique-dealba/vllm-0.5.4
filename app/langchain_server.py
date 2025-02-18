@@ -1,4 +1,7 @@
+import datetime
+import json
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -6,7 +9,10 @@ from huggingface_hub import login
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
-from app.langchain_structured_outputs import generate_objective_response
+from app.langchain_structured_outputs import (
+    generate_objective_response,
+    generate_structured_response_with_tracking,
+)
 from app.llm_logic import generate_response
 from app.utils import get_displayable_fields
 
@@ -179,3 +185,47 @@ async def test_mock():
     except Exception as e:
         logger.exception("Error testing mock LLM")
         return JSONResponse({"status": "error", "error": str(e)})
+
+
+@app.post("/generate_objective_tracking")
+async def generate_objective_api(request: Request):
+    """Generate a spaceplan objective name using the initialized LLM."""
+    try:
+        request_data = await request.json()
+        query = request_data.get("text")
+
+        if not query:
+            raise HTTPException(
+                status_code=400, detail="No text provided for generation."
+            )
+
+        # Ensure structured output is enabled
+        if not settings.USE_STRUCTURED_OUTPUT:
+            raise HTTPException(
+                status_code=400,
+                detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
+            )
+
+        llm_response, tracking_data = generate_structured_response_with_tracking(query)
+
+        # Generate timestamp for filename
+        save_dir = "/app/plots"
+        current_time = datetime.now()
+        timestamp = current_time.strftime("%m%d%Y_%H%M")
+        filename = f"interp_{timestamp}.json"
+
+        # Save comprehensive data
+        with open(os.path.join(save_dir, filename), "w") as f:
+            json.dump(tracking_data, f, indent=2)
+        logger.info(f"Saved analysis data to {filename}")
+
+        # Convert response to JSON-serializable format
+        response_dict = llm_response.model_dump()
+
+        return JSONResponse(response_dict)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error during objective generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -2,6 +2,12 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
 from app.config import settings
+from app.interpretability_analysis import (
+    activation_dict,
+    compute_histogram,
+    neuron_grad_dict,
+    register_hooks,
+)
 from app.model import llm
 from app.utils import load_schema, time_function
 
@@ -105,3 +111,112 @@ def generate_objective_response(user_input: str):
         return detailed_response
     except Exception as e:
         return f"Unexpected error during objective generation: {str(e)}"
+
+
+def generate_structured_response_with_tracking(user_input: str):
+    """Tracks neural activity during the LLM call.
+
+    It builds the same chain as generate_structured_response, but temporarily replaces
+    the LLM's invoke method with a tracking version that registers hooks on the underlying
+    model. After the chain call completes, it returns both the chain's result and a
+    tracking summary containing activation (and gradient) statistics.
+    """
+    # Build the chain just like before.
+    LLMResponseSchema = load_schema()
+    parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
+    template = """You are a helpful AI assistant that always responds in valid JSON format.
+    
+Format your response according to this schema:
+{format_instructions}
+
+Remember:
+1. Your response MUST be valid JSON
+2. Do not include any explanatory text outside the JSON
+3. Ensure all required fields are included
+4. Use the exact field names specified
+
+User Query: {query}
+
+JSON Response:"""
+
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["query"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+    )
+    chain = prompt | llm | parser
+
+    # Save the original llm.invoke
+    original_invoke = llm.invoke
+
+    def tracked_invoke(input_data, **kwargs):
+        # Clear previous tracking data.
+        activation_dict.clear()
+        neuron_grad_dict.clear()
+        # Register hooks on the underlying model.
+        # (Assuming the underlying model is accessible as `llm.model`.)
+        hook_handles = register_hooks(llm.model)
+        # Call the original invoke (this is the real chain processing).
+        result = original_invoke(input_data, **kwargs)
+        # Remove all hooks.
+        for handle in hook_handles:
+            handle.remove()
+        return result
+
+    # Replace the LLM's invoke method with our tracked version.
+    llm.invoke = tracked_invoke
+
+    try:
+        # Execute the chain. This call will now capture neural activations.
+        result = chain.invoke({"query": user_input})
+    except Exception as e:
+        error_message = f"Error in tracked structured response generation: {str(e)}"
+        result = {"error": error_message}
+    finally:
+        # Always restore the original invoke method.
+        llm.invoke = original_invoke
+
+    # Prepare neural tracking summary.
+    tracking_data = {
+        "activations": {
+            layer: {
+                "summary": {
+                    "mean": float(activation_dict[layer].float().mean()),
+                    "std": float(activation_dict[layer].float().std()),
+                    "min": float(activation_dict[layer].float().min()),
+                    "max": float(activation_dict[layer].float().max()),
+                },
+                "histogram": compute_histogram(
+                    activation_dict[layer].float().numpy().flatten(), bins=20
+                ),
+            }
+            for layer in activation_dict
+        },
+        "gradients": {
+            layer: {
+                "summary": {
+                    "mean": float(neuron_grad_dict[layer].float().mean())
+                    if neuron_grad_dict.get(layer) is not None
+                    else None,
+                    "std": float(neuron_grad_dict[layer].float().std())
+                    if neuron_grad_dict.get(layer) is not None
+                    else None,
+                    "min": float(neuron_grad_dict[layer].float().min())
+                    if neuron_grad_dict.get(layer) is not None
+                    else None,
+                    "max": float(neuron_grad_dict[layer].float().max())
+                    if neuron_grad_dict.get(layer) is not None
+                    else None,
+                },
+                "histogram": compute_histogram(
+                    neuron_grad_dict[layer].float().numpy().flatten(), bins=20
+                )
+                if neuron_grad_dict.get(layer) is not None
+                else None,
+            }
+            for layer in neuron_grad_dict
+        },
+    }
+
+    # Return both the LLM result and the tracking data.
+    return result, tracking_data
