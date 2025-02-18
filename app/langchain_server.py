@@ -188,7 +188,7 @@ async def test_mock():
 
 
 @app.post("/generate_objective_tracking")
-async def generate_objective_api(request: Request):
+async def generate_objective_api_tracking(request: Request):
     """Generate a spaceplan objective name using the initialized LLM."""
     try:
         request_data = await request.json()
