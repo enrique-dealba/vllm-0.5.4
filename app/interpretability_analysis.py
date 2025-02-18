@@ -15,6 +15,32 @@ activation_dict = {}
 neuron_grad_dict = {}
 
 
+def register_llama_hooks(model):
+    hook_handles = []
+    # Assume the underlying model has an attribute 'model' which is the LlamaModel
+    llama_model = model.model
+    if not hasattr(llama_model, "layers"):
+        raise ValueError("No layers attribute found in the underlying LlamaModel.")
+
+    for idx, layer in enumerate(llama_model.layers):
+        # Assuming each layer has an MLP submodule named "mlp"
+        if hasattr(layer, "mlp"):
+            handle_fwd = layer.mlp.register_forward_hook(
+                lambda module, inputs, output, layer_idx=idx: logger.info(
+                    f"Layer {layer_idx} MLP activation mean: {output.mean().item():.4f}"
+                )
+            )
+            hook_handles.append(handle_fwd)
+            handle_bwd = layer.mlp.register_full_backward_hook(
+                lambda module, grad_input, grad_output, layer_idx=idx: logger.info(
+                    f"Layer {layer_idx} MLP gradient mean: {grad_output[0].mean().item():.4f}"
+                )
+            )
+            hook_handles.append(handle_bwd)
+            logger.info(f"Registered hooks for layer {idx} MLP")
+    return hook_handles
+
+
 def record_activation_hook(layer_name):
     def hook(module, inputs, output):
         activation_dict[layer_name] = output.detach().cpu()

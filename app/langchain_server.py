@@ -188,6 +188,26 @@ async def test_mock():
         return JSONResponse({"status": "error", "error": str(e)})
 
 
+@app.get("/debug_register_hooks")
+def debug_register_hooks():
+    from app.interpretability_analysis import register_llama_hooks
+    from app.model import llm
+
+    try:
+        # Retrieve the underlying model from the VLLM wrapper.
+        underlying_model = (
+            llm.client.llm_engine.model_executor.driver_worker.model_runner.model
+        )
+        # Register hooks on the underlying model.
+        hook_handles = register_llama_hooks(underlying_model)
+        # Optionally, you could run a forward pass here to trigger the hooks.
+        return JSONResponse(
+            {"status": "success", "num_hooks_registered": len(hook_handles)}
+        )
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": str(e)})
+
+
 @app.get("/debug_model_runner")
 def debug_model_runner():
     from app.model import llm
