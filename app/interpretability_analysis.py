@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import datetime
 
+import numpy as np
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -88,6 +89,11 @@ def register_hooks(model):
     return hook_handles
 
 
+def compute_histogram(values, bins=20):
+    hist, bin_edges = np.histogram(values, bins=bins)
+    return {"bin_edges": bin_edges.tolist(), "counts": hist.tolist()}
+
+
 def analyze_model(input_text: str, save_dir: str = "/app/plots"):
     """Analyze model activations and gradients for a given input text.
 
@@ -147,7 +153,9 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
                         "min": float(activation_dict[layer].float().min()),
                         "max": float(activation_dict[layer].float().max()),
                     },
-                    "values": activation_dict[layer].float().numpy().flatten().tolist(),
+                    "histogram": compute_histogram(
+                        activation_dict[layer].float().numpy().flatten(), bins=20
+                    ),
                 }
                 for layer in activation_dict
             },
@@ -159,11 +167,9 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
                         "min": float(neuron_grad_dict[layer].float().min()),
                         "max": float(neuron_grad_dict[layer].float().max()),
                     },
-                    "values": neuron_grad_dict[layer]
-                    .float()
-                    .numpy()
-                    .flatten()
-                    .tolist(),
+                    "histogram": compute_histogram(
+                        neuron_grad_dict[layer].float().numpy().flatten(), bins=20
+                    ),
                 }
                 for layer in neuron_grad_dict
             },
