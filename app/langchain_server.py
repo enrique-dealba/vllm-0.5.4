@@ -188,6 +188,54 @@ async def test_mock():
         return JSONResponse({"status": "error", "error": str(e)})
 
 
+@app.get("/debug_model_runner")
+def debug_model_runner():
+    from app.model import llm
+
+    # Get the model_executor from the LLM engine.
+    executor = getattr(llm.client.llm_engine, "model_executor", None)
+    if executor is None:
+        return JSONResponse({"error": "No model_executor found"})
+
+    # Get the driver_worker from the executor.
+    driver_worker = getattr(executor, "driver_worker", None)
+    if driver_worker is None:
+        return JSONResponse({"error": "No driver_worker found in model_executor"})
+
+    # Get the model_runner from the driver_worker.
+    model_runner = getattr(driver_worker, "model_runner", None)
+    if model_runner is None:
+        return JSONResponse({"error": "No model_runner found in driver_worker"})
+
+    # Prepare debug info for the model_runner.
+    model_runner_attrs = {
+        attr: str(getattr(model_runner, attr))
+        for attr in dir(model_runner)
+        if not attr.startswith("_")
+    }
+
+    # Attempt to inspect a potential "model" attribute on model_runner.
+    model_info = {}
+    if hasattr(model_runner, "model"):
+        model = getattr(model_runner, "model")
+        model_attrs = {
+            attr: str(getattr(model, attr))
+            for attr in dir(model)
+            if not attr.startswith("_")
+        }
+        model_info = {"type": str(type(model)), "attributes": model_attrs}
+
+    return JSONResponse(
+        {
+            "model_runner": {
+                "type": str(type(model_runner)),
+                "attributes": model_runner_attrs,
+                "underlying_model": model_info,
+            }
+        }
+    )
+
+
 @app.get("/debug_executor")
 def debug_executor():
     from app.model import llm
