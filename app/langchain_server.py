@@ -188,6 +188,41 @@ async def test_mock():
         return JSONResponse({"status": "error", "error": str(e)})
 
 
+@app.get("/debug_executor")
+def debug_executor():
+    from app.model import llm
+
+    executor = getattr(llm.client.llm_engine, "model_executor", None)
+    if executor is None:
+        return JSONResponse({"error": "No model_executor found"})
+
+    executor_attrs = {
+        attr: str(getattr(executor, attr))
+        for attr in dir(executor)
+        if not attr.startswith("_")
+    }
+    # Optionally, try to further inspect a potential "model" attribute:
+    model_info = {}
+    if hasattr(executor, "model"):
+        model = getattr(executor, "model")
+        model_attrs = {
+            attr: str(getattr(model, attr))
+            for attr in dir(model)
+            if not attr.startswith("_")
+        }
+        model_info = {"type": str(type(model)), "attributes": model_attrs}
+
+    return JSONResponse(
+        {
+            "executor": {
+                "type": str(type(executor)),
+                "attributes": executor_attrs,
+                "underlying_model": model_info,
+            }
+        }
+    )
+
+
 @app.get("/debug_llm")
 def debug_llm():
     from app.model import llm
