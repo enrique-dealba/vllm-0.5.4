@@ -192,19 +192,63 @@ async def test_mock():
 def debug_llm():
     from app.model import llm
 
-    # Get all public attributes/methods from llm
+    # Debug info for the top-level llm object.
     llm_attrs = {
         attr: str(getattr(llm, attr)) for attr in dir(llm) if not attr.startswith("_")
     }
-
-    # Alternatively, if you prefer a list of method names:
-    methods = [
+    llm_methods = [
         attr
         for attr in dir(llm)
         if not attr.startswith("_") and inspect.ismethod(getattr(llm, attr))
     ]
 
-    debug_info = {"type": str(type(llm)), "attributes": llm_attrs, "methods": methods}
+    debug_info = {
+        "llm": {
+            "type": str(type(llm)),
+            "attributes": llm_attrs,
+            "methods": llm_methods,
+        }
+    }
+
+    # If llm has a "client" attribute, inspect it.
+    if hasattr(llm, "client"):
+        client = getattr(llm, "client")
+        client_attrs = {
+            attr: str(getattr(client, attr))
+            for attr in dir(client)
+            if not attr.startswith("_")
+        }
+        client_methods = [
+            attr
+            for attr in dir(client)
+            if not attr.startswith("_") and inspect.ismethod(getattr(client, attr))
+        ]
+        debug_info["client"] = {
+            "type": str(type(client)),
+            "attributes": client_attrs,
+            "methods": client_methods,
+        }
+
+        # If the client exposes the underlying PyTorch model via a "model" attribute, inspect that.
+        if hasattr(client, "model"):
+            underlying_model = getattr(client, "model")
+            model_attrs = {
+                attr: str(getattr(underlying_model, attr))
+                for attr in dir(underlying_model)
+                if not attr.startswith("_")
+            }
+            model_methods = [
+                attr
+                for attr in dir(underlying_model)
+                if not attr.startswith("_")
+                and inspect.ismethod(getattr(underlying_model, attr))
+            ]
+            debug_info["client"]["underlying_model"] = {
+                "type": str(type(underlying_model)),
+                "attributes": model_attrs,
+                "methods": model_methods,
+            }
+
     return JSONResponse(debug_info)
 
 
