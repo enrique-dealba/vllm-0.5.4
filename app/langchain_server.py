@@ -1,4 +1,5 @@
 import datetime
+import inspect
 import json
 import logging
 import os
@@ -185,6 +186,26 @@ async def test_mock():
     except Exception as e:
         logger.exception("Error testing mock LLM")
         return JSONResponse({"status": "error", "error": str(e)})
+
+
+@app.get("/debug_llm")
+def debug_llm():
+    from app.model import llm
+
+    # Get all public attributes/methods from llm
+    llm_attrs = {
+        attr: str(getattr(llm, attr)) for attr in dir(llm) if not attr.startswith("_")
+    }
+
+    # Alternatively, if you prefer a list of method names:
+    methods = [
+        attr
+        for attr in dir(llm)
+        if not attr.startswith("_") and inspect.ismethod(getattr(llm, attr))
+    ]
+
+    debug_info = {"type": str(type(llm)), "attributes": llm_attrs, "methods": methods}
+    return JSONResponse(debug_info)
 
 
 @app.post("/generate_objective_tracking")
