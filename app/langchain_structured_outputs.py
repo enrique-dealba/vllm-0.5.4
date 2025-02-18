@@ -126,13 +126,13 @@ def generate_structured_response_with_tracking(user_input: str):
     model. After the chain call completes, it returns both the chain's result and a
     tracking summary containing activation (and gradient) statistics.
     """
-    # Log all attributes/methods of the LLM for debugging.
+    # Log all public attributes/methods of the LLM for debugging.
     llm_attrs = {
         attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")
     }
     logger.info("LLM attributes: %s", llm_attrs.keys())
 
-    # Build the chain just like before.
+    # Build the chain as before.
     LLMResponseSchema = load_schema()
     parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
     template = (
@@ -154,7 +154,7 @@ def generate_structured_response_with_tracking(user_input: str):
     )
     chain = prompt | llm | parser
 
-    # Check that llm has an "invoke" attribute.
+    # Ensure that llm has an "invoke" attribute.
     if not hasattr(llm, "invoke"):
         logger.error("LLM object does not have an 'invoke' method!")
         raise AttributeError("LLM object does not have an 'invoke' method!")
@@ -163,18 +163,17 @@ def generate_structured_response_with_tracking(user_input: str):
     original_invoke = llm.invoke
     logger.info("Original llm.invoke: %s", original_invoke)
 
-    def tracked_invoke(input_data, **kwargs):
-        logger.info(
-            "Tracked invoke called with input_data: %s, kwargs: %s", input_data, kwargs
-        )
+    # Define a tracked version that accepts arbitrary positional arguments.
+    def tracked_invoke(*args, **kwargs):
+        logger.info("Tracked invoke called with args: %s, kwargs: %s", args, kwargs)
         # Clear previous tracking data.
         activation_dict.clear()
         neuron_grad_dict.clear()
-        # Register hooks on the underlying model.
+        # Register hooks on the underlying model (assuming llm.model is available).
         logger.info("Registering hooks on llm.model: %s", llm.model)
         hook_handles = register_hooks(llm.model)
-        # Call the original invoke (this is the real chain processing).
-        result = original_invoke(input_data, **kwargs)
+        # Call the original invoke method with all arguments.
+        result = original_invoke(*args, **kwargs)
         # Remove all hooks.
         for handle in hook_handles:
             handle.remove()
