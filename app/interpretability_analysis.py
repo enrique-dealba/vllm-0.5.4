@@ -1,8 +1,8 @@
+import datetime
+import json
 import logging
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -93,7 +93,7 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
 
     Args:
         input_text (str): Text to analyze
-        save_dir (str): Directory to save visualization plots
+        save_dir (str): Directory to save analysis data
     """
     logger.info("Starting model analysis...")
 
@@ -132,92 +132,52 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         # Create save directory
         os.makedirs(save_dir, exist_ok=True)
 
-        # Plot activation distributions
-        logger.info(f"Processing {len(activation_dict)} activation layers...")
-        for layer_name, activations in activation_dict.items():
-            plt.figure(figsize=(10, 6))
-            # Convert bfloat16 to float32 before numpy conversion
-            act_values = activations.float().numpy().flatten()
-
-            # Basic statistics
-            mean = np.mean(act_values)
-            std = np.std(act_values)
-
-            plt.hist(act_values, bins=50, alpha=0.7)
-            plt.axvline(mean, color="r", linestyle="dashed", linewidth=1)
-            plt.axvline(mean + std, color="g", linestyle="dashed", linewidth=1)
-            plt.axvline(mean - std, color="g", linestyle="dashed", linewidth=1)
-
-            plt.title(
-                f"Activation Distribution - {layer_name}\nμ={mean:.4f}, σ={std:.4f}"
-            )
-            plt.xlabel("Activation Value")
-            plt.ylabel("Frequency")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-
-            filename = os.path.join(save_dir, f"{layer_name}_activations.png")
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
-            plt.close()
-            logger.info(f"Saved activation plot: {filename}")
-
-        # Plot gradient distributions
-        logger.info(f"Processing {len(neuron_grad_dict)} gradient layers...")
-        for layer_name, grads in neuron_grad_dict.items():
-            plt.figure(figsize=(10, 6))
-            # Convert bfloat16 to float32 before numpy conversion
-            grad_values = grads.float().numpy().flatten()
-
-            # Basic statistics
-            mean = np.mean(grad_values)
-            std = np.std(grad_values)
-
-            plt.hist(grad_values, bins=50, alpha=0.7)
-            plt.axvline(mean, color="r", linestyle="dashed", linewidth=1)
-            plt.axvline(mean + std, color="g", linestyle="dashed", linewidth=1)
-            plt.axvline(mean - std, color="g", linestyle="dashed", linewidth=1)
-
-            plt.title(
-                f"Gradient Distribution - {layer_name}\nμ={mean:.4f}, σ={std:.4f}"
-            )
-            plt.xlabel("Gradient Value")
-            plt.ylabel("Frequency")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-
-            filename = os.path.join(save_dir, f"{layer_name}_gradients.png")
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
-            plt.close()
-            logger.info(f"Saved gradient plot: {filename}")
-
-        # Generate summary statistics
+        # Prepare comprehensive data dictionary
         summary_stats = {
+            "metadata": {
+                "input_text": input_text,
+                "sequence_length": int(inputs["input_ids"].shape[1]),
+                "loss": float(loss.item()),
+            },
             "activations": {
                 layer: {
-                    "mean": float(activation_dict[layer].float().mean()),
-                    "std": float(activation_dict[layer].float().std()),
-                    "min": float(activation_dict[layer].float().min()),
-                    "max": float(activation_dict[layer].float().max()),
+                    "summary": {
+                        "mean": float(activation_dict[layer].float().mean()),
+                        "std": float(activation_dict[layer].float().std()),
+                        "min": float(activation_dict[layer].float().min()),
+                        "max": float(activation_dict[layer].float().max()),
+                    },
+                    "values": activation_dict[layer].float().numpy().flatten().tolist(),
                 }
                 for layer in activation_dict
             },
             "gradients": {
                 layer: {
-                    "mean": float(neuron_grad_dict[layer].float().mean()),
-                    "std": float(neuron_grad_dict[layer].float().std()),
-                    "min": float(neuron_grad_dict[layer].float().min()),
-                    "max": float(neuron_grad_dict[layer].float().max()),
+                    "summary": {
+                        "mean": float(neuron_grad_dict[layer].float().mean()),
+                        "std": float(neuron_grad_dict[layer].float().std()),
+                        "min": float(neuron_grad_dict[layer].float().min()),
+                        "max": float(neuron_grad_dict[layer].float().max()),
+                    },
+                    "values": neuron_grad_dict[layer]
+                    .float()
+                    .numpy()
+                    .flatten()
+                    .tolist(),
                 }
                 for layer in neuron_grad_dict
             },
         }
 
-        # Save summary statistics
-        import json
+        # Generate timestamp for filename
+        current_time = datetime.now()
+        timestamp = current_time.strftime("%m%d%Y_%H%M")
+        filename = f"interp_{timestamp}.json"
 
-        with open(os.path.join(save_dir, "analysis_summary.json"), "w") as f:
+        # Save comprehensive data
+        with open(os.path.join(save_dir, filename), "w") as f:
             json.dump(summary_stats, f, indent=2)
-        logger.info("Saved analysis summary")
+        logger.info(f"Saved analysis data to {filename}")
 
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}", exc_info=True)
@@ -226,28 +186,17 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
     finally:
         # Cleanup
         logger.info("Starting cleanup...")
-
-        # Restore original mode
         model.train(was_training)
-
-        # Remove hooks
         for handle in hook_handles:
             handle.remove()
         logger.info("Removed all hooks")
-
-        # Clear gradients
         model.zero_grad(set_to_none=True)
         logger.info("Cleared gradients")
-
-        # Clear dictionaries
         activation_dict.clear()
         neuron_grad_dict.clear()
-
-        # Clear CUDA cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         logger.info("Cleared CUDA cache")
-
         logger.info("Cleanup completed")
 
     return summary_stats
