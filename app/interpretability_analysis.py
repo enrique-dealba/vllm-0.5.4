@@ -185,7 +185,11 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
                 temperature=temperature,
                 pad_token_id=tokenizer.eos_token_id,
             )
-            final_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+            input_length = inputs["input_ids"].shape[1]
+            generated_text = tokenizer.decode(
+                generated_ids[0][input_length:], skip_special_tokens=True
+            )
+            final_output = generated_text
 
         # Create save directory
         os.makedirs(save_dir, exist_ok=True)
