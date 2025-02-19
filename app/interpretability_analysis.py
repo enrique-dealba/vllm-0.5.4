@@ -171,6 +171,20 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         loss = outputs.loss
         logger.info(f"Computed loss: {loss.item():.4f}")
 
+        # Generate text output
+        temperature = os.getenv("TEMPERATURE", 0.2)
+        max_tokens = os.getenv("MAX_TOKENS", 8192)
+
+        with torch.no_grad():
+            generated_ids = model.generate(
+                inputs["input_ids"],
+                max_new_tokens=max_tokens,
+                do_sample=True,
+                temperature=temperature,
+                pad_token_id=tokenizer.eos_token_id,
+            )
+            final_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+
         loss.backward()
         logger.info("Completed backward pass")
 
@@ -181,8 +195,9 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         summary_stats = {
             "metadata": {
                 "input_text": input_text,
-                "sequence_length": int(inputs["input_ids"].shape[1]),
-                "loss": float(loss.item()),
+                "full_prompt": input_text,
+                "final_output": str(final_output),
+                "vllm_langchain_pipeline": False,
             },
             "activations": {
                 layer: {
@@ -198,31 +213,21 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
                 }
                 for layer in activation_dict
             },
-            "gradients": {
-                layer: {
-                    "summary": {
-                        "mean": float(neuron_grad_dict[layer].float().mean()),
-                        "std": float(neuron_grad_dict[layer].float().std()),
-                        "min": float(neuron_grad_dict[layer].float().min()),
-                        "max": float(neuron_grad_dict[layer].float().max()),
-                    },
-                    "histogram": compute_histogram(
-                        neuron_grad_dict[layer].float().numpy().flatten(), bins=20
-                    ),
-                }
-                for layer in neuron_grad_dict
-            },
+            # "gradients": {
+            #     layer: {
+            #         "summary": {
+            #             "mean": float(neuron_grad_dict[layer].float().mean()),
+            #             "std": float(neuron_grad_dict[layer].float().std()),
+            #             "min": float(neuron_grad_dict[layer].float().min()),
+            #             "max": float(neuron_grad_dict[layer].float().max()),
+            #         },
+            #         "histogram": compute_histogram(
+            #             neuron_grad_dict[layer].float().numpy().flatten(), bins=20
+            #         ),
+            #     }
+            #     for layer in neuron_grad_dict
+            # },
         }
-
-        # Generate timestamp for filename
-        current_time = datetime.now()
-        timestamp = current_time.strftime("%m%d%Y_%H%M")
-        filename = f"interp_{timestamp}.json"
-
-        # Save comprehensive data
-        with open(os.path.join(save_dir, filename), "w") as f:
-            json.dump(summary_stats, f, indent=2)
-        logger.info(f"Saved analysis data to {filename}")
 
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}", exc_info=True)
@@ -249,8 +254,143 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
 
 if __name__ == "__main__":
     sample_text = "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings."
+    # input_text_1 = (
+    #     "The output should be formatted as a JSON instance that conforms to the "
+    #     "JSON schema below.\n\n"
+    #     "As an example, for the schema {\"properties\": {\"foo\": {\"title\": \"Foo\", "
+    #     "\"description\": \"a list of strings\", \"type\": \"array\", \"items\": "
+    #     "{\"type\": \"string\"}}}, \"required\": [\"foo\"]}\n"
+    #     "the object {\"foo\": [\"bar\", \"baz\"]} is a well-formatted instance of the "
+    #     "schema. The object {\"properties\": {\"foo\": [\"bar\", \"baz\"]}} is not "
+    #     "well-formatted.\n\n"
+    #     "Here is the output schema:\n"
+    #     "```\n"
+    #     "{\"properties\": {\"objective_name\": {\"description\": \"Type of objective "
+    #     "being specified. Choose from: CatalogMaintenanceObjective, "
+    #     "PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, "
+    #     "GeodssRevisitObjective, SensorCheckoutObjective, SingleIntentObjective, "
+    #     "UctObservationObjective, BaselineAutonomyObjective\", \"title\": "
+    #     "\"Objective Name\", \"type\": \"string\"}}, \"required\": "
+    #     "[\"objective_name\"]}\n"
+    #     "```'} template='You are a helpful AI assistant that always responds in "
+    #     "valid JSON format.\n\n"
+    #     "Format your response according to this schema:\n"
+    #     "{format_instructions}\n\n"
+    #     "Remember:\n"
+    #     "1. Your response MUST be valid JSON\n"
+    #     "2. Do not include any explanatory text outside the JSON\n"
+    #     "3. Ensure all required fields are included\n"
+    #     "4. Use the exact field names specified\n\n"
+    #     "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
+    #     "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
+    #     "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
+    #     "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
+    #     "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
+    #     "12445,67889\n\n"
+    #     "JSON Response:\""
+    # )
+
+    # input_text_2 = (
+    #     "The output should be formatted as a JSON instance that conforms to the "
+    #     "JSON schema below.\n\n"
+    #     "As an example, for the schema {\"properties\": {\"foo\": {\"title\": \"Foo\", "
+    #     "\"description\": \"a list of strings\", \"type\": \"array\", \"items\": "
+    #     "{\"type\": \"string\"}}}, \"required\": [\"foo\"]}\n"
+    #     "the object {\"foo\": [\"bar\", \"baz\"]} is a well-formatted instance of the "
+    #     "schema. The object {\"properties\": {\"foo\": [\"bar\", \"baz\"]}} is not "
+    #     "well-formatted.\n\n"
+    #     "Here is the output schema:\n"
+    #     "```\n"
+    #     "{\"properties\": {\"classification_marking\": {\"description\": "
+    #     "\"Classification level of objective intents. Choose from: U, C, S, TS, "
+    #     "U//FOUO\", \"title\": \"Classification Marking\", \"type\": \"string\"}, "
+    #     "\"data_mode\": {\"description\": \"String type for the Machina Common "
+    #     "DataModeType. Choose from: TEST, REAL, SIMULATED, EXERCISE\", \"title\": "
+    #     "\"Data Mode\", \"type\": \"string\"}, \"collect_request_type\": {\"default\": "
+    #     "\"RATE_TRACK_SIDEREAL\", \"description\": \"Collect request type of "
+    #     "tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. "
+    #     "Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with "
+    #     "RATE_TRACK_SIDEREAL\", \"title\": \"Collect Request Type\", \"type\": "
+    #     "\"string\"}, \"orbital_regime\": {\"anyOf\": [{\"type\": \"string\"}, "
+    #     "{\"type\": \"null\"}], \"default\": null, \"description\": \"Orbital regime "
+    #     "classification for this catalog maintenance objective. Choose from: LEO, "
+    #     "MEO, GEO, XGEO\", \"title\": \"Orbital Regime\"}, \"patience_minutes\": "
+    #     "{\"default\": 30, \"description\": \"Amount of time in minutes to wait "
+    #     "before assuming an intent has failed, defaults to 30\", \"title\": "
+    #     "\"Patience Minutes\", \"type\": \"integer\"}, \"end_time_offset_minutes\": "
+    #     "{\"default\": 20, \"description\": \"Number of minutes into the future to "
+    #     "schedule this intent, defaults to 20\", \"title\": \"End Time Offset "
+    #     "Minutes\", \"type\": \"integer\"}, \"priority\": {\"default\": 999, "
+    #     "\"description\": \"Priority level for scheduling (higher numbers indicate "
+    #     "lower priority, defaults to 999)\", \"title\": \"Priority\", \"type\": "
+    #     "\"integer\"}, \"sensor_name_list\": {\"anyOf\": [{\"items\": {\"type\": "
+    #     "\"string\"}, \"type\": \"array\"}, {\"type\": \"null\"}], \"default\": null, "
+    #     "\"description\": \"List of sensor names to be used\", \"title\": \"Sensor "
+    #     "Name List\"}, \"rso_id_list\": {\"anyOf\": [{\"items\": {\"type\": "
+    #     "\"string\"}, \"type\": \"array\"}, {\"type\": \"null\"}], \"default\": [], "
+    #     "\"description\": \"Optional list of RSO IDs\", \"title\": \"Rso Id List\"}, "
+    #     "\"objective_start_time\": {\"anyOf\": [{\"format\": \"date-time\", \"type\": "
+    #     "\"string\"}, {\"type\": \"null\"}], \"default\": null, \"description\": "
+    #     "\"Start time of the objective in ISO 8601 format with timezone\", "
+    #     "\"title\": \"Objective Start Time\"}, \"objective_end_time\": {\"anyOf\": "
+    #     "[{\"format\": \"date-time\", \"type\": \"string\"}, {\"type\": \"null\"}], "
+    #     "\"default\": null, \"description\": \"End time of the objective in ISO 8601 "
+    #     "format with timezone\", \"title\": \"Objective End Time\"}, "
+    #     "\"objective_uuid\": {\"anyOf\": [{\"type\": \"string\"}, {\"type\": "
+    #     "\"null\"}], \"default\": null, \"description\": \"Objective UUID generated "
+    #     "by the belief state\", \"title\": \"Objective Uuid\"}, \"frame_type\": "
+    #     "{\"default\": \"LIGHT\", \"description\": \"Frame type for the objective. "
+    #     "Default is LIGHT\", \"title\": \"Frame Type\", \"type\": \"string\"}, "
+    #     "\"binning\": {\"anyOf\": [{\"type\": \"integer\"}, {\"type\": \"null\"}], "
+    #     "\"default\": null, \"description\": \"ImagerInstrument intent parameters\", "
+    #     "\"title\": \"Binning\"}, \"visibility_check\": {\"default\": false, "
+    #     "\"description\": \"Flag to determine RSO visibility before intent "
+    #     "generation\", \"title\": \"Visibility Check\", \"type\": \"boolean\"}, "
+    #     "\"objective_name\": {\"anyOf\": [{\"type\": \"string\"}, {\"type\": "
+    #     "\"null\"}], \"default\": \"CatalogMaintenanceObjective\", \"description\": "
+    #     "\"Name for this objective. Defaults to 'CatalogMaintenanceObjective'\", "
+    #     "\"title\": \"Objective Name\"}}, \"required\": [\"classification_marking\", "
+    #     "\"data_mode\"]}\n"
+    #     "```'} template='You are a helpful AI assistant that always responds in "
+    #     "valid JSON format.\n\n"
+    #     "Format your response according to this schema:\n"
+    #     "{format_instructions}\n\n"
+    #     "Remember:\n"
+    #     "1. Your response MUST be valid JSON\n"
+    #     "2. Do not include any explanatory text outside the JSON\n"
+    #     "3. Ensure all required fields are included\n"
+    #     "4. Use the exact field names specified\n\n"
+    #     "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
+    #     "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
+    #     "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
+    #     "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
+    #     "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
+    #     "12445,67889\n\n"
+    #     "JSON Response:\""
+    # )
+    stats_1 = {}
+    stats_2 = {}
+
+    # Part 1
     try:
-        analyze_model(sample_text)
-        logger.info("Analysis completed successfully!")
+        stats_1 = analyze_model(sample_text)
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}", exc_info=True)
+
+    # Part 2
+    try:
+        stats_2 = analyze_model(sample_text)
+    except Exception as e:
+        logger.error(f"Error during analysis: {str(e)}", exc_info=True)
+
+    save_dir = "/app/plots"
+    current_time = datetime.now()
+    timestamp = current_time.strftime("%m%d%Y_%H%M")
+    filename = f"vanilla_{timestamp}.json"
+    combined_data = {"part_1": stats_1, "part_2": stats_2}
+
+    # Save comprehensive data
+    with open(os.path.join(save_dir, filename), "w") as f:
+        json.dump(combined_data, f, indent=2)
+    logger.info(f"Saved combined analysis data to {filename}")
+    logger.info("SUCCESS: Vanilla analysis completed successfully!")

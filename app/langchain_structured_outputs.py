@@ -201,7 +201,9 @@ def generate_structured_response_with_tracking(user_input: str):
     tracking_data = {
         "metadata": {
             "input_text": user_input,
+            "format_instructions": str(parser.get_format_instructions()),
             "full_prompt": str(prompt),
+            "final_output": str(result),
             "vllm_langchain_pipeline": True,
         },
         "activations": {
