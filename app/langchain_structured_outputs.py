@@ -245,3 +245,62 @@ def generate_structured_response_with_tracking(user_input: str):
     }
 
     return result, tracking_data
+
+
+def generate_objective_response_with_tracking(user_input: str):
+    """Two-step process for objective generation.
+    First, determine the objective type. Then, update the schema and generate details.
+    If any step fails, return an error message.
+    """
+    try:
+        # First pass: get the basic response (which should contain the objective type)
+        initial_response, data_1 = generate_structured_response_with_tracking(
+            user_input
+        )
+        # Check if we got an error from the fallback
+        if isinstance(initial_response, dict) and "error" in initial_response:
+            return initial_response["error"]
+
+        if not hasattr(initial_response, "objective_name"):
+            return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"
+
+        objective_type = initial_response.objective_name
+        detailed_objective_types = [
+            "CatalogMaintenanceObjective",
+            "PeriodicRevisitObjective",
+            "SearchObjective",
+            "DataEnrichmentObjective",
+            "GeodssRevisitObjective",
+            "SensorCheckoutObjective",
+            "SingleIntentObjective",
+            "UctObservationObjective",
+            "BaselineAutonomyObjective",
+        ]
+        if objective_type not in detailed_objective_types:
+            return f"ERROR - Found mismatched objective: '{objective_type}'."
+
+        # Save the original schema and update it to the specific objective type.
+        original_schema = settings.LLM_RESPONSE_SCHEMA
+        settings.update_schema(objective_type)
+
+        detailed_response, data_2 = generate_structured_response_with_tracking(
+            user_input
+        )
+        # Check if the detailed generation returned an error.
+        if isinstance(detailed_response, dict) and "error" in detailed_response:
+            # Reset the schema before returning the error.
+            settings.update_schema(original_schema)
+            return detailed_response["error"]
+
+        # Reset the schema to the original.
+        settings.update_schema(original_schema)
+        # Add the objective_name field explicitly.
+        detailed_response.objective_name = str(objective_type)
+        assert detailed_response.objective_name == str(objective_type)
+        return {
+            "detailed_response": detailed_response,
+            "part_1": data_1,
+            "part_2": data_2,
+        }
+    except Exception as e:
+        return f"Unexpected error during objective generation: {str(e)}"
