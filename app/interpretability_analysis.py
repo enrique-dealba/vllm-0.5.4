@@ -134,7 +134,7 @@ def compute_histogram(values, bins=20):
 
 
 def analyze_model(input_text: str, save_dir: str = "/app/plots"):
-    """Analyze model activations and gradients for a given input text.
+    """Analyze model activations for a given input text.
 
     Args:
         input_text (str): Text to analyze
@@ -149,8 +149,8 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
     # Get model and tokenizer
     model, tokenizer = get_model_and_tokenizer()
 
-    # Store original mode
-    was_training = model.training
+    # Put model in eval mode
+    model.eval()
     hook_handles = []
 
     try:
@@ -158,35 +158,34 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
         hook_handles = register_hooks(model)
         logger.info(f"Registered {len(hook_handles)} hooks")
 
-        # Enable gradient computation temporarily
-        model.train()
-
-        # Tokenize and prepare input
-        inputs = tokenizer(input_text, return_tensors="pt")
+        # Tokenize and prepare input with attention mask
+        inputs = tokenizer(
+            input_text,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            return_attention_mask=True,
+        )
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         logger.info(f"Input sequence length: {inputs['input_ids'].shape[1]}")
 
-        # Forward and backward pass
-        outputs = model(**inputs, labels=inputs["input_ids"])
-        loss = outputs.loss
-        logger.info(f"Computed loss: {loss.item():.4f}")
-
-        # Generate text output
-        temperature = os.getenv("TEMPERATURE", 0.2)
-        max_tokens = os.getenv("MAX_TOKENS", 8192)
-
+        # Forward pass only
         with torch.no_grad():
+            # outputs = model(**inputs)
+
+            # Generate text output
+            temperature = float(os.getenv("TEMPERATURE", 0.2))
+            max_tokens = int(os.getenv("MAX_TOKENS", 8192))
+
             generated_ids = model.generate(
                 inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
                 max_new_tokens=max_tokens,
                 do_sample=True,
                 temperature=temperature,
                 pad_token_id=tokenizer.eos_token_id,
             )
             final_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-
-        loss.backward()
-        logger.info("Completed backward pass")
 
         # Create save directory
         os.makedirs(save_dir, exist_ok=True)
@@ -236,14 +235,10 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
     finally:
         # Cleanup
         logger.info("Starting cleanup...")
-        model.train(was_training)
         for handle in hook_handles:
             handle.remove()
         logger.info("Removed all hooks")
-        model.zero_grad(set_to_none=True)
-        logger.info("Cleared gradients")
         activation_dict.clear()
-        neuron_grad_dict.clear()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         logger.info("Cleared CUDA cache")
@@ -253,133 +248,124 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
 
 
 if __name__ == "__main__":
-    sample_text = "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings."
-    # input_text_1 = (
-    #     "The output should be formatted as a JSON instance that conforms to the "
-    #     "JSON schema below.\n\n"
-    #     "As an example, for the schema {\"properties\": {\"foo\": {\"title\": \"Foo\", "
-    #     "\"description\": \"a list of strings\", \"type\": \"array\", \"items\": "
-    #     "{\"type\": \"string\"}}}, \"required\": [\"foo\"]}\n"
-    #     "the object {\"foo\": [\"bar\", \"baz\"]} is a well-formatted instance of the "
-    #     "schema. The object {\"properties\": {\"foo\": [\"bar\", \"baz\"]}} is not "
-    #     "well-formatted.\n\n"
-    #     "Here is the output schema:\n"
-    #     "```\n"
-    #     "{\"properties\": {\"objective_name\": {\"description\": \"Type of objective "
-    #     "being specified. Choose from: CatalogMaintenanceObjective, "
-    #     "PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, "
-    #     "GeodssRevisitObjective, SensorCheckoutObjective, SingleIntentObjective, "
-    #     "UctObservationObjective, BaselineAutonomyObjective\", \"title\": "
-    #     "\"Objective Name\", \"type\": \"string\"}}, \"required\": "
-    #     "[\"objective_name\"]}\n"
-    #     "```'} template='You are a helpful AI assistant that always responds in "
-    #     "valid JSON format.\n\n"
-    #     "Format your response according to this schema:\n"
-    #     "{format_instructions}\n\n"
-    #     "Remember:\n"
-    #     "1. Your response MUST be valid JSON\n"
-    #     "2. Do not include any explanatory text outside the JSON\n"
-    #     "3. Ensure all required fields are included\n"
-    #     "4. Use the exact field names specified\n\n"
-    #     "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
-    #     "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
-    #     "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
-    #     "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
-    #     "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
-    #     "12445,67889\n\n"
-    #     "JSON Response:\""
-    # )
+    # sample_text = "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings."
 
-    # input_text_2 = (
-    #     "The output should be formatted as a JSON instance that conforms to the "
-    #     "JSON schema below.\n\n"
-    #     "As an example, for the schema {\"properties\": {\"foo\": {\"title\": \"Foo\", "
-    #     "\"description\": \"a list of strings\", \"type\": \"array\", \"items\": "
-    #     "{\"type\": \"string\"}}}, \"required\": [\"foo\"]}\n"
-    #     "the object {\"foo\": [\"bar\", \"baz\"]} is a well-formatted instance of the "
-    #     "schema. The object {\"properties\": {\"foo\": [\"bar\", \"baz\"]}} is not "
-    #     "well-formatted.\n\n"
-    #     "Here is the output schema:\n"
-    #     "```\n"
-    #     "{\"properties\": {\"classification_marking\": {\"description\": "
-    #     "\"Classification level of objective intents. Choose from: U, C, S, TS, "
-    #     "U//FOUO\", \"title\": \"Classification Marking\", \"type\": \"string\"}, "
-    #     "\"data_mode\": {\"description\": \"String type for the Machina Common "
-    #     "DataModeType. Choose from: TEST, REAL, SIMULATED, EXERCISE\", \"title\": "
-    #     "\"Data Mode\", \"type\": \"string\"}, \"collect_request_type\": {\"default\": "
-    #     "\"RATE_TRACK_SIDEREAL\", \"description\": \"Collect request type of "
-    #     "tracking type. Choose from: RATE_TRACK, SIDEREAL, RATE_TRACK_SIDEREAL. "
-    #     "Defaults to RATE_TRACK_SIDEREAL. Note: do NOT confuse RATE_TRACK with "
-    #     "RATE_TRACK_SIDEREAL\", \"title\": \"Collect Request Type\", \"type\": "
-    #     "\"string\"}, \"orbital_regime\": {\"anyOf\": [{\"type\": \"string\"}, "
-    #     "{\"type\": \"null\"}], \"default\": null, \"description\": \"Orbital regime "
-    #     "classification for this catalog maintenance objective. Choose from: LEO, "
-    #     "MEO, GEO, XGEO\", \"title\": \"Orbital Regime\"}, \"patience_minutes\": "
-    #     "{\"default\": 30, \"description\": \"Amount of time in minutes to wait "
-    #     "before assuming an intent has failed, defaults to 30\", \"title\": "
-    #     "\"Patience Minutes\", \"type\": \"integer\"}, \"end_time_offset_minutes\": "
-    #     "{\"default\": 20, \"description\": \"Number of minutes into the future to "
-    #     "schedule this intent, defaults to 20\", \"title\": \"End Time Offset "
-    #     "Minutes\", \"type\": \"integer\"}, \"priority\": {\"default\": 999, "
-    #     "\"description\": \"Priority level for scheduling (higher numbers indicate "
-    #     "lower priority, defaults to 999)\", \"title\": \"Priority\", \"type\": "
-    #     "\"integer\"}, \"sensor_name_list\": {\"anyOf\": [{\"items\": {\"type\": "
-    #     "\"string\"}, \"type\": \"array\"}, {\"type\": \"null\"}], \"default\": null, "
-    #     "\"description\": \"List of sensor names to be used\", \"title\": \"Sensor "
-    #     "Name List\"}, \"rso_id_list\": {\"anyOf\": [{\"items\": {\"type\": "
-    #     "\"string\"}, \"type\": \"array\"}, {\"type\": \"null\"}], \"default\": [], "
-    #     "\"description\": \"Optional list of RSO IDs\", \"title\": \"Rso Id List\"}, "
-    #     "\"objective_start_time\": {\"anyOf\": [{\"format\": \"date-time\", \"type\": "
-    #     "\"string\"}, {\"type\": \"null\"}], \"default\": null, \"description\": "
-    #     "\"Start time of the objective in ISO 8601 format with timezone\", "
-    #     "\"title\": \"Objective Start Time\"}, \"objective_end_time\": {\"anyOf\": "
-    #     "[{\"format\": \"date-time\", \"type\": \"string\"}, {\"type\": \"null\"}], "
-    #     "\"default\": null, \"description\": \"End time of the objective in ISO 8601 "
-    #     "format with timezone\", \"title\": \"Objective End Time\"}, "
-    #     "\"objective_uuid\": {\"anyOf\": [{\"type\": \"string\"}, {\"type\": "
-    #     "\"null\"}], \"default\": null, \"description\": \"Objective UUID generated "
-    #     "by the belief state\", \"title\": \"Objective Uuid\"}, \"frame_type\": "
-    #     "{\"default\": \"LIGHT\", \"description\": \"Frame type for the objective. "
-    #     "Default is LIGHT\", \"title\": \"Frame Type\", \"type\": \"string\"}, "
-    #     "\"binning\": {\"anyOf\": [{\"type\": \"integer\"}, {\"type\": \"null\"}], "
-    #     "\"default\": null, \"description\": \"ImagerInstrument intent parameters\", "
-    #     "\"title\": \"Binning\"}, \"visibility_check\": {\"default\": false, "
-    #     "\"description\": \"Flag to determine RSO visibility before intent "
-    #     "generation\", \"title\": \"Visibility Check\", \"type\": \"boolean\"}, "
-    #     "\"objective_name\": {\"anyOf\": [{\"type\": \"string\"}, {\"type\": "
-    #     "\"null\"}], \"default\": \"CatalogMaintenanceObjective\", \"description\": "
-    #     "\"Name for this objective. Defaults to 'CatalogMaintenanceObjective'\", "
-    #     "\"title\": \"Objective Name\"}}, \"required\": [\"classification_marking\", "
-    #     "\"data_mode\"]}\n"
-    #     "```'} template='You are a helpful AI assistant that always responds in "
-    #     "valid JSON format.\n\n"
-    #     "Format your response according to this schema:\n"
-    #     "{format_instructions}\n\n"
-    #     "Remember:\n"
-    #     "1. Your response MUST be valid JSON\n"
-    #     "2. Do not include any explanatory text outside the JSON\n"
-    #     "3. Ensure all required fields are included\n"
-    #     "4. Use the exact field names specified\n\n"
-    #     "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
-    #     "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
-    #     "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
-    #     "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
-    #     "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
-    #     "12445,67889\n\n"
-    #     "JSON Response:\""
-    # )
+    input_text_1 = (
+        "You are a helpful AI assistant that always responds in valid JSON format."
+        "\\n\\nFormat your response according to this schema:\\n"
+        "The output should be formatted as a JSON instance that conforms to the JSON "
+        "schema below.\n\n"
+        'As an example, for the schema {"properties": {"foo": {"title": "Foo", '
+        '"description": "a list of strings", "type": "array", "items": '
+        '{"type": "string"}}}, "required": ["foo"]}\n'
+        'the object {"foo": ["bar", "baz"]} is a well-formatted instance of the '
+        'schema. The object {"properties": {"foo": ["bar", "baz"]}} is not '
+        "well-formatted.\n\n"
+        "Here is the output schema:\n```\n"
+        '{"properties": {"objective_name": {"description": "Type of objective '
+        "being specified. Choose from: CatalogMaintenanceObjective, "
+        "PeriodicRevisitObjective, SearchObjective, DataEnrichmentObjective, "
+        "GeodssRevisitObjective, SensorCheckoutObjective, SingleIntentObjective, "
+        'UctObservationObjective, BaselineAutonomyObjective", "title": '
+        '"Objective Name", "type": "string"}}, "required": '
+        '["objective_name"]}\n```'
+        "\\n\\nRemember:\\n"
+        "1. Your response MUST be valid JSON\\n"
+        "2. Do not include any explanatory text outside the JSON\\n"
+        "3. Ensure all required fields are included\\n"
+        "4. Use the exact field names specified\\n\\n"
+        "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
+        "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
+        "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
+        "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
+        "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
+        "12445,67889\\n\\n"
+        "JSON Response:"
+    )
+
+    input_text_2 = (
+        "You are a helpful AI assistant that always responds in valid JSON format."
+        "\\n\\nFormat your response according to this schema:\\n"
+        "The output should be formatted as a JSON instance that conforms to the JSON "
+        "schema below.\n\n"
+        'As an example, for the schema {"properties": {"foo": {"title": "Foo", '
+        '"description": "a list of strings", "type": "array", "items": '
+        '{"type": "string"}}}, "required": ["foo"]}\n'
+        'the object {"foo": ["bar", "baz"]} is a well-formatted instance of the '
+        'schema. The object {"properties": {"foo": ["bar", "baz"]}} is not '
+        "well-formatted.\n\n"
+        "Here is the output schema:\n```\n"
+        '{"properties": {"classification_marking": {"description": "Classification '
+        'level of objective intents. Choose from: U, C, S, TS, U//FOUO", '
+        '"title": "Classification Marking", "type": "string"}, '
+        '"data_mode": {"description": "String type for the Machina Common DataModeType. '
+        'Choose from: TEST, REAL, SIMULATED, EXERCISE", "title": "Data Mode", '
+        '"type": "string"}, "collect_request_type": {"default": "RATE_TRACK_SIDEREAL", '
+        '"description": "Collect request type of tracking type. Choose from: RATE_TRACK, '
+        "SIDEREAL, RATE_TRACK_SIDEREAL. Defaults to RATE_TRACK_SIDEREAL. Note: do NOT "
+        'confuse RATE_TRACK with RATE_TRACK_SIDEREAL", "title": "Collect Request Type", '
+        '"type": "string"}, "orbital_regime": {"anyOf": [{"type": "string"}, '
+        '{"type": "null"}], "default": null, "description": "Orbital regime '
+        "classification for this catalog maintenance objective. Choose from: LEO, MEO, "
+        'GEO, XGEO", "title": "Orbital Regime"}, "patience_minutes": {"default": 30, '
+        '"description": "Amount of time in minutes to wait before assuming an intent '
+        'has failed, defaults to 30", "title": "Patience Minutes", "type": "integer"}, '
+        '"end_time_offset_minutes": {"default": 20, "description": "Number of minutes '
+        'into the future to schedule this intent, defaults to 20", '
+        '"title": "End Time Offset Minutes", "type": "integer"}, '
+        '"priority": {"default": 999, "description": "Priority level for scheduling '
+        '(higher numbers indicate lower priority, defaults to 999)", "title": "Priority", '
+        '"type": "integer"}, "sensor_name_list": {"anyOf": [{"items": {"type": "string"}, '
+        '"type": "array"}, {"type": "null"}], "default": null, '
+        '"description": "List of sensor names to be used", "title": "Sensor Name List"}, '
+        '"rso_id_list": {"anyOf": [{"items": {"type": "string"}, "type": "array"}, '
+        '{"type": "null"}], "default": [], "description": "Optional list of RSO IDs", '
+        '"title": "Rso Id List"}, "objective_start_time": {"anyOf": [{"format": '
+        '"date-time", "type": "string"}, {"type": "null"}], "default": null, '
+        '"description": "Start time of the objective in ISO 8601 format with timezone", '
+        '"title": "Objective Start Time"}, "objective_end_time": {"anyOf": [{"format": '
+        '"date-time", "type": "string"}, {"type": "null"}], "default": null, '
+        '"description": "End time of the objective in ISO 8601 format with timezone", '
+        '"title": "Objective End Time"}, "objective_uuid": {"anyOf": [{"type": "string"}, '
+        '{"type": "null"}], "default": null, "description": "Objective UUID generated '
+        'by the belief state", "title": "Objective Uuid"}, "frame_type": {"default": '
+        '"LIGHT", "description": "Frame type for the objective. Default is LIGHT", '
+        '"title": "Frame Type", "type": "string"}, "binning": {"anyOf": [{"type": '
+        '"integer"}, {"type": "null"}], "default": null, "description": '
+        '"ImagerInstrument intent parameters", "title": "Binning"}, '
+        '"visibility_check": {"default": false, "description": "Flag to determine RSO '
+        'visibility before intent generation", "title": "Visibility Check", '
+        '"type": "boolean"}, "objective_name": {"anyOf": [{"type": "string"}, '
+        '{"type": "null"}], "default": "CatalogMaintenanceObjective", '
+        '"description": "Name for this objective. Defaults to '
+        '\'CatalogMaintenanceObjective\'", "title": "Objective Name"}}, '
+        '"required": ["classification_marking", "data_mode"]}\n```'
+        "\\n\\nRemember:\\n"
+        "1. Your response MUST be valid JSON\\n"
+        "2. Do not include any explanatory text outside the JSON\\n"
+        "3. Ensure all required fields are included\\n"
+        "4. Use the exact field names specified\\n\\n"
+        "User Query: Create a CatalogMaintenanceObjective for sensors RME04 and "
+        "LMNT02 with U markings, TEST mode, priority 12, patience of 10 mins, end "
+        "time offset of 25 mins, visibility check false. Start at 2024-05-21 "
+        "19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use "
+        "RATE_TRACK_SIDEREAL tracking in LEO regime. RSO ID list includes "
+        "12445,67889\\n\\n"
+        "JSON Response:"
+    )
+
     stats_1 = {}
     stats_2 = {}
 
     # Part 1
     try:
-        stats_1 = analyze_model(sample_text)
+        stats_1 = analyze_model(input_text_1)
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}", exc_info=True)
 
     # Part 2
     try:
-        stats_2 = analyze_model(sample_text)
+        stats_2 = analyze_model(input_text_2)
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}", exc_info=True)
 
