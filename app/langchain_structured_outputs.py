@@ -167,11 +167,13 @@ def generate_structured_response_with_tracking(user_input: str):
     # Define our tracked version.
     def tracked_invoke(*args, **kwargs):
         logger.info("Tracked invoke called with args: %s, kwargs: %s", args, kwargs)
+        # Clear previous tracking data.
         activation_dict.clear()
         neuron_grad_dict.clear()
         # Register hooks on the underlying model.
         logger.info("Registering hooks on underlying model: %s", underlying_model)
         hook_handles = register_llama_hooks(underlying_model)
+        # Call the original invoke method.
         result = original_invoke(*args, **kwargs)
         # Remove all hooks.
         for handle in hook_handles:
@@ -191,7 +193,7 @@ def generate_structured_response_with_tracking(user_input: str):
         logger.exception(error_message)
         result = {"error": error_message}
     finally:
-        # Restore the original invoke.
+        # Always restore the original invoke.
         object.__setattr__(llm, "invoke", original_invoke)
         logger.info("LLM.invoke restored to original.")
 
