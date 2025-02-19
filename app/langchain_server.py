@@ -433,39 +433,36 @@ def debug_llm():
 
 @app.post("/generate_objective_tracking")
 async def generate_objective_api_tracking(request: Request):
-    """Generate a spaceplan objective name using the initialized LLM."""
+    """Generate a spaceplan objective name using the initialized LLM with tracking."""
     try:
         request_data = await request.json()
         query = request_data.get("text")
-
         if not query:
             raise HTTPException(
                 status_code=400, detail="No text provided for generation."
             )
-
-        # Ensure structured output is enabled
         if not settings.USE_STRUCTURED_OUTPUT:
             raise HTTPException(
                 status_code=400,
                 detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
             )
 
+        # Generate the response and tracking data.
         llm_response, tracking_data = generate_structured_response_with_tracking(query)
 
         # Generate timestamp for filename
         save_dir = "/app/plots"
         current_time = datetime.now()
         timestamp = current_time.strftime("%m%d%Y_%H%M")
-        filename = f"interp_{timestamp}.json"
+        filename = f"vllm_interp_{timestamp}.json"
 
-        # Save comprehensive data
         with open(os.path.join(save_dir, filename), "w") as f:
             json.dump(tracking_data, f, indent=2)
         logger.info(f"Saved analysis data to {filename}")
 
-        # Convert response to JSON-serializable format
+        # Convert the response to a JSON-serializable format.
+        # (Assumes llm_response is a Pydantic model with a model_dump method.)
         response_dict = llm_response.model_dump()
-
         return JSONResponse(response_dict)
 
     except HTTPException as he:

@@ -8,7 +8,7 @@ from app.interpretability_analysis import (
     activation_dict,
     compute_histogram,
     neuron_grad_dict,
-    register_hooks,
+    register_llama_hooks,
 )
 from app.model import llm
 from app.utils import load_schema, time_function
@@ -120,19 +120,15 @@ def generate_objective_response(user_input: str):
 
 def generate_structured_response_with_tracking(user_input: str):
     """Tracks neural activity during the LLM call.
-
-    It builds the same chain as generate_structured_response, but temporarily replaces
-    the LLM's invoke method with a tracking version that registers hooks on the underlying
-    model. After the chain call completes, it returns both the chain's result and a
-    tracking summary containing activation (and gradient) statistics.
+    Temporarily replaces the LLM's invoke method with a tracking version that registers hooks
+    on the underlying model. After the chain call, it restores the original invoke method and
+    returns both the chain result and a tracking summary.
     """
-    # Log all public attributes/methods of the LLM for debugging.
-    llm_attrs = {
-        attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")
-    }
-    logger.info("LLM attributes: %s", llm_attrs.keys())
+    # Log public attributes for debugging.
+    # llm_attrs = {attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")}
+    # logger.info("LLM attributes: %s", llm_attrs.keys())
 
-    # Build the chain as before.
+    # Build the chain.
     LLMResponseSchema = load_schema()
     parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
     template = (
@@ -154,25 +150,28 @@ def generate_structured_response_with_tracking(user_input: str):
     )
     chain = prompt | llm | parser
 
-    # Ensure that llm has an "invoke" attribute.
+    # Make sure llm has the invoke method.
     if not hasattr(llm, "invoke"):
         logger.error("LLM object does not have an 'invoke' method!")
         raise AttributeError("LLM object does not have an 'invoke' method!")
 
-    # Save the original llm.invoke method.
+    # Save the original invoke.
     original_invoke = llm.invoke
     logger.info("Original llm.invoke: %s", original_invoke)
 
-    # Define a tracked version that accepts arbitrary positional arguments.
+    # Retrieve the underlying model from the vLLM chain.
+    underlying_model = (
+        llm.client.llm_engine.model_executor.driver_worker.model_runner.model
+    )
+
+    # Define our tracked version.
     def tracked_invoke(*args, **kwargs):
         logger.info("Tracked invoke called with args: %s, kwargs: %s", args, kwargs)
-        # Clear previous tracking data.
         activation_dict.clear()
         neuron_grad_dict.clear()
-        # Register hooks on the underlying model (assuming llm.model is available).
-        logger.info("Registering hooks on llm.model: %s", llm.model)
-        hook_handles = register_hooks(llm.model)
-        # Call the original invoke method with all arguments.
+        # Register hooks on the underlying model.
+        logger.info("Registering hooks on underlying model: %s", underlying_model)
+        hook_handles = register_llama_hooks(underlying_model)
         result = original_invoke(*args, **kwargs)
         # Remove all hooks.
         for handle in hook_handles:
@@ -180,23 +179,23 @@ def generate_structured_response_with_tracking(user_input: str):
         logger.info("Tracked invoke returning result: %s", result)
         return result
 
-    # Replace the LLM's invoke method with our tracked version using object.__setattr__
+    # Replace llm.invoke with our tracked version.
     object.__setattr__(llm, "invoke", tracked_invoke)
     logger.info("LLM.invoke replaced with tracked_invoke.")
 
     try:
-        # Execute the chain. This call will now capture neural activations.
+        # Execute the chain to capture activations.
         result = chain.invoke({"query": user_input})
     except Exception as e:
         error_message = f"Error in tracked structured response generation: {str(e)}"
         logger.exception(error_message)
         result = {"error": error_message}
     finally:
-        # Always restore the original invoke method.
+        # Restore the original invoke.
         object.__setattr__(llm, "invoke", original_invoke)
         logger.info("LLM.invoke restored to original.")
 
-    # Prepare neural tracking summary.
+    # Prepare the tracking summary.
     tracking_data = {
         "activations": {
             layer: {
@@ -238,5 +237,4 @@ def generate_structured_response_with_tracking(user_input: str):
         },
     }
 
-    # Return both the LLM result and the tracking data.
     return result, tracking_data
