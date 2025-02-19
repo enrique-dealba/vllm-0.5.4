@@ -199,7 +199,11 @@ def generate_structured_response_with_tracking(user_input: str):
 
     # Prepare the tracking summary.
     tracking_data = {
-        "metadata": {"input_text": user_input, "vllm_langchain_pipeline": True},
+        "metadata": {
+            "input_text": user_input,
+            "full_prompt": str(prompt),
+            "vllm_langchain_pipeline": True,
+        },
         "activations": {
             layer: {
                 "summary": {
