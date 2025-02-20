@@ -43,8 +43,8 @@ case "$RUN_MODE" in
         echo "Running full experiment workflow..."
         echo "Starting FastAPI server..."
         uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1 &
-        echo "Waiting 30 seconds for server warm-up..."
-        sleep 30
+        echo "Waiting 35 seconds for server warm-up..."
+        sleep 35
         echo "Starting experiment workflow..."
         python -m app.run_experiment --input_text "${INPUT_TEXT}" --iterations "${ITERATIONS:-1}"
         ;;

@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -8,6 +9,9 @@ from datetime import datetime
 import requests
 
 from app.interpretability_analysis import analyze_model
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def construct_prompt(metadata):
@@ -73,8 +77,39 @@ def run_experiment(input_text, iterations):
 
         # 2. Extract prompts from the workflow1 JSON using construct_prompt
         try:
-            metadata1 = workflow1_json.get("part_1", {}).get("metadata", {})
-            metadata2 = workflow1_json.get("part_2", {}).get("metadata", {})
+            logger.info(f"workflow1_json keys: {list(workflow1_json.keys())}")
+
+            # Debug the main workflow json first
+            logger.info(f"workflow1_json keys: {list(workflow1_json.keys())}")
+
+            # Check if part_1 and part_2 exist and have content
+            part1 = workflow1_json.get("part_1", {})
+            part2 = workflow1_json.get("part_2", {})
+
+            logger.info(f"Part 1 exists: {bool(part1)}")
+            logger.info(f"Part 1 keys: {list(part1.keys())}")
+            logger.info(f"Part 2 exists: {bool(part2)}")
+            logger.info(f"Part 2 keys: {list(part2.keys())}")
+
+            # Get the metadata with safe navigation
+            metadata1 = part1.get("metadata", {})
+            metadata2 = part2.get("metadata", {})
+
+            # Log the metadata structure and content
+            logger.info(f"Part 1 metadata keys: {list(metadata1.keys())}")
+            logger.info(f"Part 2 metadata keys: {list(metadata2.keys())}")
+
+            # Check if dictionaries are empty
+            if not metadata1:
+                logger.warning("Part 1 metadata is empty")
+            if not metadata2:
+                logger.warning("Part 2 metadata is empty")
+
+            # Full content at debug level
+            logger.debug(f"Part 1 metadata content: {metadata1}")
+            logger.debug(f"Part 2 metadata content: {metadata2}")
+
+            # Construct prompts
             input_text_1 = construct_prompt(metadata1)
             input_text_2 = construct_prompt(metadata2)
         except Exception as e:
