@@ -165,13 +165,19 @@ def analyze_model(input_text: str, save_dir: str = "/app/plots"):
             return_attention_mask=True,
         )
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
+
+        # Debug: Log input_ids dtype and shape before casting
+        logger.info(
+            f"Input IDs dtype before casting: {inputs['input_ids'].dtype}, shape: {inputs['input_ids'].shape}"
+        )
+
+        # Ensure input_ids are of type long (required for embedding)
+        inputs["input_ids"] = inputs["input_ids"].long()
+        logger.info(f"Input IDs dtype after casting: {inputs['input_ids'].dtype}")
         logger.info(f"Input sequence length: {inputs['input_ids'].shape[1]}")
 
         # Forward pass only
         with torch.no_grad():
-            # outputs = model(**inputs)
-
-            # Generate text output
             temperature = float(os.getenv("TEMPERATURE", 0.2))
             max_tokens = int(os.getenv("MAX_TOKENS", 8192))
 
