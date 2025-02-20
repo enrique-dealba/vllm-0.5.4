@@ -11,16 +11,18 @@ from app.interpretability_analysis import analyze_model
 
 
 def construct_prompt(metadata):
-    try:
-        template = metadata["full_prompt"].split("template='")[1].strip("'")
-    except IndexError:
-        template = metadata["full_prompt"]
+    # Use "full_prompt" if available, else fallback to "input_text"
+    template = metadata.get("full_prompt", metadata.get("input_text", ""))
     template = template.replace("\\n", "\n")
-    format_instructions = metadata["format_instructions"]
-    query = metadata["input_text"]
-    complete_prompt = template.format(
-        format_instructions=format_instructions, query=query
-    )
+    format_instructions = metadata.get("format_instructions", "")
+    query = metadata.get("input_text", "")
+    try:
+        complete_prompt = template.format(
+            format_instructions=format_instructions, query=query
+        )
+    except Exception:
+        # If formatting fails, fallback to the raw template
+        complete_prompt = template
     return complete_prompt
 
 
@@ -48,6 +50,10 @@ def run_experiment(input_text, iterations):
     if not wait_for_server(health_url):
         print("Server did not become healthy in time. Exiting.")
         sys.exit(1)
+
+    # Define save_dir outside the loop so it’s available later
+    save_dir = "/app/plots"
+    os.makedirs(save_dir, exist_ok=True)
 
     all_iters_data = {}
 
@@ -95,8 +101,6 @@ def run_experiment(input_text, iterations):
         }
         # Save individual iteration file
         iter_filename = f"iter_{iter_num}.json"
-        save_dir = "/app/plots"
-        os.makedirs(save_dir, exist_ok=True)
         with open(os.path.join(save_dir, iter_filename), "w") as f:
             json.dump(iter_data, f, indent=2)
         print(f"Saved iteration {iter_num} data to {iter_filename}")
