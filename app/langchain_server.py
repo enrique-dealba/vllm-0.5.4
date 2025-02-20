@@ -517,3 +517,50 @@ async def generate_full_objective_api_tracking(request: Request):
     except Exception as e:
         logger.exception(f"Unexpected error during full objective generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate_experiment")
+async def generate_full_objective_experiment(request: Request):
+    try:
+        request_data = await request.json()
+        query = request_data.get("text")
+        if not query:
+            raise HTTPException(
+                status_code=400, detail="No text provided for generation."
+            )
+
+        if not settings.USE_STRUCTURED_OUTPUT:
+            raise HTTPException(
+                status_code=400,
+                detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
+            )
+
+        # Offload the blocking call to a thread
+        info_dict = await run_in_threadpool(
+            generate_objective_response_with_tracking, query
+        )
+
+        # Get the detailed response (unused in our experiment) and the tracking parts
+        llm_response = info_dict["detailed_response"]
+
+        # Combine both JSON data into a single dictionary
+        combined_data = {"part_1": info_dict["part_1"], "part_2": info_dict["part_2"]}
+
+        # Generate timestamp for filename
+        save_dir = "/app/plots"
+        current_time = datetime.now()
+        timestamp = current_time.strftime("%m%d%Y_%H%M")
+        filename = f"vllm_full_{timestamp}.json"
+
+        with open(os.path.join(save_dir, filename), "w") as f:
+            json.dump(combined_data, f, indent=2)
+        logger.info(f"Saved combined analysis data to {filename}")
+
+        # Instead of returning displayable fields, return the combined_data itself.
+        return JSONResponse(combined_data)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error during full objective generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

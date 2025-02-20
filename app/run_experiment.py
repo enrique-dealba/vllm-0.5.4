@@ -49,7 +49,7 @@ def wait_for_server(url, timeout=120, interval=2):
 def run_experiment(input_text, iterations):
     # Assume the FastAPI server is available at localhost:8888
     health_url = "http://localhost:8888/health"
-    tracking_url = "http://localhost:8888/generate_full_objective_tracking"
+    tracking_url = "http://localhost:8888/generate_experiment"
 
     if not wait_for_server(health_url):
         print("Server did not become healthy in time. Exiting.")
