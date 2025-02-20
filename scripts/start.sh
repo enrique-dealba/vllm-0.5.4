@@ -39,8 +39,18 @@ case "$RUN_MODE" in
         echo "Running tests..."
         PYTHONPATH=/app pytest /app/tests/ -v -s --cov=app "$@"
         ;;
+    run_experiment)
+        echo "Running full experiment workflow..."
+        echo "Starting FastAPI server..."
+        uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1 &
+        # Optionally, wait a few seconds for the server to become healthy.
+        echo "Waiting 5 seconds for server warm-up..."
+        sleep 5
+        echo "Starting experiment workflow..."
+        python -m app.run_experiment --input_text "${INPUT_TEXT}" --iterations "${ITERATIONS:-1}"
+        ;;
     *)
-        echo "Invalid RUN_MODE: $RUN_MODE. Must be 'server', 'ui', 'intents', 'rag', or 'tests'."
+        echo "Invalid RUN_MODE: $RUN_MODE. Must be one of 'server', 'analysis', 'ui', 'objectives', 'intents', 'rag', 'tests', or 'run_experiment'."
         exit 1
         ;;
 esac
