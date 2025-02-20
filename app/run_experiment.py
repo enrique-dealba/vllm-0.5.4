@@ -15,18 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 def construct_prompt(metadata):
-    # Use "full_prompt" if available, else fallback to "input_text"
-    template = metadata.get("full_prompt", metadata.get("input_text", ""))
+    # Extract template from full_prompt in metadata
+    template = metadata["full_prompt"].split("template='")[1].strip("'")
+
+    # First unescape any \\n to \n
     template = template.replace("\\n", "\n")
-    format_instructions = metadata.get("format_instructions", "")
-    query = metadata.get("input_text", "")
-    try:
-        complete_prompt = template.format(
-            format_instructions=format_instructions, query=query
-        )
-    except Exception:
-        # If formatting fails, fallback to the raw template
-        complete_prompt = template
+
+    # Get the required values
+    format_instructions = metadata["format_instructions"]
+    query = metadata["input_text"]
+
+    # Format the template with the values
+    complete_prompt = template.format(
+        format_instructions=format_instructions, query=query
+    )
+
     return complete_prompt
 
 
