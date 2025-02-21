@@ -1,4 +1,4 @@
-## Visualizing LLM Activations
+## Visualizing LLM Activations 
 
 Build a Docker image using:
 ```sh
