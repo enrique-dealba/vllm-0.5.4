@@ -43,8 +43,8 @@ case "$RUN_MODE" in
         echo "Running full experiment workflow..."
         echo "Starting FastAPI server..."
         uvicorn app.langchain_server:app --host 0.0.0.0 --port ${PORT:-8888} --workers 1 &
-        echo "Waiting 35 seconds for server warm-up..."
-        sleep 35
+        echo "Waiting 45 seconds for server warm-up..."
+        sleep 45
         echo "Starting experiment workflow..."
         if [ -n "${TEST_CASE}" ]; then
             echo "Running with TEST_CASE=${TEST_CASE}"
