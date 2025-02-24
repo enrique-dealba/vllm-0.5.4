@@ -46,7 +46,12 @@ case "$RUN_MODE" in
         echo "Waiting 35 seconds for server warm-up..."
         sleep 35
         echo "Starting experiment workflow..."
-        python -m app.run_experiment --input_text "${INPUT_TEXT}" --iterations "${ITERATIONS:-1}"
+        if [ -n "${TEST_CASE}" ]; then
+            echo "Running with TEST_CASE=${TEST_CASE}"
+            python -m app.run_experiment --input_text "${INPUT_TEXT}" --iterations "${ITERATIONS:-1}" --test_case "${TEST_CASE}"
+        else
+            python -m app.run_experiment --input_text "${INPUT_TEXT}" --iterations "${ITERATIONS:-1}"
+        fi
         ;;
     *)
         echo "Invalid RUN_MODE: $RUN_MODE. Must be one of 'server', 'analysis', 'ui', 'objectives', 'intents', 'rag', 'tests', or 'run_experiment'."

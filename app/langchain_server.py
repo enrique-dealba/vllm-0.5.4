@@ -540,11 +540,16 @@ async def generate_full_objective_experiment(request: Request):
             generate_objective_response_with_tracking, query
         )
 
-        # Get the detailed response (unused in our experiment) and the tracking parts
+        # Get the detailed response and the tracking parts
         llm_response = info_dict["detailed_response"]
+        response_dict = get_displayable_fields(llm_response)
 
         # Combine both JSON data into a single dictionary
-        combined_data = {"part_1": info_dict["part_1"], "part_2": info_dict["part_2"]}
+        combined_data = {
+            "part_1": info_dict["part_1"],
+            "part_2": info_dict["part_2"],
+            "llm_response": response_dict,
+        }
 
         # Generate timestamp for filename
         save_dir = "/app/plots"
@@ -556,7 +561,7 @@ async def generate_full_objective_experiment(request: Request):
             json.dump(combined_data, f, indent=2)
         logger.info(f"Saved combined analysis data to {filename}")
 
-        # Instead of returning displayable fields, return the combined_data itself.
+        # Return the combined data with the LLM response included
         return JSONResponse(combined_data)
 
     except HTTPException as he:

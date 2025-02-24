@@ -20,6 +20,254 @@ from app.config import settings
 tracer = LangChainTracer(project_name=settings.LANGCHAIN_PROJECT)
 
 
+OBJECTIVE_TEST_CASES = {
+    # Example 1: CatalogMaintenanceObjective
+    (
+        "Create a CatalogMaintenanceObjective for sensors RME04 and LMNT02 with U markings, "
+        "TEST mode, priority 12, patience of 10 mins, end time offset of 25 mins, visibility check false. "
+        "Start at 2024-05-21 19:20:00+00:00, end at 2024-05-21 22:30:00+00:00. Use RATE_TRACK_SIDEREAL tracking in LEO regime. "
+        "RSO ID list includes '12445,67889'."
+    ): {
+        "binning": None,
+        "classification_marking": "U",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "data_mode": "TEST",
+        "end_time_offset_minutes": 25,
+        "frame_type": "LIGHT",
+        "objective_end_time": "datetime.datetime(2024, 5, 21, 22, 30, tzinfo=TzInfo(UTC))",
+        "objective_name": "CatalogMaintenanceObjective",
+        "objective_start_time": "datetime.datetime(2024, 5, 21, 19, 20, tzinfo=TzInfo(UTC))",
+        "objective_uuid": None,
+        "orbital_regime": "LEO",
+        "patience_minutes": 10,
+        "priority": 12,
+        "rso_id_list": ["12445", "67889"],
+        "sensor_name_list": ["RME04", "LMNT02"],
+        "visibility_check": False,
+    },
+    # Example 2: SearchObjective
+    (
+        "Create a SearchObjective for target 12345 using sensor UKR12. Set S marking, REAL mode, priority 5, "
+        "RATE_TRACK_SIDEREAL tracking. Start at 2024-07-24 09:30:00+00:00, end at 2024-07-24 11:00:00+00:00. "
+        "Initial offset 60 seconds, final offset 90 seconds, frame overlap 70%, end time offset 45 minutes. "
+        "Use search type ALONG_TRACK with search start time 15 minutes after objective start."
+    ): {
+        "binning": None,
+        "classification_marking": "S",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "data_mode": "REAL",
+        "end_time_offset_minutes": 45,
+        "final_offset": 90,
+        "frame_overlap_percentage": 0.7,
+        "frame_type": "LIGHT",
+        "initial_offset": 60,
+        "integration_time": None,
+        "number_of_frames": None,
+        "objective_end_time": "datetime.datetime(2024, 7, 24, 11, 0, tzinfo=TzInfo(UTC))",
+        "objective_name": "SearchObjective",
+        "objective_start_time": "datetime.datetime(2024, 7, 24, 9, 30, tzinfo=TzInfo(UTC))",
+        "objective_uuid": None,
+        "priority": 5,
+        "search_start_time": "datetime.datetime(2024, 7, 24, 10, 45, tzinfo=TzInfo(UTC))",
+        "search_type": "ALONG_TRACK",
+        "sensor_name": "UKR12",
+        "target_id": "12345",
+        "visibility_check": False,
+    },
+    # Example 3: GeodssRevisitObjective
+    (
+        "Create a GeodssRevisitObjective for targets 12345,67890 using sensors RME15,LMNT17. Set U//FOUO marking, REAL mode, "
+        "priority 10, RATE_TRACK_SIDEREAL tracking. Start at 2024-08-11 19:20:00+00:00. Set readout_rate 1 (2MHz), gain_setting 0 (High Gain), "
+        "soi_filter 1 (1% Light), auto_track_type 1 (Automatic), camera_mode 0 (Normal), array_kind 0 (Main), binning_mode 1 (HW Binning), "
+        "scan_mode 1 (Single Frame)."
+    ): {
+        "acquisition_type": 0,
+        "array_kind": 0,
+        "auto_track_roi_position": 0,
+        "auto_track_type": 1,
+        "binning_mode": 1,
+        "camera_mode": 0,
+        "classification_marking": "U//FOUO",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "command": 0,
+        "data_mode": "REAL",
+        "frame_type": "LIGHT",
+        "gain_setting": 0,
+        "ignore_other_objective_intent_submissions": False,
+        "integration_time": None,
+        "intent_end_time": None,
+        "intent_start_time": None,
+        "num_observations": 1,
+        "num_skip_frames": 0,
+        "number_of_frames": None,
+        "objective_end_time": None,
+        "objective_name": "GeodssRevisitObjective",
+        "objective_start_time": "datetime.datetime(2024, 8, 11, 19, 20, tzinfo=TzInfo(UTC))",
+        "objective_uuid": None,
+        "observation_interval": 0,
+        "optimal_frames_per_hour": 400,
+        "overscan": 0,
+        "patience_minutes": 30,
+        "priority": 10,
+        "rate_track_verify": 0,
+        "readout_rate_setting": 1,
+        "revisits_per_hour": None,
+        "scan_mode": 1,
+        "sensor_name_list": ["RME15", "LMNT17"],
+        "soi_filter_position": 1,
+        "target_id_list": ["12345", "67890"],
+        "visibility_check": False,
+    },
+    # Example 4: PeriodicRevisitObjective
+    (
+        "Create a PeriodicRevisitObjective for targets 12225,68887 using sensors RME05,LMNT06. "
+        "Set S marking, TEST mode, priority 2, patience minutes 30, ignore other objective submissions false. "
+        "Start objective at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400, number of frames 5, integration time 2 seconds."
+    ): {
+        "classification_marking": "S",
+        "target_id_list": ["12225", "68887"],
+        "sensor_name_list": ["RME05", "LMNT06"],
+        "data_mode": "TEST",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "frame_type": "LIGHT",
+        "visibility_check": False,
+        "patience_minutes": 30,
+        "revisits_per_hour": None,
+        "number_of_frames": 5,
+        "integration_time": 2,
+        "binning": None,
+        "objective_start_time": "datetime.datetime(2024, 6, 21, 19, 20, tzinfo=TzInfo(UTC))",
+        "objective_end_time": None,
+        "priority": 2,
+        "ignore_other_objective_intent_submissions": False,
+        "optimal_frames_per_hour": 400,
+        "objective_uuid": None,
+        "intent_start_time": None,
+        "intent_end_time": None,
+        "objective_name": "PeriodicRevisitObjective",
+    },
+    # Example 5: UctObservationObjective
+    (
+        "Create a UctObservationObjective for UCT RSOs 12345,67890 using sensors RME18, LMNT19. "
+        "Set U//FOUO marking, REAL mode, GEO regime, priority 10, 6 revisits per hour. "
+        "Start at 2024-09-12 19:20:00+00:00. Enable sorting by brightest UCT, set end time offset to 60 minutes, visibility check true. "
+        "Set number of frames to 5 and integration time 2 seconds."
+    ): {
+        "classification_marking": "U//FOUO",
+        "uct_rso_id_list": ["12345", "67890"],
+        "sensor_name_list": ["RME18", "LMNT19"],
+        "data_mode": "REAL",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "frame_type": "LIGHT",
+        "orbital_regime": "GEO",
+        "visibility_check": True,
+        "patience_minutes": 30,
+        "revisits_per_hour": 6.0,
+        "number_of_frames": 5,
+        "integration_time": 2,
+        "binning": None,
+        "end_time_offset_minutes": 60,
+        "objective_uuid": None,
+        "objective_start_time": "datetime.datetime(2024, 9, 12, 19, 20, tzinfo=TzInfo(UTC))",
+        "objective_end_time": None,
+        "priority": 10,
+        "sort_by_brightest_uct": True,
+        "objective_name": "UctObservationObjective",
+    },
+    # Example 6: SingleIntentObjective
+    (
+        "Create a SingleIntentObjective with target ID 11223, RSO ID 66778, using sensors RME22,LMNT24. "
+        "Set U marking, REAL mode, RATE_TRACK_SIDEREAL tracking, priority 10. "
+        "Start objective at 2024-10-01 11:20:00+00:00. Set number of frames to 5, integration time 2 seconds, binning 2."
+    ): {
+        "classification_marking": "U",
+        "target_id": "11223",
+        "rso_id": "66778",
+        "sensor_name_list": ["RME22", "LMNT24"],
+        "data_mode": "REAL",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "frame_type": "LIGHT",
+        "number_of_frames": 5,
+        "integration_time": 2,
+        "priority": 10,
+        "binning": 2,
+        "intent_start_time": None,
+        "intent_end_time": None,
+        "objective_uuid": None,
+        "objective_start_time": "datetime.datetime(2024, 10, 1, 11, 20, tzinfo=TzInfo(UTC))",
+        "objective_end_time": None,
+        "objective_name": "SingleIntentObjective",
+    },
+    # Example 7: DataEnrichmentObjective
+    (
+        "Create a DataEnrichmentObjective for targets 55441, 99886, 50051 using sensors RME31,LMNT34. "
+        "Set U//FOUO marking, REAL mode, RATE_TRACK tracking, and set max RSO to observe as 8, 10 revisits per hour. "
+        "Start at 2025-01-21 08:00:00+00:00. Set visibility check true."
+    ): {
+        "classification_marking": "U//FOUO",
+        "data_mode": "REAL",
+        "objective_uuid": None,
+        "target_id_list": ["55441", "99886", "50051"],
+        "sensor_name_list": ["RME31", "LMNT34"],
+        "collect_request_type": "RATE_TRACK",  # overridden to RATE_TRACK
+        "frame_type": "LIGHT",
+        "binning": None,
+        "max_rso_to_observe": 8,
+        "revisits_per_hour": 10,
+        "objective_start_time": "datetime.datetime(2025, 1, 21, 8, 0, tzinfo=TzInfo(UTC))",
+        "objective_end_time": None,
+        "priority": 20,
+        "intent_start_time": None,
+        "intent_end_time": None,
+        "visibility_check": True,
+        "objective_name": "DataEnrichmentObjective",
+    },
+    # Example 8: SensorCheckoutObjective
+    (
+        "Create a SensorCheckoutObjective with classification_marking='U' and sensor_name='RME01'. "
+        "Set data_mode='REAL', orbital_regime='GEO', collect_request_type='RATE_TRACK_SIDEREAL', priority=10, "
+        "revisits_per_hour=1.0, objective_start_time='2025-02-01 19:20:00+00:00', visibility_check=true, "
+        "patience_minutes=30, number_of_frames=5, integration_time=2."
+    ): {
+        "classification_marking": "U",
+        "sensor_name": "RME01",
+        "orbital_regime": "GEO",
+        "data_mode": "REAL",
+        "collect_request_type": "RATE_TRACK_SIDEREAL",
+        "frame_type": "LIGHT",
+        "visibility_check": True,
+        "patience_minutes": 30,
+        "revisits_per_hour": 1.0,
+        "number_of_frames": 5,
+        "integration_time": 2,
+        "binning": None,
+        "objective_uuid": None,
+        "objective_start_time": "datetime.datetime(2025, 2, 1, 19, 20, tzinfo=TzInfo(UTC))",
+        "objective_end_time": None,
+        "intent_start_time": None,
+        "intent_end_time": None,
+        "priority": 10,
+        "objective_name": "SensorCheckoutObjective",
+    },
+    # Example 9: BaselineAutonomyObjective
+    (
+        "Create a BaselineAutonomyObjective with UUID '123e4567-e89b-12d3-a456-426614174000'. "
+        "Use U markings, REAL mode, LIGHT frame type, priority 1000. "
+        "Use following RSO ids: 11112, 99996, and 59591 along with catalog IDs: 17180 and 19210, with no end time for continuous running."
+    ): {
+        "objective_uuid": "123e4567-e89b-12d3-a456-426614174000",
+        "classification_marking": "U",
+        "data_mode": "REAL",
+        "frame_type": "LIGHT",
+        "priority": 1000,
+        "baseline_autonomy_rso": "17180,19210",
+        "objective_end_time": None,
+        "rso_id_list": ["11112", "99996", "59591"],
+        "objective_name": "BaselineAutonomyObjective",
+    },
+}
+
+
 def load_image(url: str = settings.FIXED_IMAGE_URL) -> Image.Image:
     try:
         response = requests.get(url, timeout=settings.IMAGE_FETCH_TIMEOUT)
