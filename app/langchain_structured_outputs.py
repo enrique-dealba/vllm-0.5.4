@@ -305,4 +305,10 @@ def generate_objective_response_with_tracking(user_input: str):
             "part_2": data_2,
         }
     except Exception as e:
-        return f"Unexpected error during objective generation: {str(e)}"
+        error_msg = f"Unexpected error during objective generation: {str(e)}"
+        return {
+            "detailed_response": None,
+            "error": error_msg,
+            "part_1": None,
+            "part_2": None,
+        }
