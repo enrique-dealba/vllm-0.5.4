@@ -540,32 +540,51 @@ async def generate_full_objective_experiment(request: Request):
             generate_objective_response_with_tracking, query
         )
 
-        # Get the detailed response and the tracking parts
-        llm_response = info_dict["detailed_response"]
-        response_dict = get_displayable_fields(llm_response)
-
-        # Combine both JSON data into a single dictionary
-        combined_data = {
-            "part_1": info_dict["part_1"],
-            "part_2": info_dict["part_2"],
-            "llm_response": response_dict,
+        # Create a response structure that will always be valid
+        response_data = {
+            "status": "error" if info_dict.get("error") else "success",
+            "part_1": info_dict.get("part_1"),
+            "part_2": info_dict.get("part_2"),
         }
 
-        # Generate timestamp for filename
-        save_dir = "/app/plots"
-        current_time = datetime.now()
-        timestamp = current_time.strftime("%m%d%Y_%H%M")
-        filename = f"vllm_full_{timestamp}.json"
+        # Add error if present
+        if info_dict.get("error"):
+            response_data["error"] = info_dict["error"]
+            logger.warning(f"Processing error: {info_dict['error']}")
 
-        with open(os.path.join(save_dir, filename), "w") as f:
-            json.dump(combined_data, f, indent=2)
-        logger.info(f"Saved combined analysis data to {filename}")
+        # Add LLM response if present
+        llm_response = info_dict.get("detailed_response")
+        if llm_response is not None:
+            try:
+                response_data["llm_response"] = get_displayable_fields(llm_response)
+            except Exception as field_error:
+                response_data["status"] = "error"
+                response_data["error"] = (
+                    f"Error extracting displayable fields: {str(field_error)}"
+                )
+                logger.error(f"Field extraction error: {field_error}")
 
-        # Return the combined data with the LLM response included
-        return JSONResponse(combined_data)
+        # Save data regardless of success/failure
+        try:
+            save_dir = "/app/plots"
+            os.makedirs(save_dir, exist_ok=True)
+            current_time = datetime.now()
+            timestamp = current_time.strftime("%m%d%Y_%H%M")
+            filename = f"vllm_full_{timestamp}.json"
+
+            with open(os.path.join(save_dir, filename), "w") as f:
+                json.dump(response_data, f, indent=2)
+            logger.info(f"Saved data to {filename}")
+        except Exception as save_error:
+            logger.error(f"Error saving data: {save_error}")
+
+        # Return response regardless of errors
+        return JSONResponse(response_data)
 
     except HTTPException as he:
         raise he
     except Exception as e:
-        logger.exception(f"Unexpected error during full objective generation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Server error: {e}")
+        return JSONResponse(
+            {"status": "error", "error": f"Server error: {str(e)}"}, status_code=500
+        )

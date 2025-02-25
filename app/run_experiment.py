@@ -179,14 +179,19 @@ def run_experiment(input_text, iterations, test_case=None):
 
     for iter_num in range(1, iterations + 1):
         print(f"--- Starting iteration {iter_num} ---")
-        # 1. Call the tracking endpoint with the input_text
-        payload = {"text": input_text}
+
+        # Initialize default values to ensure we always have something to save
+        workflow1_json = {"error": "API call not completed"}
+        stats_1 = {"error": "Analysis not performed"}
+        stats_2 = {"error": "Analysis not performed"}
+
+        # 1. API Call with robust error handling
         try:
-            resp = requests.post(tracking_url, json=payload)
-            resp.raise_for_status()
-            workflow1_json = (
-                resp.json()
-            )  # Expected to contain keys "part_1", "part_2", and "llm_response"
+            payload = {"text": input_text}
+            # Add timeout to prevent hanging
+            resp = requests.post(tracking_url, json=payload, timeout=120)
+            resp.raise_for_status()  # This will raise an exception for HTTP errors
+            workflow1_json = resp.json()
 
             # Calculate accuracy metrics if expected_output is available
             if expected_output is not None and "llm_response" in workflow1_json:
@@ -220,85 +225,130 @@ def run_experiment(input_text, iterations, test_case=None):
                     f"Iteration {iter_num} - Field Accuracy: {field_accuracy:.2f}% ({correct_count}/{total_count})"
                 )
 
+        except requests.exceptions.Timeout:
+            print(f"Request timed out for iteration {iter_num}")
+            workflow1_json = {"error": "Request timed out"}
+        except requests.exceptions.HTTPError as e:
+            print(f"HTTP error: {e}")
+            workflow1_json = {"error": f"HTTP error: {e}"}
+        except requests.exceptions.ConnectionError:
+            print("Connection error - server may be down")
+            workflow1_json = {"error": "Connection error - server may be down"}
+        except json.JSONDecodeError:
+            print("Invalid JSON in response")
+            workflow1_json = {"error": "Invalid JSON in response"}
         except Exception as e:
             print(f"Error during API call: {e}")
-            continue
+            workflow1_json = {"error": f"Unexpected error: {str(e)}"}
 
-        # 2. Extract prompts from the workflow1 JSON using construct_prompt
+        # 2. Extract prompts with safe navigation
+        input_text_1 = None
+        input_text_2 = None
+
         try:
-            logger.info(f"workflow1_json keys: {list(workflow1_json.keys())}")
+            # Only attempt to extract prompts if we have valid data
+            if "part_1" in workflow1_json and "part_2" in workflow1_json:
+                part1 = workflow1_json.get("part_1", {})
+                part2 = workflow1_json.get("part_2", {})
 
-            # Debug the main workflow json first
-            logger.info(f"workflow1_json keys: {list(workflow1_json.keys())}")
+                # Log for debugging (useful if issues persist)
+                logger.debug(f"Part 1 keys: {list(part1.keys())}")
+                logger.debug(f"Part 2 keys: {list(part2.keys())}")
 
-            # Check if part_1 and part_2 exist and have content
-            part1 = workflow1_json.get("part_1", {})
-            part2 = workflow1_json.get("part_2", {})
+                metadata1 = part1.get("metadata", {})
+                metadata2 = part2.get("metadata", {})
 
-            logger.info(f"Part 1 exists: {bool(part1)}")
-            logger.info(f"Part 1 keys: {list(part1.keys())}")
-            logger.info(f"Part 2 exists: {bool(part2)}")
-            logger.info(f"Part 2 keys: {list(part2.keys())}")
+                # Only try to construct if all needed keys exist
+                required_keys = ["full_prompt", "format_instructions", "input_text"]
+                if all(key in metadata1 for key in required_keys):
+                    input_text_1 = construct_prompt(metadata1)
+                else:
+                    logger.warning(
+                        f"Missing required keys in metadata1: {metadata1.keys()}"
+                    )
 
-            # Get the metadata with safe navigation
-            metadata1 = part1.get("metadata", {})
-            metadata2 = part2.get("metadata", {})
-
-            # Log the metadata structure and content
-            logger.info(f"Part 1 metadata keys: {list(metadata1.keys())}")
-            logger.info(f"Part 2 metadata keys: {list(metadata2.keys())}")
-
-            # Check if dictionaries are empty
-            if not metadata1:
-                logger.warning("Part 1 metadata is empty")
-            if not metadata2:
-                logger.warning("Part 2 metadata is empty")
-
-            # Full content at debug level
-            logger.debug(f"Part 1 metadata content: {metadata1}")
-            logger.debug(f"Part 2 metadata content: {metadata2}")
-
-            # Construct prompts
-            input_text_1 = construct_prompt(metadata1)
-            input_text_2 = construct_prompt(metadata2)
+                if all(key in metadata2 for key in required_keys):
+                    input_text_2 = construct_prompt(metadata2)
+                else:
+                    logger.warning(
+                        f"Missing required keys in metadata2: {metadata2.keys()}"
+                    )
         except Exception as e:
-            print(f"Error constructing prompts: {e}")
-            continue
+            print(f"Error extracting prompts: {e}")
+            logger.exception("Prompt extraction failed")
 
-        # 3. Run analysis (workflow2) for both prompts.
+        # 3. Run analysis for prompts that were successfully constructed
         try:
-            stats_1 = analyze_model(input_text_1)
+            if input_text_1:
+                stats_1 = analyze_model(input_text_1)
+            else:
+                logger.warning(
+                    "Skipping analysis for part_1: input_text_1 not available"
+                )
         except Exception as e:
             print(f"Error during analysis for input_text_1: {e}")
             stats_1 = {"error": str(e)}
 
         try:
-            stats_2 = analyze_model(input_text_2)
+            if input_text_2:
+                stats_2 = analyze_model(input_text_2)
+            else:
+                logger.warning(
+                    "Skipping analysis for part_2: input_text_2 not available"
+                )
         except Exception as e:
             print(f"Error during analysis for input_text_2: {e}")
             stats_2 = {"error": str(e)}
 
-        # 4. Combine both workflow JSONs into one for this iteration.
+        # 4. Always create and save iteration data
         iter_data = {
             "workflow1": workflow1_json,
             "workflow2": {"part_1": stats_1, "part_2": stats_2},
+            "iteration_number": iter_num,
+            "timestamp": datetime.now().isoformat(),
+            "input_text": input_text,
+            "status": "error" if "error" in workflow1_json else "success",
         }
-        # Save individual iteration file
-        iter_filename = f"iter_{iter_num}.json"
-        with open(os.path.join(save_dir, iter_filename), "w") as f:
-            json.dump(iter_data, f, indent=2)
-        print(f"Saved iteration {iter_num} data to {iter_filename}")
+
+        try:
+            iter_filename = f"iter_{iter_num}.json"
+            with open(os.path.join(save_dir, iter_filename), "w") as f:
+                json.dump(iter_data, f, indent=2)
+            print(f"Saved iteration {iter_num} data to {iter_filename}")
+        except Exception as save_err:
+            print(f"Error saving iteration data: {save_err}")
+            logger.exception(f"Failed to save iteration {iter_num} data")
+
+        # Always add to master data set
         all_iters_data[f"iter_{iter_num}"] = iter_data
 
-    # 5. Consolidate all iterations into one final JSON.
-    current_time = datetime.now()
-    timestamp = current_time.strftime("%m%d%Y_%H%M")
-    final_filename = f"complete_experiment_{timestamp}.json"
-    with open(os.path.join(save_dir, final_filename), "w") as f:
-        json.dump(all_iters_data, f, indent=2)
-    print(
-        f"SUCCESS: All {iterations} iterations completed. Saved JSON to {final_filename}"
-    )
+        # Brief pause between iterations to reduce load on server
+        if iter_num < iterations:
+            time.sleep(1)
+
+    # 5. Save final consolidated results
+    try:
+        current_time = datetime.now()
+        timestamp = current_time.strftime("%m%d%Y_%H%M")
+        final_filename = f"complete_experiment_{timestamp}.json"
+        with open(os.path.join(save_dir, final_filename), "w") as f:
+            json.dump(all_iters_data, f, indent=2)
+        print(
+            f"SUCCESS: All {iterations} iterations completed. Saved JSON to {final_filename}"
+        )
+    except Exception as final_err:
+        print(f"ERROR: Failed to save final data: {final_err}")
+        logger.exception("Failed to save final experiment data")
+
+        # Try emergency backup
+        try:
+            backup_path = os.path.join(save_dir, "backup_experiment.json")
+            with open(backup_path, "w") as f:
+                json.dump(all_iters_data, f, indent=2)
+            print(f"Emergency backup saved as {backup_path}")
+        except Exception as backup_err:
+            print(f"CRITICAL ERROR: Could not save results anywhere! {backup_err}")
+            logger.critical("Failed to save backup experiment data")
 
 
 if __name__ == "__main__":
