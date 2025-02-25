@@ -548,15 +548,15 @@ async def generate_full_objective_experiment(request: Request):
             info_dict = {
                 "detailed_response": None,
                 "error": f"Invalid response type: {str(info_dict)}",
-                "part_1": None,
-                "part_2": None,
+                "part_1": {},  # Empty dict instead of None
+                "part_2": {},  # Empty dict instead of None
             }
 
-        # Create response structure
+        # Create response structure - with empty dicts for missing parts
         response_data = {
             "status": "error" if info_dict.get("error") else "success",
-            "part_1": info_dict.get("part_1"),
-            "part_2": info_dict.get("part_2"),
+            "part_1": info_dict.get("part_1") or {},  # Use empty dict if None
+            "part_2": info_dict.get("part_2") or {},  # Use empty dict if None
         }
 
         # Add error if present

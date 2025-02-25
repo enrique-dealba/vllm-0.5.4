@@ -260,13 +260,16 @@ def generate_objective_response_with_tracking(user_input: str):
             user_input
         )
 
+        # Ensure data_1 is not None
+        data_1 = data_1 or {}
+
         # Check if we got an error dictionary
         if isinstance(initial_response, dict) and "error" in initial_response:
             return {
                 "detailed_response": None,
                 "error": initial_response["error"],
                 "part_1": data_1,
-                "part_2": None,
+                "part_2": {},  # Empty dict instead of None
             }
 
         # Check for objective_name attribute
@@ -277,7 +280,7 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": None,
+                "part_2": {},  # Empty dict instead of None
             }
 
         objective_type = initial_response.objective_name
@@ -300,7 +303,7 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": None,
+                "part_2": {},  # Empty dict instead of None
             }
 
         # Save original schema and update
@@ -313,6 +316,9 @@ def generate_objective_response_with_tracking(user_input: str):
             detailed_response, data_2 = generate_structured_response_with_tracking(
                 user_input
             )
+
+            # Ensure data_2 is not None
+            data_2 = data_2 or {}
 
             # Always reset schema, even if errors occur
             settings.update_schema(original_schema)
@@ -356,7 +362,7 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": None,
+                "part_2": {},  # Empty dict instead of None
             }
 
     except Exception as e:
@@ -365,6 +371,6 @@ def generate_objective_response_with_tracking(user_input: str):
         return {
             "detailed_response": None,
             "error": error_msg,
-            "part_1": None,
-            "part_2": None,
+            "part_1": {},  # Empty dict instead of None
+            "part_2": {},  # Empty dict instead of None
         }
