@@ -540,7 +540,19 @@ async def generate_full_objective_experiment(request: Request):
             generate_objective_response_with_tracking, query
         )
 
-        # Create a response structure that will always be valid
+        # Critical defensive check - ensure we always have a dictionary
+        if not isinstance(info_dict, dict):
+            logger.error(
+                f"Expected dictionary response, got {type(info_dict)}: {info_dict}"
+            )
+            info_dict = {
+                "detailed_response": None,
+                "error": f"Invalid response type: {str(info_dict)}",
+                "part_1": None,
+                "part_2": None,
+            }
+
+        # Create response structure
         response_data = {
             "status": "error" if info_dict.get("error") else "success",
             "part_1": info_dict.get("part_1"),
@@ -585,6 +597,4 @@ async def generate_full_objective_experiment(request: Request):
         raise he
     except Exception as e:
         logger.exception(f"Server error: {e}")
-        return JSONResponse(
-            {"status": "error", "error": f"Server error: {str(e)}"}, status_code=500
-        )
+        return JSONResponse({"status": "error", "error": f"Server error: {str(e)}"})

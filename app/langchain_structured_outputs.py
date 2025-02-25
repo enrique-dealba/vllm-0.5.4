@@ -255,16 +255,30 @@ def generate_objective_response_with_tracking(user_input: str):
     If any step fails, return an error message.
     """
     try:
-        # First pass: get the basic response (which should contain the objective type)
+        # First pass: get the basic response
         initial_response, data_1 = generate_structured_response_with_tracking(
             user_input
         )
-        # Check if we got an error from the fallback
-        if isinstance(initial_response, dict) and "error" in initial_response:
-            return initial_response["error"]
 
+        # Check if we got an error dictionary
+        if isinstance(initial_response, dict) and "error" in initial_response:
+            return {
+                "detailed_response": None,
+                "error": initial_response["error"],
+                "part_1": data_1,
+                "part_2": None,
+            }
+
+        # Check for objective_name attribute
         if not hasattr(initial_response, "objective_name"):
-            return f"OBJECTIVE TYPE ERROR - Found: {initial_response}"
+            error_msg = f"OBJECTIVE TYPE ERROR - Found: {str(initial_response)}"
+            logger.error(error_msg)
+            return {
+                "detailed_response": None,
+                "error": error_msg,
+                "part_1": data_1,
+                "part_2": None,
+            }
 
         objective_type = initial_response.objective_name
         detailed_objective_types = [
@@ -278,34 +292,76 @@ def generate_objective_response_with_tracking(user_input: str):
             "UctObservationObjective",
             "BaselineAutonomyObjective",
         ]
+
         if objective_type not in detailed_objective_types:
-            return f"ERROR - Found mismatched objective: '{objective_type}'."
+            error_msg = f"ERROR - Found mismatched objective: '{objective_type}'."
+            logger.error(error_msg)
+            return {
+                "detailed_response": None,
+                "error": error_msg,
+                "part_1": data_1,
+                "part_2": None,
+            }
 
-        # Save the original schema and update it to the specific objective type.
+        # Save original schema and update
         original_schema = settings.LLM_RESPONSE_SCHEMA
-        settings.update_schema(objective_type)
 
-        detailed_response, data_2 = generate_structured_response_with_tracking(
-            user_input
-        )
-        # Check if the detailed generation returned an error.
-        if isinstance(detailed_response, dict) and "error" in detailed_response:
-            # Reset the schema before returning the error.
+        try:
+            settings.update_schema(objective_type)
+
+            # Get detailed response
+            detailed_response, data_2 = generate_structured_response_with_tracking(
+                user_input
+            )
+
+            # Always reset schema, even if errors occur
             settings.update_schema(original_schema)
-            return detailed_response["error"]
 
-        # Reset the schema to the original.
-        settings.update_schema(original_schema)
-        # Add the objective_name field explicitly.
-        detailed_response.objective_name = str(objective_type)
-        assert detailed_response.objective_name == str(objective_type)
-        return {
-            "detailed_response": detailed_response,
-            "part_1": data_1,
-            "part_2": data_2,
-        }
+            # Check if detailed response is an error
+            if isinstance(detailed_response, dict) and "error" in detailed_response:
+                return {
+                    "detailed_response": None,
+                    "error": detailed_response["error"],
+                    "part_1": data_1,
+                    "part_2": data_2,
+                }
+
+            # Add objective_name field explicitly if we have a valid response
+            try:
+                detailed_response.objective_name = str(objective_type)
+            except AttributeError as e:
+                return {
+                    "detailed_response": None,
+                    "error": f"Could not set objective_name: {str(e)}",
+                    "part_1": data_1,
+                    "part_2": data_2,
+                }
+
+            return {
+                "detailed_response": detailed_response,
+                "part_1": data_1,
+                "part_2": data_2,
+            }
+
+        except Exception as schema_error:
+            # Make sure to reset schema if any error occurs
+            try:
+                settings.update_schema(original_schema)
+            except:
+                pass
+
+            error_msg = f"Schema handling error: {str(schema_error)}"
+            logger.exception(error_msg)
+            return {
+                "detailed_response": None,
+                "error": error_msg,
+                "part_1": data_1,
+                "part_2": None,
+            }
+
     except Exception as e:
         error_msg = f"Unexpected error during objective generation: {str(e)}"
+        logger.exception(error_msg)
         return {
             "detailed_response": None,
             "error": error_msg,
