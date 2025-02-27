@@ -134,13 +134,13 @@ def initialize_models():
                 trust_remote_code=True,  # Mandatory for Hugging Face models
                 max_new_tokens=settings.MAX_TOKENS,
                 temperature=settings.TEMPERATURE,
-                # tensor_parallel_size=tensor_parallel_size,
+                tensor_parallel_size=tensor_parallel_size,
                 # tokenizer_mode=tokenizer_mode,
                 vllm_kwargs={
                     "tokenizer_mode": tokenizer_mode,
                     "load_format": load_format,
                     "quantization": quantization,
-                    "tensor_parallel_size": tensor_parallel_size,
+                    # "tensor_parallel_size": tensor_parallel_size,
                     # "gpu_memory_utilization": gpu_utilization,
                 },
             )
