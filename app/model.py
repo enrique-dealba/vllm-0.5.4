@@ -128,6 +128,7 @@ def initialize_models():
             tokenizer_mode = "mistral" if settings.IS_MISTRAL else "auto"
             load_format = settings.LOAD_FORMAT
             quantization = settings.QUANTIZATION
+            gpu_utilization = settings.GPU_UTILIZATION
             tensor_parallel_size = settings.TENSOR_PARALLEL_SIZE
             llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
@@ -141,7 +142,7 @@ def initialize_models():
                     "load_format": load_format,
                     "quantization": quantization,
                     # "tensor_parallel_size": tensor_parallel_size,
-                    # "gpu_memory_utilization": gpu_utilization,
+                    "gpu_memory_utilization": gpu_utilization,
                 },
             )
             logger.info(

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     MAX_TOKENS: int = 8192  # prev: 256,
     MODEL_TYPE: str = "LLM"  # Default to LLM; options: 'LLM', 'VLM'
     TENSOR_PARALLEL_SIZE: int = 1
+    GPU_UTILIZATION: float = 1.0
 
     # LLM Settings
     LLM_MODEL_NAME: str = "tiiuae/Falcon3-7B-Instruct"
