@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     TEMPERATURE: float = 0.2
     MAX_TOKENS: int = 8192  # prev: 256,
     MODEL_TYPE: str = "LLM"  # Default to LLM; options: 'LLM', 'VLM'
+    TENSOR_PARALLEL_SIZE: int = 1
 
     # LLM Settings
     LLM_MODEL_NAME: str = "tiiuae/Falcon3-7B-Instruct"

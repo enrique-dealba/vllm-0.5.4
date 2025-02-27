@@ -128,6 +128,7 @@ def initialize_models():
             tokenizer_mode = "mistral" if settings.IS_MISTRAL else "auto"
             load_format = settings.LOAD_FORMAT
             quantization = settings.QUANTIZATION
+            tensor_parallel_size = settings.TENSOR_PARALLEL_SIZE
             llm = LangChainVLLM(
                 model=settings.LLM_MODEL_NAME,
                 trust_remote_code=True,  # Mandatory for Hugging Face models
@@ -138,6 +139,7 @@ def initialize_models():
                     "tokenizer_mode": tokenizer_mode,
                     "load_format": load_format,
                     "quantization": quantization,
+                    "tensor_parallel_size": tensor_parallel_size,
                     # "gpu_memory_utilization": gpu_utilization,
                 },
             )
