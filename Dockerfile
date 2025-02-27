@@ -2,6 +2,7 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 
 ENV VLLM_VERSION=0.6.1
 ENV PYTHON_VERSION=310
+ENV PYTORCH_MULTIPROCESSING_START_METHOD=spawn
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
