@@ -101,7 +101,16 @@ class MockLLM(BaseLanguageModel):
 
 
 def initialize_models():
+    import multiprocessing
+
     global llm, vlm, image
+
+    if multiprocessing.get_start_method(allow_none=True) != "spawn":
+        try:
+            multiprocessing.set_start_method("spawn")
+            logger.info("SUCCESS: Set multiprocessing start method to 'spawn'")
+        except RuntimeError as e:
+            logger.warning(f"ERROR: Could not set multiprocessing start method: {e}")
 
     if os.getenv("USE_MOCK_LLM", "false").lower() == "true":
         llm = MockLLM()
