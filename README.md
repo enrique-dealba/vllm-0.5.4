@@ -1,4 +1,4 @@
-## Visualizing LLM Activations
+## Offline LLMs for SDA Objectives
 
 Build a Docker image using:
 ```sh
