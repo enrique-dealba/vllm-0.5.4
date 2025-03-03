@@ -19,21 +19,9 @@ case "$RUN_MODE" in
         echo "Running LLM interpretability analysis..."
         exec python -m app.interpretability_analysis
         ;;
-    ui)
-        echo "Starting Streamlit UI..."
-        exec streamlit run /app/app/streamlit_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
-        ;;
     objectives)
         echo "Starting Streamlit UI..."
         exec streamlit run /app/app/objectives_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
-        ;;
-    intents)
-        echo "Starting Streamlit UI for Intents..."
-        exec streamlit run /app/app/streamlit_intents.py --server.port ${PORT:-8888} --server.address 0.0.0.0
-        ;;
-    rag)
-        echo "Starting Streamlit UI for RAG..."
-        exec streamlit run /app/app/chunk_ui.py --server.port ${PORT:-8888} --server.address 0.0.0.0
         ;;
     tests)
         echo "Running tests..."
@@ -54,7 +42,7 @@ case "$RUN_MODE" in
         fi
         ;;
     *)
-        echo "Invalid RUN_MODE: $RUN_MODE. Must be one of 'server', 'analysis', 'ui', 'objectives', 'intents', 'rag', 'tests', or 'run_experiment'."
+        echo "Invalid RUN_MODE: $RUN_MODE. Must be one of 'server', 'analysis', 'objectives', 'tests', or 'run_experiment'."
         exit 1
         ;;
 esac

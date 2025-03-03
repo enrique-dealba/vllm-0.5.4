@@ -62,9 +62,7 @@ def generate_objective_response(user_input: str):
     If any step fails, return an error message.
     """
     try:
-        # First pass: get the basic response (which should contain the objective type)
         initial_response, _ = generate_structured_response(user_input)
-        # Check if we got an error from the fallback
         if isinstance(initial_response, dict) and "error" in initial_response:
             return initial_response["error"]
 
@@ -90,27 +88,12 @@ def generate_objective_response(user_input: str):
         original_schema = settings.LLM_RESPONSE_SCHEMA
         settings.update_schema(objective_type)
 
-        # TODO: This current feature breaks PRO. Maybe add `cur_time` AFTER user_input (not before).
-        """
-        TODO: Validate on this PRO prompt
-        Create a PeriodicRevisitObjective for targets 12225,68887 using sensors RME05,LMNT06.
-        Set S marking, TEST mode, priority 2, patience minutes 30, ignore other objective
-        submissions false. Start at 2024-06-21 19:20:00+00:00. Set optimal frames per hour 400,
-        number of frames 5, integration time 2 seconds.
-        """
-        # cur_time = get_current_iso_time()
-        # user_input = f"Note: The current time right now is: {cur_time}. \n" + user_input
-
         detailed_response, _ = generate_structured_response(user_input)
-        # Check if the detailed generation returned an error.
         if isinstance(detailed_response, dict) and "error" in detailed_response:
-            # Reset the schema before returning the error.
             settings.update_schema(original_schema)
             return detailed_response["error"]
 
-        # Reset the schema to the original.
         settings.update_schema(original_schema)
-        # Add the objective_name field explicitly.
         detailed_response.objective_name = str(objective_type)
         assert detailed_response.objective_name == str(objective_type)
         return detailed_response
@@ -124,11 +107,6 @@ def generate_structured_response_with_tracking(user_input: str):
     on the underlying model. After the chain call, it restores the original invoke method and
     returns both the chain result and a tracking summary.
     """
-    # Log public attributes for debugging.
-    # llm_attrs = {attr: getattr(llm, attr) for attr in dir(llm) if not attr.startswith("_")}
-    # logger.info("LLM attributes: %s", llm_attrs.keys())
-
-    # Build the chain.
     LLMResponseSchema = load_schema()
     parser = PydanticOutputParser(pydantic_object=LLMResponseSchema)
     template = (
@@ -150,54 +128,42 @@ def generate_structured_response_with_tracking(user_input: str):
     )
     chain = prompt | llm | parser
 
-    # Make sure llm has the invoke method.
     if not hasattr(llm, "invoke"):
         logger.error("LLM object does not have an 'invoke' method!")
         raise AttributeError("LLM object does not have an 'invoke' method!")
 
-    # Save the original invoke.
     original_invoke = llm.invoke
     logger.info("Original llm.invoke: %s", original_invoke)
 
-    # Retrieve the underlying model from the vLLM chain.
     underlying_model = (
         llm.client.llm_engine.model_executor.driver_worker.model_runner.model
     )
 
-    # Define our tracked version.
     def tracked_invoke(*args, **kwargs):
         logger.info("Tracked invoke called with args: %s, kwargs: %s", args, kwargs)
-        # Clear previous tracking data.
         activation_dict.clear()
         neuron_grad_dict.clear()
-        # Register hooks on the underlying model.
         logger.info("Registering hooks on underlying model: %s", underlying_model)
         hook_handles = register_llama_hooks(underlying_model)
-        # Call the original invoke method.
         result = original_invoke(*args, **kwargs)
-        # Remove all hooks.
         for handle in hook_handles:
             handle.remove()
         logger.info("Tracked invoke returning result: %s", result)
         return result
 
-    # Replace llm.invoke with our tracked version.
     object.__setattr__(llm, "invoke", tracked_invoke)
     logger.info("LLM.invoke replaced with tracked_invoke.")
 
     try:
-        # Execute the chain to capture activations.
         result = chain.invoke({"query": user_input})
     except Exception as e:
         error_message = f"Error in tracked structured response generation: {str(e)}"
         logger.exception(error_message)
         result = {"error": error_message}
     finally:
-        # Always restore the original invoke.
         object.__setattr__(llm, "invoke", original_invoke)
         logger.info("LLM.invoke restored to original.")
 
-    # Prepare the tracking summary.
     tracking_data = {
         "metadata": {
             "input_text": user_input,
@@ -255,24 +221,20 @@ def generate_objective_response_with_tracking(user_input: str):
     If any step fails, return an error message.
     """
     try:
-        # First pass: get the basic response
         initial_response, data_1 = generate_structured_response_with_tracking(
             user_input
         )
 
-        # Ensure data_1 is not None
         data_1 = data_1 or {}
 
-        # Check if we got an error dictionary
         if isinstance(initial_response, dict) and "error" in initial_response:
             return {
                 "detailed_response": None,
                 "error": initial_response["error"],
                 "part_1": data_1,
-                "part_2": {},  # Empty dict instead of None
+                "part_2": {},
             }
 
-        # Check for objective_name attribute
         if not hasattr(initial_response, "objective_name"):
             error_msg = f"OBJECTIVE TYPE ERROR - Found: {str(initial_response)}"
             logger.error(error_msg)
@@ -280,7 +242,7 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": {},  # Empty dict instead of None
+                "part_2": {},
             }
 
         objective_type = initial_response.objective_name
@@ -303,27 +265,22 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": {},  # Empty dict instead of None
+                "part_2": {},
             }
 
-        # Save original schema and update
         original_schema = settings.LLM_RESPONSE_SCHEMA
 
         try:
             settings.update_schema(objective_type)
 
-            # Get detailed response
             detailed_response, data_2 = generate_structured_response_with_tracking(
                 user_input
             )
 
-            # Ensure data_2 is not None
             data_2 = data_2 or {}
 
-            # Always reset schema, even if errors occur
             settings.update_schema(original_schema)
 
-            # Check if detailed response is an error
             if isinstance(detailed_response, dict) and "error" in detailed_response:
                 return {
                     "detailed_response": None,
@@ -332,7 +289,6 @@ def generate_objective_response_with_tracking(user_input: str):
                     "part_2": data_2,
                 }
 
-            # Add objective_name field explicitly if we have a valid response
             try:
                 detailed_response.objective_name = str(objective_type)
             except AttributeError as e:
@@ -350,7 +306,6 @@ def generate_objective_response_with_tracking(user_input: str):
             }
 
         except Exception as schema_error:
-            # Make sure to reset schema if any error occurs
             try:
                 settings.update_schema(original_schema)
             except:
@@ -362,7 +317,7 @@ def generate_objective_response_with_tracking(user_input: str):
                 "detailed_response": None,
                 "error": error_msg,
                 "part_1": data_1,
-                "part_2": {},  # Empty dict instead of None
+                "part_2": {},
             }
 
     except Exception as e:
@@ -371,6 +326,6 @@ def generate_objective_response_with_tracking(user_input: str):
         return {
             "detailed_response": None,
             "error": error_msg,
-            "part_1": {},  # Empty dict instead of None
-            "part_2": {},  # Empty dict instead of None
+            "part_1": {},
+            "part_2": {},
         }
