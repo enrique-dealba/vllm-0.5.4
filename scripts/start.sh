@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Activate conda environment
-source /root/miniconda3/bin/activate vllm
+# Activate conda environment (Testing)
+# source /root/miniconda3/bin/activate vllm
 
 # Determine run mode
 RUN_MODE=${RUN_MODE:-server}
