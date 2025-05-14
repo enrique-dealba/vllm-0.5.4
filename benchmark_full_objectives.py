@@ -756,6 +756,8 @@ async def main():
     benchmark = ObjectiveBenchmark(api_url)
     await benchmark.run_benchmark()
 
+    benchmark.print_results_analysis()
+
     # Generate the JSON report
     report = await benchmark.generate_results_report()
 
