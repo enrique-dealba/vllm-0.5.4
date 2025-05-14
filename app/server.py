@@ -159,6 +159,5 @@ async def health_check():
 @app.get("/settings")
 async def get_settings():
     """Return the current application settings"""
-    # Convert settings to a dictionary to return as JSON
     settings_dict = settings.model_dump()
     return JSONResponse(content=settings_dict)

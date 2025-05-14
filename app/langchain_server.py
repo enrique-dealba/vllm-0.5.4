@@ -179,3 +179,10 @@ async def test_mock():
     except Exception as e:
         logger.exception("Error testing mock LLM")
         return JSONResponse({"status": "error", "error": str(e)})
+
+
+@app.get("/settings")
+async def get_settings():
+    """Return the current application settings"""
+    settings_dict = settings.model_dump()
+    return JSONResponse(content=settings_dict)
