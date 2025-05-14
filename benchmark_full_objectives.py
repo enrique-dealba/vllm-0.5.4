@@ -417,7 +417,6 @@ class ObjectiveBenchmark:
                     return {
                         "query": query,
                         "exact_match": exact_match,
-                        # "schema_valid": schema_valid,
                         "slot_metrics": slot_metrics,
                         "expected_objective_name": expected_obj_name,
                         "predicted_objective_name": predicted_obj_name,
@@ -435,7 +434,6 @@ class ObjectiveBenchmark:
                 return {
                     "query": query,
                     "exact_match": False,
-                    "schema_valid": False,
                     "slot_metrics": {
                         "tp": 0,
                         "fp": 0,
@@ -485,7 +483,6 @@ class ObjectiveBenchmark:
 
         # New top-level metrics
         exact_match_rate = df["exact_match"].mean()
-        schema_valid_rate = df["schema_valid"].mean()
         # slot_metrics is a column of dicts; turn it into a DataFrame
         slot_df = pd.DataFrame(df["slot_metrics"].tolist())
         avg_precision = slot_df["precision"].mean()
@@ -494,7 +491,6 @@ class ObjectiveBenchmark:
 
         print("\n=== Benchmark Summary ===")
         print(f"Exact Match Rate:       {exact_match_rate:.2%}")
-        print(f"JSON-Schema Valid Rate: {schema_valid_rate:.2%}")
         print(
             "Slot-Level (presence) — "
             f"P: {avg_precision:.2%}, "
