@@ -706,6 +706,23 @@ class ObjectiveBenchmark:
             "per_objective_details": details,
         }
 
+        # Aggregate every incorrect‐field instance across runs
+        all_errors = []
+        for r in self.results:
+            for field_name, info in r["field_details"].items():
+                if not info["correct"]:
+                    all_errors.append(
+                        {
+                            "query": r["query"],
+                            "objective_name": r["expected_objective_name"],
+                            "field": field_name,
+                            "expected": info["expected"],
+                            "predicted": info["predicted"],
+                        }
+                    )
+
+        report["all_errors"] = all_errors
+
         return report
 
 
