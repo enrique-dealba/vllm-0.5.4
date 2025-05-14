@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 import time
@@ -318,24 +319,18 @@ def calculate_field_accuracy_custom(
             "objective_end_time",
             "search_start_time",
         ]:
-            # Convert expected datetime string to normalized format
             expected_norm = normalize_datetime_string(str(expected_value))
-            # Convert predicted ISO format to normalized format
             current_norm = normalize_datetime_string(str(current_value))
             is_correct = expected_norm == current_norm
 
-        # Handle numeric fields that could be int/float
         elif isinstance(expected_value, (int, float)):
             try:
-                # Convert both to float for comparison
                 expected_float = float(expected_value)
                 current_float = float(current_value)
-                # Compare with small tolerance for floating point
                 is_correct = abs(expected_float - current_float) < 1e-10
-            except (ValueError, TypeError):
+            except Exception:
                 is_correct = False
 
-        # Handle lists
         elif isinstance(expected_value, list):
             try:
                 expected_sorted = sorted(str(x).strip() for x in expected_value)
@@ -344,7 +339,6 @@ def calculate_field_accuracy_custom(
             except Exception:
                 is_correct = False
 
-        # Regular comparison
         else:
             is_correct = str(current_value).strip() == str(expected_value).strip()
 
@@ -356,6 +350,30 @@ def calculate_field_accuracy_custom(
 
     accuracy = (correct_fields / total_fields) * 100 if total_fields > 0 else 0.0
     return accuracy, correct_fields, total_fields, field_details
+
+
+def calculate_slot_metrics(predicted: dict, expected: dict) -> Dict[str, float]:
+    """Calculate slot-level precision, recall, and F1 for field presence."""
+    expected_fields = set(expected.keys())
+    predicted_fields = set(predicted.keys())
+    tp = len(expected_fields & predicted_fields)
+    fp = len(predicted_fields - expected_fields)
+    fn = len(expected_fields - predicted_fields)
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = (
+        2 * (precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+    }
 
 
 class ObjectiveBenchmark:
@@ -378,9 +396,17 @@ class ObjectiveBenchmark:
                     result = response.json()
                     execution_time = time.time() - start_time
 
+                    # Metric 1: Exact Match
+                    exact_match = json.dumps(result, sort_keys=True) == json.dumps(
+                        expected, sort_keys=True
+                    )
+
+                    # Field-level detailed metrics
                     field_accuracy, correct_count, total_count, field_details = (
                         calculate_field_accuracy_custom(result, expected)
                     )
+                    # Slot-level presence metrics
+                    slot_metrics = calculate_slot_metrics(result, expected)
 
                     predicted_obj_name = result.get("objective_name")
                     expected_obj_name = expected.get("objective_name")
@@ -390,6 +416,9 @@ class ObjectiveBenchmark:
 
                     return {
                         "query": query,
+                        "exact_match": exact_match,
+                        # "schema_valid": schema_valid,
+                        "slot_metrics": slot_metrics,
                         "expected_objective_name": expected_obj_name,
                         "predicted_objective_name": predicted_obj_name,
                         "objective_name_correct": objective_name_correct,
@@ -405,6 +434,16 @@ class ObjectiveBenchmark:
                 await asyncio.sleep(RATE_LIMIT_DELAY)
                 return {
                     "query": query,
+                    "exact_match": False,
+                    "schema_valid": False,
+                    "slot_metrics": {
+                        "tp": 0,
+                        "fp": 0,
+                        "fn": len(expected),
+                        "precision": 0.0,
+                        "recall": 0.0,
+                        "f1": 0.0,
+                    },
                     "expected_objective_name": expected.get("objective_name"),
                     "predicted_objective_name": "ERROR",
                     "objective_name_correct": False,
@@ -444,7 +483,24 @@ class ObjectiveBenchmark:
         obj_accuracy = accuracy
         avg_execution_time = df["execution_time"].mean()
 
+        # New top-level metrics
+        exact_match_rate = df["exact_match"].mean()
+        schema_valid_rate = df["schema_valid"].mean()
+        # slot_metrics is a column of dicts; turn it into a DataFrame
+        slot_df = pd.DataFrame(df["slot_metrics"].tolist())
+        avg_precision = slot_df["precision"].mean()
+        avg_recall = slot_df["recall"].mean()
+        avg_f1 = slot_df["f1"].mean()
+
         print("\n=== Benchmark Summary ===")
+        print(f"Exact Match Rate:       {exact_match_rate:.2%}")
+        print(f"JSON-Schema Valid Rate: {schema_valid_rate:.2%}")
+        print(
+            "Slot-Level (presence) — "
+            f"P: {avg_precision:.2%}, "
+            f"R: {avg_recall:.2%}, "
+            f"F1: {avg_f1:.2%}"
+        )
         print(f"Total Test Cases: {len(OBJECTIVE_TEST_CASES)}")
         print(f"Iterations per Test Case: {N_ITERATIONS}")
         print(f"Total Tests Run: {total_tests}")
@@ -480,6 +536,15 @@ class ObjectiveBenchmark:
             cumulative_accuracy = (
                 (total_correct / total_fields * 100) if total_fields > 0 else 0
             )
+            sub = df[df.expected_objective_name == obj_name]
+            slot_sub = pd.DataFrame(sub["slot_metrics"].tolist())
+            print(
+                "  Slot-P/R/F1:",
+                f"{slot_sub.precision.mean():.2%}/"
+                f"{slot_sub.recall.mean():.2%}/"
+                f"{slot_sub.f1.mean():.2%}",
+            )
+
             print(
                 f"Field Accuracy: {cumulative_accuracy:.2f}% "
                 f"({total_correct}/{total_fields})"
