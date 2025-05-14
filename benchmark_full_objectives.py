@@ -1,8 +1,10 @@
 import asyncio
+import datetime
 import json
 import logging
 import re
 import time
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import httpx
@@ -379,6 +381,7 @@ def calculate_slot_metrics(predicted: dict, expected: dict) -> Dict[str, float]:
 class ObjectiveBenchmark:
     def __init__(self, api_url: str = "http://localhost:8888"):
         self.api_url = api_url
+        self.model_name = "None"
         self.results = []
         self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
@@ -590,6 +593,123 @@ class ObjectiveBenchmark:
             f"Total Accuracy Across All Fields: {overall_field_accuracy:.2f}% ({total_correct_all_fields}/{total_fields_all})"
         )
 
+    async def generate_results_report(self) -> dict:
+        """Build a comprehensive JSON report of the last benchmark run."""
+        # 1) Pull application settings
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{self.api_url}/settings")
+            resp.raise_for_status()
+            settings = resp.json()
+            self.model_name = settings["LLM_MODEL_NAME"]
+
+        # 2) Timestamp
+        now = datetime.datetime.now(datetime.timezone.utc).strftime("%m%d%Y%H%M")
+
+        # 3) Metrics dataframe
+        df = pd.DataFrame(self.results)
+
+        # Overall objective accuracy
+        expected = df["expected_objective_name"].fillna("NONE")
+        predicted = df["predicted_objective_name"].fillna("NONE")
+        objective_accuracy = accuracy_score(expected, predicted)
+
+        # Top-level metrics
+        total_tests = len(df)
+        exact_match_rate = df["exact_match"].mean()
+        schema_valid_rate = df["schema_valid"].mean()
+        avg_exec_time = df["execution_time"].mean()
+
+        # Slot‐level (presence) metrics
+        slot_df = pd.DataFrame(df["slot_metrics"].tolist())
+        avg_precision = slot_df["precision"].mean()
+        avg_recall = slot_df["recall"].mean()
+        avg_f1 = slot_df["f1"].mean()
+
+        # Field‐specific accuracy counts
+        field_counts = {}
+        for r in self.results:
+            for field, info in r["field_details"].items():
+                correct, total = field_counts.get(field, [0, 0])
+                total += 1
+                correct += int(info["correct"])
+                field_counts[field] = [correct, total]
+
+        field_specific = {
+            field: correct / total for field, (correct, total) in field_counts.items()
+        }
+        overall_field_accuracy = sum(c for c, _ in field_counts.values()) / sum(
+            t for _, t in field_counts.values()
+        )
+
+        # Detailed per‐objective breakdown
+        grouped = df.groupby("expected_objective_name")
+        details = {}
+        for obj_name, subdf in grouped:
+            # name‐level stats
+            pred_name = subdf["predicted_objective_name"].iat[0]
+            name_correct = bool(subdf["objective_name_correct"].all())
+
+            # slot metrics for this objective
+            slot_sub = pd.DataFrame(subdf["slot_metrics"].tolist())
+            slot_stats = {
+                "precision": slot_sub["precision"].mean(),
+                "recall": slot_sub["recall"].mean(),
+                "f1": slot_sub["f1"].mean(),
+            }
+
+            # cumulative field accuracy
+            total_correct = subdf["correct_field_count"].sum()
+            total_fields = subdf["total_field_count"].sum()
+            field_acc = total_correct / total_fields if total_fields else None
+
+            # error catalog
+            errors = []
+            for run_details in subdf["field_details"]:
+                for field, info in run_details.items():
+                    if not info["correct"]:
+                        errors.append(
+                            {
+                                "field": field,
+                                "expected": info["expected"],
+                                "predicted": info["predicted"],
+                            }
+                        )
+
+            details[obj_name] = {
+                "predicted_name": pred_name,
+                "name_correct": name_correct,
+                "slot_metrics": slot_stats,
+                "field_accuracy": field_acc,
+                "errors": errors,
+                "average_latency_s": subdf["execution_time"].mean(),
+            }
+
+        report = {
+            "generated_at": now,
+            "settings": settings,
+            "benchmark_configuration": {
+                "test_cases": len(OBJECTIVE_TEST_CASES),
+                "iterations": N_ITERATIONS,
+                "total_requests": total_tests,
+            },
+            "summary_metrics": {
+                "objective_accuracy": objective_accuracy,
+                "exact_match_rate": exact_match_rate,
+                "schema_valid_rate": schema_valid_rate,
+                "avg_latency_s": avg_exec_time,
+                "slot_presence": {
+                    "precision": avg_precision,
+                    "recall": avg_recall,
+                    "f1": avg_f1,
+                },
+            },
+            "field_specific_accuracy": field_specific,
+            "overall_field_accuracy": overall_field_accuracy,
+            "per_objective_details": details,
+        }
+
+        return report
+
 
 async def main():
     start_time = time.time()
@@ -620,12 +740,34 @@ async def main():
     # Run the full objective benchmark
     benchmark = ObjectiveBenchmark(api_url)
     await benchmark.run_benchmark()
-    benchmark.print_results_analysis()
+
+    # Generate the JSON report
+    report = await benchmark.generate_results_report()
+
+    # Determine model name and timestamp for filename
+    model_name = benchmark.model_name or report.get("settings", {}).get(
+        "LLM_MODEL_NAME", "model"
+    )
+    # sanitize e.g. replace slashes or at-signs
+    model_name = model_name.replace("/", "_").replace("@", "_")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%m%d%Y%H%M")
+    filename = f"{model_name}_{timestamp}.json"
+
+    # Ensure output directory exists
+    out_dir = Path("../May2025_JSONs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write report
+    out_path = out_dir / filename
+    with open(out_path, "w") as f:
+        json.dump(report, f, indent=2)
+
+    print(f"\nReport written to {out_path.resolve()}")
 
     total_time = time.time() - start_time
     minutes = int(total_time // 60)
     seconds = int(total_time % 60)
-    print(f"\nTotal Benchmark Time: {minutes}mins {seconds}secs")
+    print(f"Total Benchmark Time: {minutes}mins {seconds}secs")
 
 
 if __name__ == "__main__":
