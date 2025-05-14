@@ -616,7 +616,6 @@ class ObjectiveBenchmark:
         # Top-level metrics
         total_tests = len(df)
         exact_match_rate = df["exact_match"].mean()
-        schema_valid_rate = df["schema_valid"].mean()
         avg_exec_time = df["execution_time"].mean()
 
         # Slot‐level (presence) metrics
@@ -695,7 +694,6 @@ class ObjectiveBenchmark:
             "summary_metrics": {
                 "objective_accuracy": objective_accuracy,
                 "exact_match_rate": exact_match_rate,
-                "schema_valid_rate": schema_valid_rate,
                 "avg_latency_s": avg_exec_time,
                 "slot_presence": {
                     "precision": avg_precision,
