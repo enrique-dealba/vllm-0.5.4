@@ -2940,7 +2940,7 @@ OBJECTIVE_TEST_CASES = {
     },
     # New Example 110: SearchObjective
     (
-        "Alright, genius, conjure up a SearchObjective. We're looking for target 'target_alpha_7' with sensor 'SENSRX9'. Use 'TS' markings – super secret stuff, obviously. "
+        "Alright, genius, conjure up a SearchObjective. We're looking for target 'target_alpha_7' with sensor 'SENSRX9'. Use 'TS' markings - super secret stuff, obviously. "
         "Mode is 'SIMULATED' because we're just playing make-believe. Priority is a stunning 3. Use 'SIDEREAL' tracking, because 'RATE_TRACK_SIDEREAL' is just too mainstream. "
         "Objective starts 2025-11-01 at 08:00:00+00:00 and, if we're lucky, ends 2025-11-01 at 09:30:00+00:00. "
         "Set initial offset to 45 seconds, final offset to 75 seconds. Frame overlap should be a nice, round 0.6 (or 60%, if you prefer). End time offset is 30 minutes. "
@@ -3342,7 +3342,7 @@ OBJECTIVE_TEST_CASES = {
         "Alright, team, listen up! We need to whip up a CatalogMaintenanceObjective. This one's for our trusty sensors 'WACKY01' and 'GOOFY02'. "
         "Let's slap a 'C' for 'Classifiedly Comical' marking on it. Set the mode to SIMULATED because, frankly, reality is overrated today. "
         "Priority? Oh, let's make it a saucy 69. We're feeling patient, so give it 45 minutes of patience, and an end time offset of a neat 30 minutes. "
-        "Visibility check? Nah, we trust our gut – set it to false. "
+        "Visibility check? Nah, we trust our gut - set it to false. "
         "This cosmic ballet begins on 2025-11-01 at 10:00:00+00:00 and the grand finale is on 2025-11-01 at 15:30:00+00:00. "
         "We're tracking these things in the MEO regime, using the ever-reliable RATE_TRACK. "
         "And the RSO IDs for this shindig are '11223' and '44556'. Oh, and let's try binning at 2x2 for extra chunky pixels!"
@@ -3370,7 +3370,7 @@ OBJECTIVE_TEST_CASES = {
         "This mission is classified 'S' for 'Seriously Searching Something'. We're in REAL mode, because this ain't no drill, people! "
         "Tracking type: SIDEREAL, nice and steady. Let's set the priority to a low and humble 3, because we're not too pushy. "
         "Commence the search operations on 2026-01-15 at 08:00:00+00:00, and don't you dare stop until 2026-01-15 at 12:30:00+00:00. "
-        "Give us an initial offset of 120 seconds – we like to sneak up. Final offset will be 150 seconds, for a dramatic exit. "
+        "Give us an initial offset of 120 seconds - we like to sneak up. Final offset will be 150 seconds, for a dramatic exit. "
         "Frame overlap should be a cozy 60% (that's 0.6 for you mathematicians), and the end time offset is a generous 50 minutes. "
         "We're going ALONG_TRACK for this hunt, and the specific search start time is precisely 20 minutes after the objective kicks off. No binning, keep it clean!"
     ): {
@@ -4836,7 +4836,7 @@ OBJECTIVE_TEST_CASES = {
     # New Example 181: CatalogMaintenanceObjective
     (
         "Alright, listen up, sugar. We need a CatalogMaintenanceObjective, and make it snappy! I'm talking sensors RME07 and LMNT09, with those hush-hush U//FOUO markings. "
-        "This is a REAL operation, not some silly test. Let's set the priority to a firm 10 – we're not desperate, but it's important. "
+        "This is a REAL operation, not some silly test. Let's set the priority to a firm 10 - we're not desperate, but it's important. "
         "Give it a patience of, say, 15 little minutes, and an end time offset of 30 minutes, just to be safe. "
         "And no, we absolutely do not need a visibility check; trust my gut on this one. Kick it off at 2025-06-10 10:00:00+00:00 and wrap it up by 2025-06-10 15:30:00+00:00. "
         "We're using SIDEREAL tracking for this one, focusing on the MEO regime, because that's where the drama is. "
@@ -4864,7 +4864,7 @@ OBJECTIVE_TEST_CASES = {
         "Okay, sweetie, emergency time! We've got a SearchObjective on our hands for target '98765', and I need sensor 'UKR25' on it, like, yesterday. "
         "Mark it with 'S' for secret, obviously, and this is 100% REAL mode. Priority is a screaming 1, because, hello, it's an emergency! "
         "We're going with RATE_TRACK tracking. Let this baby run from 2025-08-15 14:00:00+00:00 to 2025-08-15 18:00:00+00:00. "
-        "I want an initial offset of 45 seconds – don't be shy – and a final offset of 120 seconds, because we need to cast a wide net. "
+        "I want an initial offset of 45 seconds - don't be shy - and a final offset of 120 seconds, because we need to cast a wide net. "
         "Frame overlap should be a generous 60%, and let's give it an end time offset of 50 minutes. "
         "It's an ALONG_TRACK search, and darling, the search should commence exactly 20 minutes after the objective kicks off. "
         "Oh, and set the number of frames to 10 and integration time to 0.5 seconds. Visibility check is off for this one."
@@ -4941,7 +4941,7 @@ OBJECTIVE_TEST_CASES = {
     # New Example 184: PeriodicRevisitObjective
     (
         "Darling, I need a PeriodicRevisitObjective. We're keeping an eye on targets '11223' and '44556' using sensors 'RME01' and 'LMNT02'. "
-        "This is top-secret, so 'TS' marking, please, and run it in SIMULATED mode – we're just practicing our moves. Priority is a chic 3. "
+        "This is top-secret, so 'TS' marking, please, and run it in SIMULATED mode - we're just practicing our moves. Priority is a chic 3. "
         "I want 5.0 revisits per hour, no excuses. Patience can be a standard 30 minutes, and don't you dare ignore other objective submissions; we play nice with others, so set that to false. "
         "Start this on 2025-07-01 00:00:00+00:00. Let's go for 3 frames per intent, with an integration time of 1.5 seconds. "
         "Oh, and set the optimal frames per hour to 300, because we're efficient like that. Visibility check? Nah, false for this one. And no binning, keep it simple."
@@ -4971,7 +4971,7 @@ OBJECTIVE_TEST_CASES = {
     # New Example 185: UctObservationObjective
     (
         "Sweetheart, it's UCT time! Create a UctObservationObjective for our special UCT RSOs 'UCT007' and 'UCT008' using sensors 'RME30' and 'LMNT31'. "
-        "This is classified 'C', REAL mode, and we're looking in the XGEO regime – way out there! Priority is a firm 8. "
+        "This is classified 'C', REAL mode, and we're looking in the XGEO regime - way out there! Priority is a firm 8. "
         "I expect 4.5 revisits per hour, because these little guys are slippery. Kick it off on 2025-10-10 10:10:10+00:00. "
         "And yes, absolutely sort by the brightest UCT; we only have time for the stars. End time offset? Make it 75 minutes. "
         "Visibility check is a must, so true. For frames, let's do 4, and integration time of 2.2 seconds. Binning can be 2."
@@ -5079,7 +5079,7 @@ OBJECTIVE_TEST_CASES = {
     # New Example 189: BaselineAutonomyObjective
     (
         "Okay, queen, let's set up a BaselineAutonomyObjective. Assign it the UUID 'abcdef01-2345-6789-abcd-ef0123456789' right off the bat. "
-        "Markings are 'U', as standard. Data mode is REAL, frame type LIGHT, and let's give this workhorse a priority of 1500 – it's important but not *the* most important, you know? "
+        "Markings are 'U', as standard. Data mode is REAL, frame type LIGHT, and let's give this workhorse a priority of 1500 - it's important but not *the* most important, you know? "
         "For the baseline autonomy RSOs, I want you to track these catalog IDs: '25544' and '27435'. "
         "There's no end time; this baby runs until we say stop. And just for kicks, initially, let's list RSO IDs 'SAT123' and 'SAT456', though we know the system will update these. This is crucial, so make sure it's perfect!"
     ): {
