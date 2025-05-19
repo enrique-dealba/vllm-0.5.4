@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 N_ITERATIONS = 1  # Number of times to run each test case
 RATE_LIMIT_DELAY = 2.0  # Seconds to wait between requests
 MAX_CONCURRENT_REQUESTS = 1  # Maximum number of concurrent requests. Note: Must be 1
+NUM_CASES = -1  # Does up to that amount of TEST_CASES
 
 # ------------------------------------------------------------------------------
 # Test cases: Each key is a prompt; each value is the expected output dictionary.
@@ -11700,7 +11701,8 @@ class ObjectiveBenchmark:
             logger.info(f"Starting iteration {iteration + 1}/{N_ITERATIONS}")
             tasks = [
                 self.test_single_objective(query, expected)
-                for query, expected in OBJECTIVE_TEST_CASES.items()
+                for i, (query, expected) in enumerate(OBJECTIVE_TEST_CASES.items())
+                if NUM_CASES == -1 or i < NUM_CASES
             ]
             iteration_results = await asyncio.gather(*tasks)
             all_results.extend(iteration_results)
