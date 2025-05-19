@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import datetime
 import json
 import logging
@@ -11171,7 +11172,7 @@ OBJECTIVE_TEST_CASES = {
         "priority": 12,
         "objective_name": "SensorCheckoutObjective",
     },
-    # New Example 407: BaselineAutonomyObjective
+    # New Example 405: BaselineAutonomyObjective, note that 405 is actual number
     (
         "Create a BaselineAutonomyObjective with UUID 'a1b2c3d4-e5f6-7890-1234-567890abcdef'. "
         "Use S markings, TEST mode, and DARK frame type. "
@@ -11296,6 +11297,322 @@ def calculate_slot_metrics(predicted: dict, expected: dict) -> Dict[str, float]:
         "recall": recall,
         "f1": f1,
     }
+
+
+categorized_errors_template = {
+    "Missing Field Data": {
+        "description": 'The system predicted the literal string "MISSING" for a field where a value was expected.',
+        "examples": [
+            'e.g., {"field": "objective_name", "expected": "SomeName", "predicted": "MISSING"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Null When Value Expected": {
+        "description": "The system predicted `null` (absence of value) when a specific, non-null value was expected.",
+        "examples": [
+            'e.g., {"field": "objective_start_time", "expected": "datetime(...)", "predicted": null}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Value Present When Null Expected": {
+        "description": "The system predicted a concrete value for a field that was expected to be `null`.",
+        "examples": [
+            'e.g., {"field": "intent_start_time", "expected": null, "predicted": "2025-09-05T10:00:00Z"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Datetime Formatting Mismatch (Equivalent Value)": {
+        "description": "Expected (e.g., Python `datetime` string) and predicted (e.g., ISO 8601 string) represent the exact same point in time but differ in format.",
+        "examples": [
+            'e.g., {"field": "intent_start_time", "expected": "datetime(2026,2,20,14,30,...)", "predicted": "2026-02-20T14:30:00+00:00"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Datetime Value Mismatch": {
+        "description": "Both expected and predicted are datetime representations but refer to different points in time (different hour, day, etc.).",
+        "examples": [
+            'e.g., {"field": "search_start_time", "expected": "datetime(...,16,50,...)", "predicted": "...T18:50:00Z"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Incorrect Semantic String - Abbreviation/Full Name": {
+        "description": "A string mismatch where one value is an abbreviation and the other is its full form (e.g., classification markings).",
+        "examples": [
+            'e.g., {"field": "classification_marking", "expected": "C", "predicted": "CONFIDENTIAL"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Incorrect Semantic String - Related/Distinct Terms": {
+        "description": "A string mismatch where terms are related but distinct, indicating a mix-up in allowed values or vocabulary (e.g., types of data collection).",
+        "examples": [
+            'e.g., {"field": "collect_request_type", "expected": "SIDEREAL", "predicted": "RATE_TRACK_SIDEREAL"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Incorrect Semantic String - Arbitrary Mismatch": {
+        "description": "A string mismatch where the predicted string is substantially different from the expected string with no clear semantic link.",
+        "examples": [
+            'e.g., {"field": "sensor_name", "expected": "ZAP55", "predicted": "AWESOME_SENSOR"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Numerical Value Mismatch": {
+        "description": "Both expected and predicted are numerical types (int, float), but their values differ.",
+        "examples": [
+            'e.g., {"field": "number_of_frames", "expected": 8, "predicted": 40}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Case Sensitivity Mismatch (String)": {
+        "description": "Expected and predicted string values are identical if letter casing is ignored, but differ in actual casing.",
+        "examples": [
+            'e.g., {"field": "sensor_name", "expected": "vista-b", "predicted": "Vista-B"}'
+        ],
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Boolean Value Mismatch": {
+        "description": "Expected and predicted values represent different boolean states (true vs. false).",
+        "examples": [
+            'e.g., {"field": "visibility_check", "expected": true, "predicted": false}'
+        ],  # Assuming actual booleans
+        "total_count": 0,
+        "field_counts": {},
+    },
+    "Probable Field Value Swapping/Misplacement (Datetime)": {
+        "description": (
+            "This error on an 'intent_*_time' field (value present when null expected) is likely part of a pair. "
+            "The corresponding 'objective_*_time' field was likely null (but expected a value), and this 'intent' field wrongly received that objective's value."
+        ),
+        "examples": [
+            "e.g., 'intent_start_time' predicted '2025-09-05T10:00Z' (expected null), while related 'objective_start_time' was null (expected 'datetime(2025,9,5,10,0,...Z)')"
+        ],
+        "total_count": 0,
+        "field_counts": {},  # Tracks the 'intent_*_time' fields involved
+    },
+    "OTHER": {
+        "description": "Errors that do not fit into any of the other predefined categories.",
+        "examples": [],
+        "total_count": 0,
+        "field_counts": {},
+    },
+}
+
+
+# --- Helper Functions ---
+def is_python_datetime_repr(value):
+    """Checks if a value is a string representation of a Python datetime object."""
+    return isinstance(value, str) and value.startswith("datetime.datetime(")
+
+
+def is_iso_datetime_str(value):
+    """Checks if a value is an ISO 8601 formatted datetime string."""
+    if not isinstance(value, str):
+        return False
+    iso_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$"
+    return bool(re.match(iso_pattern, value))
+
+
+def are_datetimes_equivalent(expected_dt_repr, predicted_dt_iso_str):
+    """Simplified check for datetime equivalence.
+    WARNING: This is a placeholder. Robust parsing (e.g., with dateutil.parser)
+    and timezone-aware comparison are needed for a production system.
+    """
+    if not is_python_datetime_repr(expected_dt_repr) or not is_iso_datetime_str(
+        predicted_dt_iso_str
+    ):
+        return False
+    try:
+        # Extremely simplified extraction - only compares main components if they match a simple pattern
+        match_expected = re.search(
+            r"(\d{4}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2})",
+            expected_dt_repr,
+        )
+        # Simplification: Assumes predicted is already UTC if it has Z or +00:00, or no offset means to compare naively
+        match_predicted = re.search(
+            r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})", predicted_dt_iso_str
+        )
+
+        if match_expected and match_predicted:
+            # Compare year, month, day, hour, minute, second naively
+            return all(
+                int(match_expected.group(i)) == int(match_predicted.group(i))
+                for i in range(1, 7)
+            )
+    except ValueError:  # Handles int() conversion errors
+        return False
+    return False
+
+
+def get_comparable_datetime_value_from_repr(dt_repr_str):
+    """Simplified: Extracts YYYY-MM-DDTHH:MM:SS from Python datetime repr for basic comparison."""
+    if not is_python_datetime_repr(dt_repr_str):
+        return None
+    match = re.search(
+        r"(\d{4}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2}),\s*(\d{1,2})",
+        dt_repr_str,
+    )
+    if match:
+        parts = [int(p) for p in match.groups()]
+        return f"{parts[0]:04}-{parts[1]:02}-{parts[2]:02}T{parts[3]:02}:{parts[4]:02}:{parts[5]:02}"
+    return None
+
+
+def get_comparable_datetime_value_from_iso(dt_iso_str):
+    """Simplified: Extracts YYYY-MM-DDTHH:MM:SS from ISO str for basic comparison."""
+    if not is_iso_datetime_str(dt_iso_str):
+        return None
+    match = re.search(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", dt_iso_str)
+    if match:
+        return match.group(1)
+    return None
+
+
+def is_number(value):
+    """Checks if a value is an integer or float."""
+    return isinstance(value, (int, float))
+
+
+# --- Classification Function ---
+def classify_error(field_name, expected, predicted, current_run_field_details=None):
+    """Classifies a single error into one of the defined categories.
+    `current_run_field_details` (dict of all fields for the current run/record)
+    is needed for Category 12 (Swapping/Misplacement).
+    """
+    if current_run_field_details is None:
+        current_run_field_details = {}
+
+    # Category 1: Missing Field Data
+    if predicted == "MISSING":
+        return "Missing Field Data"
+
+    # Category 12: Probable Field Value Swapping/Misplacement (Datetime)
+    # This specifically identifies the 'intent_*_time' part of a potential swap.
+    if (
+        field_name in ["intent_start_time", "intent_end_time"]
+        and expected is None
+        and predicted is not None
+        and is_iso_datetime_str(predicted)
+    ):
+        objective_field_equivalent = field_name.replace("intent_", "objective_")
+        if objective_field_equivalent in current_run_field_details:
+            obj_info = current_run_field_details[objective_field_equivalent]
+            # Check if objective field was 'Null When Value Expected' and its expected value matches this intent's predicted value
+            if (
+                obj_info.get("predicted") is None
+                and obj_info.get("expected") is not None
+                and is_python_datetime_repr(obj_info["expected"])
+            ):
+                intent_pred_comparable = get_comparable_datetime_value_from_iso(
+                    predicted
+                )
+                obj_expected_comparable = get_comparable_datetime_value_from_repr(
+                    obj_info["expected"]
+                )
+
+                if (
+                    intent_pred_comparable
+                    and obj_expected_comparable
+                    and intent_pred_comparable == obj_expected_comparable
+                ):
+                    return "Probable Field Value Swapping/Misplacement (Datetime)"
+
+    # Category 2: Null When Value Expected
+    if (
+        predicted is None and expected is not None
+    ):  # 'expected' can be 0 or False, which are not None
+        return "Null When Value Expected"
+
+    # Category 3: Value Present When Null Expected (and not caught by Cat 12)
+    if predicted is not None and expected is None:
+        return "Value Present When Null Expected"
+
+    # Datetime Categories (4 and 5)
+    is_expected_dt_python_repr = is_python_datetime_repr(expected)
+    is_predicted_dt_iso_str = is_iso_datetime_str(predicted)
+
+    if is_expected_dt_python_repr and is_predicted_dt_iso_str:
+        if are_datetimes_equivalent(expected, predicted):
+            return "Datetime Formatting Mismatch (Equivalent Value)"
+        else:
+            return "Datetime Value Mismatch"
+    # Consider if expected is ISO and predicted is Python repr (less common in sample)
+    # For now, assuming one primary direction of datetime format difference.
+
+    # String categories
+    if isinstance(expected, str) and isinstance(predicted, str):
+        # Category 8: Case Sensitivity Mismatch (must be checked before other string categories)
+        if expected.lower() == predicted.lower() and expected != predicted:
+            return "Case Sensitivity Mismatch (String)"
+
+        # Category 6A: Abbreviation/Full Name
+        if field_name == "classification_marking":
+            abbrev_pairs = {
+                ("C", "CONFIDENTIAL"),
+                ("S", "SECRET"),
+                ("TS", "TOP SECRET"),
+            }
+            # Check if (expected, predicted) or (predicted, expected) is in the set to cover both directions
+            if any(
+                (e, p) in abbrev_pairs or (p, e) in abbrev_pairs
+                for e_abbr, p_full in abbrev_pairs
+                for e, p in [(expected, predicted)]
+            ):
+                return "Incorrect Semantic String - Abbreviation/Full Name"
+
+        # Category 6B: Related/Distinct Terms
+        if field_name == "collect_request_type":
+            crt_pairs = {
+                ("SIDEREAL", "RATE_TRACK_SIDEREAL"),
+                ("RATE_TRACK", "RATE_TRACK_SIDEREAL"),
+                ("RATE_TRACK_SIDEREAL", "RATE_TRACK"),
+            }
+            if (expected, predicted) in crt_pairs:
+                return "Incorrect Semantic String - Related/Distinct Terms"
+        if (
+            field_name == "frame_type"
+            and expected == "LIGHT"
+            and predicted in ["STANDARD", "DEFAULT"]
+        ):
+            return "Incorrect Semantic String - Related/Distinct Terms"
+        if (
+            field_name == "search_type"
+            and expected == "RASTER_SCAN"
+            and predicted == "SIDEREAL"
+        ):
+            return "Incorrect Semantic String - Related/Distinct Terms"
+
+        # Category 6C: Arbitrary String Mismatch (if none of the above string issues or datetime issues apply)
+        # This is a fallback for general string mismatches not fitting specific patterns.
+        # Ensure not to re-classify already identified datetime format issues as arbitrary string issues.
+        if not (
+            is_expected_dt_python_repr or is_predicted_dt_iso_str
+        ):  # Avoids re-classifying datetime strings
+            return "Incorrect Semantic String - Arbitrary Mismatch"
+
+    # Category 7: Numerical Value Mismatch
+    if is_number(expected) and is_number(predicted) and expected != predicted:
+        return "Numerical Value Mismatch"
+
+    # Category 9: Boolean Value Mismatch
+    # Handles actual booleans. If "true"/"false" strings, conversion would be needed.
+    if (
+        isinstance(expected, bool)
+        and isinstance(predicted, bool)
+        and expected != predicted
+    ):
+        return "Boolean Value Mismatch"
+
+    return "OTHER"
 
 
 class ObjectiveBenchmark:
@@ -11627,21 +11944,56 @@ class ObjectiveBenchmark:
         }
 
         # Aggregate every incorrect‐field instance across runs
-        all_errors = []
+        # all_errors = []
+        # for r in self.results:
+        #     for field_name, info in r["field_details"].items():
+        #         if not info["correct"]:
+        #             all_errors.append(
+        #                 {
+        #                     "field": field_name,
+        #                     "expected": info["expected"],
+        #                     "predicted": info["predicted"],
+        #                 }
+        #             )
+
+        categorized_errors_summary = copy.deepcopy(categorized_errors_template)
+
         for r in self.results:
-            for field_name, info in r["field_details"].items():
-                if not info["correct"]:
-                    all_errors.append(
-                        {
-                            # "query": r["query"],
-                            # "objective_name": r["expected_objective_name"],
-                            "field": field_name,
-                            "expected": info["expected"],
-                            "predicted": info["predicted"],
-                        }
+            current_run_field_details = r.get("field_details", {})
+
+            for field_name, info in current_run_field_details.items():
+                # Process only if the 'correct' flag is explicitly False
+                if info.get("correct") is False:
+                    expected_val = info.get("expected")
+                    predicted_val = info.get("predicted")
+
+                    category_name = classify_error(
+                        field_name,
+                        expected_val,
+                        predicted_val,
+                        current_run_field_details,
                     )
 
-        report["all_errors"] = all_errors
+                    # Ensure category_name is valid, defaulting to "OTHER" if somehow not found
+                    if category_name not in categorized_errors_summary:
+                        print(
+                            f"Warning: Unknown category '{category_name}' for field '{field_name}'. Defaulting to OTHER."
+                        )
+                        category_name = "OTHER"
+
+                    # Update counts for the determined category
+                    categorized_errors_summary[category_name]["total_count"] += 1
+                    categorized_errors_summary[category_name]["field_counts"][
+                        field_name
+                    ] = (
+                        categorized_errors_summary[category_name]["field_counts"].get(
+                            field_name, 0
+                        )
+                        + 1
+                    )
+
+        report["categorized_error_summary"] = categorized_errors_summary
+        # report["all_errors"] = all_errors
 
         return report
 
