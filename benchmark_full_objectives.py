@@ -11704,6 +11704,7 @@ class ObjectiveBenchmark:
                 for i, (query, expected) in enumerate(OBJECTIVE_TEST_CASES.items())
                 if NUM_CASES == -1 or i < NUM_CASES
             ]
+            print(f"Running {len(tasks)} number of Tasks:\n")
             iteration_results = await asyncio.gather(*tasks)
             all_results.extend(iteration_results)
             if iteration < N_ITERATIONS - 1:
@@ -11901,24 +11902,24 @@ class ObjectiveBenchmark:
             field_acc = total_correct / total_fields if total_fields else None
 
             # error catalog
-            errors = []
-            for run_details in subdf["field_details"]:
-                for field, info in run_details.items():
-                    if not info["correct"]:
-                        errors.append(
-                            {
-                                "field": field,
-                                "expected": info["expected"],
-                                "predicted": info["predicted"],
-                            }
-                        )
+            # errors = []
+            # for run_details in subdf["field_details"]:
+            #     for field, info in run_details.items():
+            #         if not info["correct"]:
+            #             errors.append(
+            #                 {
+            #                     "field": field,
+            #                     "expected": info["expected"],
+            #                     "predicted": info["predicted"],
+            #                 }
+            #             )
 
             details[obj_name] = {
                 "predicted_name": pred_name,
                 "name_correct": name_correct,
                 "slot_metrics": slot_stats,
                 "field_accuracy": field_acc,
-                "errors": errors,
+                # "errors": errors,
                 "average_latency_s": subdf["execution_time"].mean(),
             }
 
