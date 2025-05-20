@@ -500,7 +500,7 @@ async def test_mock():
         return JSONResponse({"status": "error", "error": str(e)})
 
 
-@app.get("/settings", GATOR_INFO_TAG="get_settings_api")
+@app.get("/settings")
 async def get_settings_api():
     """Return the current application settings"""
     settings_dict = settings.model_dump()
