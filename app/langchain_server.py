@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LangChain LLM API", version="1.0.0")
 
+LLM_OPERATION_TIMEOUT_SECONDS = 15.0
+
 # Authenticate with Hugging Face Hub
 if settings.HUGGING_FACE_HUB_TOKEN:
     try:
@@ -30,6 +33,7 @@ else:
 @app.post("/generate")
 async def generate_response_api(request: Request):
     """Generate a response using the initialized LLM or VLM."""
+    query = "Unknown query - /generate endpoint"
     try:
         request_data = await request.json()
         query = request_data.get("text")
@@ -39,12 +43,40 @@ async def generate_response_api(request: Request):
                 status_code=400, detail="No text provided for generation."
             )
 
-        llm_response, execution_time = generate_response(query)
+        try:
+            # generate_response is from llm_logic.py
+            llm_response, execution_time = await asyncio.wait_for(
+                run_in_threadpool(generate_response, query),
+                timeout=LLM_OPERATION_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"LLM operation for /generate query '{query[:100]}...' timed out after {LLM_OPERATION_TIMEOUT_SECONDS}s."
+            )
+            raise HTTPException(
+                status_code=504,
+                detail=f"Request to LLM (generic) timed out after {LLM_OPERATION_TIMEOUT_SECONDS} seconds. The model may be overloaded or stuck.",
+            )
 
-        if settings.USE_STRUCTURED_OUTPUT:
+        if settings.USE_STRUCTURED_OUTPUT and hasattr(llm_response, "model_dump"):
             response_dict = llm_response.model_dump()
-        else:
+        elif isinstance(llm_response, str):
             response_dict = {"response": llm_response}
+        elif isinstance(
+            llm_response, dict
+        ):  # If generate_response already returned a dict
+            response_dict = llm_response
+            # Check if this dict is an error structure from a deeper layer
+            if "error" in response_dict:
+                logger.error(
+                    f"Error dict returned by generate_response for /generate query '{query[:100]}...': {response_dict['error']}"
+                )
+                raise HTTPException(status_code=500, detail=str(response_dict["error"]))
+        else:
+            logger.warning(
+                f"Unexpected llm_response type in /generate: {type(llm_response)}. Converting to string."
+            )
+            response_dict = {"response": str(llm_response)}
 
         response_dict["execution_time_seconds"] = round(execution_time, 4)
         return JSONResponse(response_dict)
@@ -52,16 +84,18 @@ async def generate_response_api(request: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
-        logger.exception(f"Unexpected error during generation: {e}")
+        logger.exception(
+            f"Outer unexpected error during /generate for query '{query}': {e}"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/generate_full_objective")
 async def generate_full_objective_api(request: Request):
-    query = "Unknown query - failed to parse request"  # Default for logging if request parsing fails
+    query = "Unknown query - /generate_full_objective endpoint"
     try:
         request_data = await request.json()
-        query = request_data.get("text")  # Get query for logging
+        query = request_data.get("text")
         if not query:
             logger.warning("/generate_full_objective called with no text in request.")
             raise HTTPException(
@@ -78,39 +112,44 @@ async def generate_full_objective_api(request: Request):
             )
 
         logger.info(f"/generate_full_objective request for query: '{query[:100]}...'")
-        # llm_response_data is the actual content (Pydantic model or error string)
-        # execution_time is from the @time_function decorator on generate_objective_response
-        llm_response_data, execution_time = await run_in_threadpool(
-            generate_objective_response, query
-        )
+
+        try:
+            (
+                llm_response_data,
+                execution_time,
+            ) = await asyncio.wait_for(  # <<<<<<<<<<<< ADDED WRAPPER
+                run_in_threadpool(generate_objective_response, query),
+                timeout=LLM_OPERATION_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:  # <<<<<<<<<<<< ADDED TIMEOUT HANDLING
+            logger.error(
+                f"LLM operation for /generate_full_objective query '{query[:100]}...' timed out after {LLM_OPERATION_TIMEOUT_SECONDS}s."
+            )
+            raise HTTPException(
+                status_code=504,
+                detail=f"Request to LLM (objective) timed out after {LLM_OPERATION_TIMEOUT_SECONDS} seconds. The model may be overloaded or stuck.",
+            )
 
         logger.info(
             f"generate_objective_response returned type: {type(llm_response_data)} for query: '{query[:100]}...'"
         )
 
-        if isinstance(
-            llm_response_data, str
-        ):  # Indicates an error message string was returned
+        if isinstance(llm_response_data, str):
             logger.error(
-                f"Error processed by generate_objective_response for query '{query[:100]}...': {llm_response_data}"
+                f"Error string returned by generate_objective_response for query '{query[:100]}...': {llm_response_data}"
             )
-            # If error is from user input or specific objective logic, could be 400 or 422.
-            # If it's an unexpected internal server error, 500.
             raise HTTPException(status_code=500, detail=llm_response_data)
 
-        # If not a string, it should be the Pydantic model object
         logger.info(
             f"Successfully generated objective for query: '{query[:100]}...'. Preparing displayable fields."
         )
-        response_dict = get_displayable_fields(llm_response_data)  # from app.utils
+        response_dict = get_displayable_fields(llm_response_data)
         response_dict["execution_time_seconds"] = round(execution_time, 4)
         return JSONResponse(response_dict)
 
     except HTTPException as he:
-        # Re-raise HTTPException so FastAPI handles it and returns the correct status code
         raise he
     except Exception as e:
-        # Catch any other unexpected errors (e.g., if run_in_threadpool itself fails, or JSON parsing)
         logger.exception(
             f"Critical unexpected error in /generate_full_objective for query '{query[:100]}...': {e}"
         )
@@ -122,6 +161,7 @@ async def generate_full_objective_api(request: Request):
 @app.post("/generate_objective")
 async def generate_objective_api(request: Request):
     """Generate a spaceplan objective name using the initialized LLM."""
+    query = "Unknown query - /generate_objective endpoint"
     try:
         request_data = await request.json()
         query = request_data.get("text")
@@ -131,36 +171,76 @@ async def generate_objective_api(request: Request):
                 status_code=400, detail="No text provided for generation."
             )
 
-        # Ensure structured output is enabled
         if not settings.USE_STRUCTURED_OUTPUT:
             raise HTTPException(
                 status_code=400,
                 detail="USE_STRUCTURED_OUTPUT must be enabled for objective schema generation.",
             )
 
-        llm_response, execution_time = generate_response(query)
+        try:
+            # generate_response is from llm_logic.py
+            (
+                llm_response,
+                execution_time,
+            ) = await asyncio.wait_for(  # <<<<<<<<<<<< ADDED WRAPPER
+                run_in_threadpool(generate_response, query),
+                timeout=LLM_OPERATION_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:  # <<<<<<<<<<<< ADDED TIMEOUT HANDLING
+            logger.error(
+                f"LLM operation for /generate_objective query '{query[:100]}...' timed out after {LLM_OPERATION_TIMEOUT_SECONDS}s."
+            )
+            raise HTTPException(
+                status_code=504,
+                detail=f"Request to LLM (objective name) timed out after {LLM_OPERATION_TIMEOUT_SECONDS} seconds.",
+            )
 
-        # Convert response to JSON-serializable format
-        response_dict = llm_response.model_dump()
+        # Ensure llm_response is Pydantic before model_dump, or handle other types
+        if settings.USE_STRUCTURED_OUTPUT and hasattr(llm_response, "model_dump"):
+            response_dict = llm_response.model_dump()
+        elif isinstance(llm_response, str):  # For non-structured output
+            response_dict = {"response": llm_response}
+        elif isinstance(
+            llm_response, dict
+        ):  # If generate_response itself returns a dict (e.g. error)
+            response_dict = llm_response
+            # Check if this dict is an error structure from a deeper layer
+            if "error" in response_dict:
+                logger.error(
+                    f"Error dict returned by generate_response for /generate_objective query '{query[:100]}...': {response_dict['error']}"
+                )
+                raise HTTPException(status_code=500, detail=str(response_dict["error"]))
+        else:
+            logger.error(
+                f"Expected Pydantic model or dict for /generate_objective with USE_STRUCTURED_OUTPUT=True, got {type(llm_response)}"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Internal server error: Unexpected response type from LLM for objective name.",
+            )
+
         response_dict["execution_time_seconds"] = round(execution_time, 4)
-
         return JSONResponse(response_dict)
 
     except HTTPException as he:
         raise he
     except Exception as e:
-        logger.exception(f"Unexpected error during objective generation: {e}")
+        logger.exception(
+            f"Outer unexpected error during /generate_objective for query '{query}': {e}"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")
 async def health_check():
     """Check the health status of the model service."""
-    from app.model import llm, vlm
+    from app.model import llm, vlm  # Ensure llm is imported
 
+    # Basic health check: service is up and model object is initialized.
+    # Avoids complex inference that might hang if LLM is in a sensitive state.
     if settings.MODEL_TYPE.upper() == "LLM":
         if llm is None:
-            logger.warning("LLM is not initialized.")
+            logger.warning("LLM is not initialized for health check.")
             return JSONResponse(
                 status_code=503,
                 content={
@@ -169,8 +249,8 @@ async def health_check():
                 },
             )
     elif settings.MODEL_TYPE.upper() == "VLM":
-        if vlm is None:
-            logger.warning("VLM is not initialized.")
+        if vlm is None:  # Assuming 'vlm' is your VLM instance
+            logger.warning("VLM is not initialized for health check.")
             return JSONResponse(
                 status_code=503,
                 content={
@@ -179,7 +259,9 @@ async def health_check():
                 },
             )
     else:
-        logger.error("Invalid MODEL_TYPE configuration.")
+        logger.error(
+            f"Invalid MODEL_TYPE '{settings.MODEL_TYPE}' configuration for health check."
+        )
         return JSONResponse(
             status_code=500,
             content={
@@ -188,9 +270,12 @@ async def health_check():
             },
         )
 
-    logger.info("Model service is healthy.")
+    logger.info("Model service health check passed (basic initialization check).")
     return JSONResponse(
-        {"status": "healthy", "message": "Model is initialized and ready."}
+        {
+            "status": "healthy",
+            "message": "Model is initialized and ready (basic check).",
+        }
     )
 
 
@@ -199,7 +284,15 @@ async def test_mock():
     try:
         from app.model import llm
 
-        test_response = llm.invoke("test query")
+        # Ensure it's actually the mock LLM to prevent calling invoke on a real model here
+        if not hasattr(llm, "_llm_type") or llm._llm_type != "mock_llm":
+            raise HTTPException(
+                status_code=400, detail="This endpoint is for mock LLM only."
+            )
+
+        test_response = llm.invoke(
+            "test query"
+        )  # Mock LLM's invoke should be safe & fast
         return JSONResponse(
             {
                 "status": "success",
@@ -207,6 +300,8 @@ async def test_mock():
                 "test_response": test_response,
             }
         )
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.exception("Error testing mock LLM")
         return JSONResponse({"status": "error", "error": str(e)})
