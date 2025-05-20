@@ -11704,7 +11704,7 @@ class ObjectiveBenchmark:
                 for i, (query, expected) in enumerate(OBJECTIVE_TEST_CASES.items())
                 if NUM_CASES == -1 or i < NUM_CASES
             ]
-            print(f"Running {len(tasks)} number of Tasks:\n")
+            print(f"Running {len(tasks)} Total Test Cases:\n")
             iteration_results = await asyncio.gather(*tasks)
             all_results.extend(iteration_results)
             if iteration < N_ITERATIONS - 1:
