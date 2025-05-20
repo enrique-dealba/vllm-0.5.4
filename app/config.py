@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -10,9 +13,15 @@ class Settings(BaseSettings):
 
     def update_schema(self, new_schema: str):
         """Update LLM response schema and notify observers"""
+        logger.info(
+            f"Settings.update_schema called. Current schema: {getattr(self, 'LLM_RESPONSE_SCHEMA', 'Not Set')}, Attempting to set new schema: {new_schema}"
+        )
         self.LLM_RESPONSE_SCHEMA = new_schema
         if hasattr(self, "_schema_cache"):
             delattr(self, "_schema_cache")
+        logger.info(
+            f"Settings.update_schema finished. Schema is now: {self.LLM_RESPONSE_SCHEMA}"
+        )
 
     # General Settings
     PORT: int = 8888
