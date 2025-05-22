@@ -11876,9 +11876,14 @@ class ObjectiveBenchmark:
         field_specific = {
             field: correct / total for field, (correct, total) in field_counts.items()
         }
-        overall_field_accuracy = sum(c for c, _ in field_counts.values()) / sum(
-            t for _, t in field_counts.values()
-        )
+
+        total_sum = sum(t for _, t in field_counts.values())
+        if total_sum > 0:
+            overall_field_accuracy = (
+                sum(c for c, _ in field_counts.values()) / total_sum
+            )
+        else:
+            overall_field_accuracy = 0.0  # Handle case when no data available
 
         # Detailed per‐objective breakdown
         grouped = df.groupby("expected_objective_name")
